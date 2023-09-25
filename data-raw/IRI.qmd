@@ -1,0 +1,88 @@
+---
+title: "Download IRI"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+library(sf)
+library(rnaturalearth)
+library(tidyverse)
+library(reticulate)
+reticulate::use_virtualenv("./.venv")
+
+
+
+# I get errors using `{rhdx}` to try to et CODs for these countries so going w/ natural earth
+aoi_countries <- ne_countries(country = c("Nicaragua",
+                                          "Honduras",
+                                          "Guatemala",
+                                          "El Salvador")) %>% 
+  st_as_sf() %>% 
+  select(
+    contains("admin"),
+    iso_a3
+  )
+
+aoi_bbox <-  st_bbox(aoi_countries) %>% 
+  st_as_sfc()
+
+
+```
+
+```{r}
+# separating any setup that has to do w/ python (and setting eval =F) so anyone reviewing does not need to deal
+# with setting up a python env
+
+# pass to python
+aoi_bbox_py <- reticulate::r_to_py(aoi_bbox)
+
+```
+
+```{python}
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Polygon
+from ochanticipy import GeoBoundingBox
+from ochanticipy import IriForecastDominant
+from ochanticipy import create_custom_country_config
+from ochanticipy import IriForecastProb
+
+
+coords_array = r.aoi_bbox_py
+coords_array_unnested = coords_array[0][0]
+aoi_poly = Polygon(coords_array_unnested)
+
+gdf_aoi_poly = gpd.GeoDataFrame({'geometry':[aoi_poly]})
+
+fp_country_config = "./lac.yaml"
+country_config = create_custom_country_config(fp_country_config)
+
+geo_bounding_box=GeoBoundingBox.from_shape(gdf_aoi_poly)
+
+# download dominant tercile probability forecast
+iri_dominant = IriForecastDominant(country_config=country_config,
+                                   geo_bounding_box=geo_bounding_box)
+
+# download tercile probability forecast
+iri_prob = IriForecastProb(country_config=country_config,
+                           geo_bounding_box=geo_bounding_box)
+iri_dominant.download()
+iri_dominant.process() # process
+
+
+iri_dom_data = iri_dominant.load() # can load into python to see how it looks
+
+# download and process prob
+iri_prob.download()
+iri_prob.process()
+iri_prob_data = iri_prob.load()
+```
