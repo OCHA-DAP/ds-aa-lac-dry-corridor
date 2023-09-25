@@ -4,13 +4,18 @@ format: html
 editor: visual
 ---
 
-## Quarto
+## Intro
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+This quarto document downloads & preprocesses the IRI seasonal precipitation forecasts data Nicaragua, Honduras, El Salvador, and Guatemala.
 
-## Running Code
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+## Set AOI
+
+ochanticipy has some nice features to download and pre-process IRI data. However, it is designed to to work with country config files on a country by country basis. 
+
+Since this is a regional project I have fiddle around a bit to create an AOI/country config file
+- create bbox in R and convert to python with `{reticulate}`
+- create a dummy country config file `lac.yaml` it just contains "iso3:lac"
 
 ```{r}
 library(sf)
@@ -39,13 +44,12 @@ aoi_bbox <-  st_bbox(aoi_countries) %>%
 ```
 
 ```{r}
-# separating any setup that has to do w/ python (and setting eval =F) so anyone reviewing does not need to deal
-# with setting up a python env
-
 # pass to python
 aoi_bbox_py <- reticulate::r_to_py(aoi_bbox)
 
 ```
+
+## Download IRI data 
 
 ```{python}
 import pandas as pd
