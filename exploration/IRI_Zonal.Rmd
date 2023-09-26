@@ -81,6 +81,10 @@ df_iri_adm0 <- lr_iri_prob %>%
             unite(
               "seas",predict_mo1_abbr:end_yr_abbr,sep = ""
             )})
+
+# The above has been integrated into a target
+# it will be accessible in future w/ just
+# tar_load(df_iri_adm0)
 ```
 
 

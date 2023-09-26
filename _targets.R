@@ -1,0 +1,83 @@
+# Created by use_targets().
+# Follow the comments below to fill in this target script.
+# Then follow the manual to check and run the pipeline:
+#   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline
+
+# Load packages required to define the pipeline:
+library(targets)
+library(rnaturalearth)
+library(sf)
+library(tidyverse)
+library(rgee)
+library(janitor)
+library(rgee)
+library(tidyrgee)
+library(exactextractr)
+library(terra)
+library(tidync)
+
+# library(tarchetypes) # Load other packages as needed.
+
+# Set target options:
+tar_option_set(
+  packages = c("tibble") # packages that your targets need to run
+)
+options(clustermq.scheduler = "multicore")
+
+tar_source()
+
+fp_iri_prob <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "processed",
+  "lac",
+  "iri",
+  "lac_iri_forecast_seasonal_precipitation_tercile_prob_Np18Sp10Em83Wm93.nc"
+) 
+
+
+
+list(
+  tar_target(
+    name = gdf_aoi_adm,
+    command = load_proj_admins() %>% 
+      map(~.x %>% 
+            st_make_valid() %>% 
+            select(matches("^adm\\d_[ep]"))
+      )
+  ),
+  tar_target(
+    name =df_iri_adm0,
+    command = iri_nc_to_r(
+      tnc_object = tidync(fp_iri_prob),
+      type = "prob"
+    ) %>% 
+      imap_dfr(
+        \(rtmp,nm){
+          # loop through each leadtime - grab prob bavg and run zonal stats
+          # scary things happen if you don't deepcopy
+          r_bavg <- deepcopy(rtmp[[1]]) # bavg
+          exact_extract(x = r_bavg,
+                        y = gdf_aoi_adm$adm0,
+                        fun=c("mean","median"),
+                        append_cols =c("adm0_es","adm0_pcode")) %>% 
+            pivot_longer(-matches("adm0_")) %>%
+            separate(name, into = c("stat", "date"), sep = "\\.") %>%
+            pivot_wider(names_from = "stat", values_from = "value") %>%
+            
+            # add season information by combing dates w/ leadtimes
+            mutate(
+              leadtime = parse_number(nm),
+              predict_start_mo = as_date(date)+ months(leadtime),
+              predict_mo1_abbr= str_sub(month(predict_start_mo,abbr=T,label=T),start=1,end=1),
+              predict_mo2_abbr= str_sub(month(predict_start_mo+months(1),abbr=T,label=T),start=1,end=1),
+              predict_mo3_abbr= str_sub(month(predict_start_mo+months(2),abbr=T,label=T),start=1,end=1),
+              end_yr_abbr= format(predict_start_mo+months(2),"%y")
+            ) %>% 
+            unite(
+              "seas",predict_mo1_abbr:end_yr_abbr,sep = ""
+            )})
+  )
+  
+  
+)
