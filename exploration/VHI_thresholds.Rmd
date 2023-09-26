@@ -1,0 +1,80 @@
+---
+title: "VHI"
+output: html_document
+date: "2023-09-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intro
+
+Visualize VHI as % of cropland per country. Will think of this in the context of the framework w/ the 2 thresholds provided by partners:
+
+- VHI threshold= 0.35
+- % Area ≤ VHI threshold (0.35) = 25%
+
+```{r cars}
+library(targets)
+library(tidyverse)
+library(gghdx)
+gghdx()
+tar_load(df_cropland_lte_vhi_threshold)
+
+vhi_thresh <- 0.35
+area_thresh <-  0.25
+
+
+
+df_vhi_area_thresh <- df_cropland_lte_vhi_threshold %>% 
+  ungroup() %>% 
+  filter(round(threshold,2)== vhi_thresh) %>% 
+  mutate(
+    date = ym(date),
+    flag_area_thresh = pct_crop_pixels_lte_thresh>=area_thresh
+  )
+```
+
+# Flagging Months
+
+```{r}
+
+df_vhi_area_thresh %>% 
+  ggplot(
+    aes(x= date, y= pct_crop_pixels_lte_thresh )
+  )+
+  geom_point(aes(color= flag_area_thresh))+
+  # geom_line()+
+  geom_hline(yintercept = area_thresh,linetype="dashed",color="tomato")+
+  scale_y_continuous_hdx(labels=scales::label_percent())+
+  labs(
+    y= "% Cropland"
+  )+
+  facet_wrap(
+    ~adm0_es
+  )
+
+```
+
+## Flagging year counts
+```{r}
+df_vhi_yearly_flags <- df_vhi_area_thresh %>% 
+  group_by(adm0_es,yr= floor_date(date, "year")) %>% 
+  summarise(
+    num_months_flagged  =sum(flag_area_thresh),
+    .groups="drop"
+  )
+
+df_vhi_yearly_flags %>%
+  ggplot(aes(x= yr, y= num_months_flagged,color=adm0_es) )+
+  geom_point()+
+  geom_line()+
+  scale_x_date(
+    date_breaks = "1 year",date_labels = "%y"
+  )+
+  theme(
+    axis.text.x = element_text(angle=90)
+  )
+```
+

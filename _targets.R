@@ -77,6 +77,41 @@ list(
             unite(
               "seas",predict_mo1_abbr:end_yr_abbr,sep = ""
             )})
+  ),
+  tar_target(
+    name = df_cropland_lte_vhi_threshold,
+    command  =sum_cropland_lte_vhi_thresh(
+      
+      # all monthly VHI raster directory
+      vhi_raster_dir= file.path(Sys.getenv("AA_DATA_DIR"),
+                                "private",
+                                "raw",
+                                "lac",
+                                "vhi_fao"
+      ),
+      # file path to cropland fraction raster
+      cropland_raster_fp = file.path(
+        Sys.getenv("AA_DATA_DIR"),
+        "public",
+        "raw",
+        "glb",
+        "cropland",
+        "GlcShare_v10_02",
+        "glc_shv10_02.Tif"),
+      
+      # admin 0 polygon
+      poly=gdf_aoi_adm$adm0,
+      
+      # retain these cols in zonal stats
+      poly_cols=c(
+        "adm0_es",
+        "adm0_pcode"),
+      
+      simplify_poly=0.01,
+      
+      # All VHI thresholds to run
+      threshold_seq = seq(0.05,1, by=0.05)
+    )
   )
   
   
