@@ -1,0 +1,211 @@
+---
+title: "CHIRPS Observational"
+output: html_document
+date: "2023-09-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intro
+
+This document plots historical monthly rainfall (CHIRPS) for the  4 countries (Guatemala , Nicaragua, El Salvador, Hondura) in the Central American Dry Corridor (CACD). This initial work was not done with the exact framework in-mind, but rather to get a sense of current situation.
+
+
+```{r setInputs}
+
+# first load in data
+library(tidyverse)
+library(gghdx)
+library(glue)
+gghdx()
+
+
+df_chirps <- read_csv(file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "public",
+  "processed",
+  "lac",
+  "chirps_monthly_adm0.csv"
+) 
+)
+
+# El Nino year - Just from Wikipedia for a first glance
+df_el_nino_years <- tibble(
+  date = 
+    c("1982-1983",
+      "1997-1998",
+      "2002-2003",
+      "2004-2005",
+      "2006-2007",
+      "2009-2010",
+      "2014-2016",
+      "2018-2019",
+      "2023-2024"
+    )
+) %>% 
+  separate(
+    date ,into = c("start_date","end_date"),sep = "-"
+  ) 
+
+# fomat data.frame for ggplot
+df_el_nino_years <- df_el_nino_years %>% 
+  mutate(
+    start_date= glue("{start_date}-01-01") %>% as_date(),
+    end_date = glue("{end_date}-12-31") %>% as_date()
+  )
+```
+
+
+# Jan-August cumulative historical rainfall
+
+```{r plotJFMAMJJA}
+
+df_to_august <- df_chirps %>% 
+  mutate(
+    cat = case_when(
+      month(date) %in% c(1:8)~ "up_to_current",
+      .default =NA
+    )
+  ) %>% 
+  filter(!is.na(cat)) %>% 
+  group_by(ADM0_NAME,date=floor_date(date,"year")) %>% 
+  summarise(
+    rainfall_mm = sum(value)
+  ) 
+
+
+df_to_august_top5_dry <- df_to_august %>% 
+  group_by(ADM0_NAME) %>% 
+  slice_min(order_by = rainfall_mm,n = 5) %>% 
+  ungroup() %>% 
+  mutate(
+    adm0_date = paste0(ADM0_NAME,"_",date)
+  )
+
+df_august_2023 <- df_to_august %>% 
+  filter(year(date)==2023)
+
+df_to_august %>% 
+  mutate(
+    adm0_date = paste0(ADM0_NAME,"_",date),
+    pt_color = adm0_date %in% df_to_august_top5_dry$adm0_date,
+    pt_label = ifelse(adm0_date %in% df_to_august_top5_dry$adm0_date,year(date),NA)
+  ) %>% 
+  ggplot()+
+  geom_rect(
+    data= df_el_nino_years,
+    aes(
+      xmin = start_date,
+      xmax = end_date,
+      ymin = -Inf,
+      ymax = Inf
+    ),
+    alpha = 0.2,
+    fill = hdx_hex("tomato-hdx")
+  )+
+  geom_point(aes(x=date, y= rainfall_mm,color=pt_color))+
+  geom_text(aes(x=date, y=rainfall_mm,label=pt_label),nudge_y = 40)+
+  
+  geom_hline(
+    data= df_august_2023,
+    aes(yintercept=rainfall_mm),
+    linetype="dashed",
+    color=hdx_hex("tomato-hdx")
+  )+
+  facet_wrap(~ADM0_NAME)+
+  scale_x_date(date_breaks = "2 year",date_labels = "%Y",
+               limits = as.Date(c("1981-01-01", "2024-12-31")),
+               expand = c(0,0)
+               # expand = c(as_date("1981-01-01"), as_date("2023-01-01"))
+  )+
+  scale_y_reverse_hdx()+
+  labs(
+    y = "Rainfall Total (mm)",
+    title = "Total January-August Rainfall by Year (CHIRPS)",
+    subtitle = "Vertical red bars indicate el nino years, horizontal dashed line are 2023 values")+
+  theme(
+    axis.text.x = element_text(angle= 90),
+    legend.position = 'none',
+    axis.title.x = element_blank(),
+    panel.border = element_rect(color="grey", fill=NA)
+    
+  )
+```
+
+
+# June-July-August cumulative historical rainfall
+
+```{r plotJJA}
+df_jja <- df_chirps %>% 
+  mutate(
+    cat = case_when(
+      month(date) %in% c(6:8)~ "JJA",
+      .default =NA
+    )
+  ) %>% 
+  filter(!is.na(cat)) %>% 
+  group_by(ADM0_NAME,date=floor_date(date,"year")) %>% 
+  summarise(
+    rainfall_mm = sum(value),
+    .groups = "drop"
+  ) 
+df_jja_top5_dry <- df_jja %>% 
+  group_by(ADM0_NAME) %>% 
+  slice_min(order_by = rainfall_mm,n = 5) %>% 
+  ungroup() %>% 
+  mutate(
+    adm0_date = paste0(ADM0_NAME,"_",date)
+  )
+
+df_jja2023<- df_jja %>% 
+  filter(year(date)==2023)
+
+df_jja %>% 
+  mutate(
+    adm0_date = paste0(ADM0_NAME,"_",date),
+    pt_color = adm0_date %in% df_jja_top5_dry$adm0_date,
+    pt_label = ifelse(adm0_date %in% df_jja_top5_dry$adm0_date,year(date),NA)
+  ) %>% 
+  ggplot()+
+  geom_rect(
+    data= df_el_nino_years,
+    aes(
+      xmin = start_date,
+      xmax = end_date,
+      ymin = -Inf,
+      ymax = Inf
+    ),
+    alpha = 0.2,
+    fill = hdx_hex("tomato-hdx")
+  )+
+  geom_point(aes(x=date, y= rainfall_mm,color=pt_color))+
+  geom_text(aes(x=date, y=rainfall_mm,label=pt_label),nudge_y = 40)+
+
+  geom_hline(
+    data= df_jja2023,aes(yintercept=rainfall_mm),
+    linetype="dashed",
+    color=hdx_hex("tomato-hdx")
+             )+
+  facet_wrap(~ADM0_NAME)+
+  scale_x_date(date_breaks = "2 year",date_labels = "%Y",
+               limits = as.Date(c("1981-01-01", "2024-12-31")),
+               expand = c(0,0)
+               # expand = c(as_date("1981-01-01"), as_date("2023-01-01"))
+               )+
+  scale_y_reverse_hdx()+
+  labs(
+    y = "Rainfall Total (mm)",
+    title = "Total JJA Rainfall by Year (CHIRPS)",
+       subtitle = "Vertical red bars indicate el nino years, horizontal dashed line are 2023 values")+
+  theme(
+    axis.text.x = element_text(angle= 90),
+    legend.position = 'none',
+    axis.title.x = element_blank(),
+    panel.border = element_rect(color="grey", fill=NA)
+    
+  )
+
+```
+
