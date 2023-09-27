@@ -1,9 +1,27 @@
 #' iri_nc_to_r
+#' @description
+#' Background: we have a python to download and pre-process IRI seasonal forecast data as `.nc` files.
+#' Once this is been complete (iri.download()->iri.process()) we want to do further manipulation/processing in R.
+#' You can read the `.nc` objet in with `{ncdf4}`, `{tidync}`, and other packages. This function assumes use of `{tidync}` and 
+#' takes a "tidync" class object as the main input
 #' 
-#' @param tidync object created from iri `.nc` file with created with tidync::tidync(filepath) 
+#' Objective:
+#' Transform tidync IRI forecast (probability tercile bands, or dominant tercile bands) and convert to terra "raster" class for
+#' easier subsequent processing
+#' 
+#' Note:
+#' This is currently a custom process for IRI data and this particular project
+#' 
+#' @param tidync "tidync" class object created from iri `.nc` file with created with tidync::tidync(filepath) 
 #' @param type \code{character} "dominant" or "prob"
-#' @return list of terra raster objects
-#'
+#' @return list of terra raster objects.
+#'   if type = "dominant" it will return 1 terra object with 4 leadtime bands
+#'   if type = "prob" it will return a list of 3 terra raster objects (each with 4 leadtime bands):
+#'    1. probability below average,
+#'    2. probability normal
+#'    3. probability above average
+
+
 
 iri_nc_to_r <-  function(
     tnc_object=iri_prob,
@@ -15,21 +33,24 @@ iri_nc_to_r <-  function(
     activate("F") %>% 
     hyper_array()
   
-  mo_count_start <- as_date("1960-01-01")
+  # IRI months are the number of months since Jan 1960 - convert sequence to dates.
+  # When we later convert to `{terra}` we get a multiylayer raster where each layer represents values from
+  # one particular date - since layers are not well labelled (by default) we  use this vector to properly label layers
   
-  mo_seq <- mo_count_start+months(floor(da_pub_mon$`F`))
+  mo_seq <- as_date("1960-01-01") + months(floor(da_pub_mon$`F`))
   
-  lon_lat_names <-  c("X","Y")
-  da_coords <-  lon_lat_names%>% 
-    map(
+  da_coords <-  map(
+      set_names(c("X","Y")),
       ~ tnc_object   %>% 
         activate(.x) %>% 
         hyper_array()
-    ) %>% 
-    set_names(lon_lat_names)
+    ) 
   
   # hyper-frame split
-  hf_split <- 
+  # split each hyper-frame by leadtime (`L`) so that we can process and convert each leadtime into
+  # it's own band
+  
+   hf_split <- 
     c(
       lt1=1,
       lt2=2,
@@ -40,15 +61,22 @@ iri_nc_to_r <-  function(
       ~tnc_object%>% 
         hyper_filter(
           L= L==.x
-        )
+        ) 
     )
-  
-  # extract data array from split hyper-frame
-  da_split <- hf_split %>% 
-    map(
-      ~.x %>% 
-        hyper_array(select_var = type)
-    )
+   
+  da_split <-  c(
+     lt1=1,
+     lt2=2,
+     lt3=3,
+     lt4=4
+   ) %>% 
+     map(
+       ~tnc_object%>% 
+         hyper_filter(
+           L= L==.x
+         ) %>% 
+         hyper_array()
+     ) 
   
   if(type=="dominant"){
     
