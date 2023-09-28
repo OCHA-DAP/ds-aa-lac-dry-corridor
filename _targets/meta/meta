@@ -1,31 +1,14 @@
 name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
-.Random.seed|object|b29cd8a0a951fbec|||||||||||||||
-aoi_bbox|stem|d5f1fa367527fe0a|2c1308c87c8e2304|b02fc3ed36aace23|-747169064||t19598.8334447375s|9824f8db58d58430|554|rds|local|vector|||0||
-aoi_countries|stem|29dc3b55db29efd8|1fdf2d8112e3228c|bfe9c24ca9136d8f|2029609669||t19598.8350352048s|cdbe451a6b064237|2805|rds|local|vector|||0.06|The returnclass argument of ne_download sp as of rnaturalearth 1.0.0.ℹ Please use sf objects with rnaturalearth, support for Spatial objects  sp will be removed in a future release of the package.|
-df_gtm_vhi_monthly_adm2|stem|ec067f96340bb99f|32937f8ff2e19d7d|0b0e4e083251da06|1391408404||t19613.7156173837s|c12e45ec068082f2|2563132|rds|local|vector|||12776.526||
-df_hn_ni_gt_vhi_monthly_adm2|stem||f4286cdc3454bd3f|1b1613f36424be4a|-667663768||t19610.9568624305s||0|rds|local|vector|||534.796||The eeFeatureCollection y must be not higher than 10 000.
-df_hn_vhi_monthly_adm2|stem||431fa485b58520b3|0b0e4e083251da06|1185238978||t19610.9667744612s||0|rds|local|vector|||1117.236|restarting interrupted promise evaluation|cnd is not a condition object.
-df_iri_adm0|stem|a5e222512fc22fa4|7dac976f330c7afb|ce9ecd14ae1f2305|796467628||t19625.9448829888s|998fe425e8f859d9|17252|rds|local|vector|||0.99||
-df_ni_vhi_monthly_adm2|stem||a2442ef48d7334c7|ed4f5abfbc3bd3cc|-2060868614||t19610.994818161s||0|rds|local|vector|||73.155||The eeFeatureCollection y must be not higher than 10 000.
-df_sum_cropland|stem|9674f8ab0cb9384c|66210b19975d9372|30c016eaf7b3216b|-651181735||t19625.7263659617s|001fa5a0c082fe27|364|rds|local|vector|||5.543|repeating attributes for all subgeometries for which they may not be constant. Expected 2 pieces. Missing pieces filled with NA in 4 rows 1, 2, 3, 4.|
-df_sv_vhi_monthly_adm2|stem|a647fba7d68f21cb|df071be89beef920|c254b05ff0aa0071|-1177730314||t19613.7562966579s|ee49e23739d4be08|1491251|rds|local|vector|||3514.395||
-df_vhi_monthly_adm2|stem||5943e45930efde12|a1518cf4c3520144|38956434||t19610.9857854366s||0|rds|local|vector|||13740.963|restarting interrupted promise evaluation|cnd is not a condition object.
-df_vhi_zonal_mean_adm0|stem|2f3ff134b6b2db18|70c8653b91963a50|9c30e02709cff8b9|1531032017||t19617.6516872295s|08fed25719250193|10393|rds|local|vector|||39.045|repeating attributes for all subgeometries for which they may not be constant|
-df_vhi_zonal_mean_adm2|stem|0059fce443968207|d22b7f24b7f35ac8|9c30e02709cff8b9|379758736||t19617.6587613129s|ec519ceac14e6e00|175|rds|local|vector|||32.549|repeating attributes for all subgeometries for which they may not be constant|
-dir_vhi_monthly|object|e134daa2019d12ba|||||||||||||||
+.Random.seed|object|8ff2b81cf6c6b9b5|||||||||||||||
+df_iri_adm0|stem|a5e222512fc22fa4|7dac976f330c7afb|ce9ecd14ae1f2305|796467628||t19626.7091366325s|998fe425e8f859d9|17252|rds|local|vector|||1.012||
 fp_iri_prob|object|be2208e64c26e452|||||||||||||||
-fp_r_fao_cropland|object|0fd58f3c9a87e8c8|||||||||||||||
-gdf_aoi_adm|stem|10cc8717e15fd508|b6f8c5e974fad3cb|dade321183e7dabe|1204730351||t19611.6173190763s|691cc41844a65629|66964017|rds|local|vector|||10.193||
+gdf_aoi_adm|stem|10cc8717e15fd508|b6f8c5e974fad3cb|dade321183e7dabe|1204730351||t19626.708586427s|691cc41844a65629|66964017|rds|local|vector|||11.067||
 iri_nc_to_r|function|f62c287298eefac9|||||||||||||||
-ldf_ni_vhi_monthly_adm2|stem|5f6edb7eabeb01b7|8485fad30e899db1|c4b9a38a0bb2f034|635978535||t19613.8594468062s|fe47e7a9ea4ab213|926955|rds|local|vector|||8912||
-ldf_sum_cropland_lte_vhi_threshold|stem|4f55cb618766d967|1f0fb76a023cce08|2ea4ed3634ccf170|2061212920||t19625.7133877156s|a9ee31395401f82e|257185|rds|local|vector|||858.817|repeating attributes for all subgeometries for which they may not be constant|
-ldf_vhi_threshold_testing_pct_gte_adm0|stem|cc83cb244774eedc|e149a18c46adf82c|45f9bf95024001a4|1795990606||t19616.6653248646s||250120|rds|local|vector|||36.347|repeating attributes for all subgeometries for which they may not be constant|too many arguments
 load_proj_admins|function|09d2fd9d45a754a8|||||||||||||||
 pct_cropland_lte_vhi_thresh|function|79274c76cf4797f1|||||||||||||||
 vhi_mo_composite_reduce_region|function|5ae004a1eca97058|||||||||||||||
 vhi_mo_composite_reduce_region_batch|function|10fe3a09971aba92|||||||||||||||
 vhi_year_month_composites|function|ca8ce0860544d5bf|||||||||||||||
 vhi_zonal|function|524bd441e5290fb5|||||||||||||||
-vhi_zonal_mean|function|a7560a2c32969891|||||||||||||||
 vhi_zonal_pct_lte_thresh|function|0972ca9c5de9a5a4|||||||||||||||
 zonal_sum_cropland|function|f6cb2a92e96f7434|||||||||||||||
