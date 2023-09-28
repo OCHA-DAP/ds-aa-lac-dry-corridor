@@ -128,6 +128,9 @@ def_breaks <- c(0,.1,seq(.2,1 ,by=0.2))
 fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "Blues")
   
 df_cropland_pct_lte %>% 
+    mutate(
+    pct_gte_thresh= ifelse(pct_gte_thresh==0,NA,pct_gte_thresh)
+  ) %>% 
   ggplot(aes(x=vhi_threshold, y= area_pct_thresh))+
   geom_tile(aes(fill=pct_gte_thresh))+
   geom_vline(xintercept = 0.35)+
@@ -181,6 +184,9 @@ df_cropland_max_pct_lte <- seq(0,1, by=0.02) %>%
 
 
 df_cropland_max_pct_lte %>% 
+    mutate(
+    pct_gte_thresh= ifelse(pct_gte_thresh==0,NA,pct_gte_thresh)
+  ) %>% 
   ggplot(aes(x=vhi_threshold, y= area_pct_thresh))+
   geom_tile(aes(fill=pct_gte_thresh))+
   geom_vline(xintercept = 0.35)+
@@ -198,4 +204,164 @@ df_cropland_max_pct_lte %>%
     y ="% Cropland Pixels ≤ VHI threshold"
   )+
   facet_wrap(~adm0_es)
+```
+
+## How about by Season & Country
+
+Here we see for each country the % of time the different threshold combinations are met
+
+```{r}
+df_max_pct_crop_yr_seas <- df_cropland_wrangled %>% 
+  mutate(
+    season_vhi = case_when(
+      
+      # for primera 2 it is JJA, but we are looking at previous month
+      # so it should be MJJ
+      month(date) %in% c(5,6,7) ~ "primera 2",
+      
+      # primera 3 is SON - looking back a month ASO
+      month(date) %in% c(8,9,10) ~ "primera 3",
+      .default = NA
+    )
+  ) %>% 
+  filter(!is.na(season_vhi)) %>% 
+      group_by(adm0_es,
+               threshold,
+               year=year(date),
+               season_vhi
+               ) %>% 
+      summarise(
+        max_pct_crop = max(pct_crop_pixels),
+        .groups = "drop"
+        
+      ) %>% 
+  ungroup()
+
+df_cropland_max_pct_season_lte<- seq(0,1, by=0.02) %>% 
+  map_dfr(
+    ~ df_max_pct_crop_yr_seas %>% 
+      mutate(
+        area_pct_thresh = .x,
+        gte_area_pct_thresh = max_pct_crop>=area_pct_thresh
+      )
+  ) %>% 
+  group_by(
+    adm0_es,
+    season_vhi,
+    vhi_threshold = threshold,
+    area_pct_thresh
+  ) %>% 
+  summarise(
+    n_gte_thresh = sum(gte_area_pct_thresh),
+    pct_gte_thresh = n_gte_thresh/n(),
+    .groups = "drop"
+  )
+
+def_breaks <- c(-Inf,seq(0,1, by=0.25))
+fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "Blues")
+
+df_cropland_max_pct_season_lte %>% 
+  mutate(
+    pct_gte_thresh= ifelse(pct_gte_thresh==0,NA,pct_gte_thresh)
+  ) %>% 
+  ggplot(aes(x=vhi_threshold, y= area_pct_thresh))+
+  geom_tile(aes(fill=pct_gte_thresh))+
+  geom_vline(xintercept = 0.35)+
+  geom_hline(yintercept = 0.25)+
+  binned_scale(
+    aesthetics = "fill",
+    scale_name = "custom", 
+    palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
+               guide = "bins",
+               breaks = def_breaks
+    
+      )+
+  labs(
+    x= "VHI Threshold (Pixels ≤ threshold)",
+    y ="% Cropland Pixels ≤ VHI threshold"
+  )+
+  facet_grid(cols= vars(season_vhi), rows=vars(adm0_es))
+
+
+```
+
+## What if we look at all countries together
+
+If we combine all countries we can see it's met betwee 50-75 % of the time in primera one and 
+
+```{r}
+def_breaks <- c(-Inf,0.15,0.25,0.35,0.5,seq(.6,1, by=0.15))
+fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "YlOrRd")
+
+df_max_pct_crop_seas <- df_cropland_wrangled %>% 
+  mutate(
+    season_vhi = case_when(
+      
+      # for primera 2 it is JJA, but we are looking at previous month
+      # so it should be MJJ
+      month(date) %in% c(5,6,7) ~ "primera 2",
+      
+      # primera 3 is SON - looking back a month ASO
+      month(date) %in% c(8,9,10) ~ "primera 3",
+      .default = NA
+    )
+  ) %>% 
+  filter(!is.na(season_vhi)) %>% 
+      group_by(
+               threshold,
+               year=year(date),
+               season_vhi
+               ) %>% 
+      summarise(
+        max_pct_crop = max(pct_crop_pixels),
+        .groups = "drop"
+        
+      ) %>% 
+  ungroup()
+df_max_pct_crop_seas %>% 
+  print(n=100)
+
+df_cropland_max_pct_season_lte_together<- seq(0,1, by=0.02) %>% 
+  map_dfr(
+    ~ df_max_pct_crop_seas %>% 
+      mutate(
+        area_pct_thresh = .x,
+        gte_area_pct_thresh = max_pct_crop>=area_pct_thresh
+      )
+  ) %>% 
+  group_by(
+    season_vhi,
+    vhi_threshold = threshold,
+    area_pct_thresh
+  ) %>% 
+  summarise(
+    n_gte_thresh = sum(gte_area_pct_thresh),
+    pct_gte_thresh = n_gte_thresh/n(),
+    .groups = "drop"
+  )
+
+
+df_cropland_max_pct_season_lte_together %>% 
+  mutate(
+    pct_gte_thresh= ifelse(pct_gte_thresh==0,NA,pct_gte_thresh)
+  ) %>% 
+  ggplot(aes(x=vhi_threshold, y= area_pct_thresh))+
+  geom_tile(aes(fill=pct_gte_thresh))+
+  geom_vline(xintercept = 0.35)+
+  geom_hline(yintercept = 0.25)+
+  binned_scale(
+    aesthetics = "fill",
+    scale_name = "custom", 
+    palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
+               guide = "bins",
+               breaks = def_breaks
+    
+      )+
+  labs(
+    x= "VHI Threshold (Pixels ≤ threshold)",
+    y ="% Cropland Pixels ≤ VHI threshold"
+  )+
+  facet_grid(cols= vars(season_vhi))
+
+
 ```
