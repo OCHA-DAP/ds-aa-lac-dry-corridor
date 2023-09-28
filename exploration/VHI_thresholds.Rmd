@@ -26,7 +26,6 @@ vhi_thresh <- 0.35
 area_thresh <-  0.25
 
 
-
 df_vhi_area_thresh <- df_cropland_lte_vhi_threshold %>% 
   ungroup() %>% 
   filter(round(threshold,2)== vhi_thresh) %>% 
@@ -48,8 +47,11 @@ df_vhi_area_thresh %>%
   # geom_line()+
   geom_hline(yintercept = area_thresh,linetype="dashed",color="tomato")+
   scale_y_continuous_hdx(labels=scales::label_percent())+
-  labs(
-    y= "% Cropland"
+    labs(
+    y="% Cropland",
+       title = "Vegetative Health Index - Proposed Threshold Analysis",
+       subtitle = "VHI Trigger Moments (Trigger: VHI ≤ 0.35 for ≥ 25 % of cropland)",
+       caption = "VHI Monthly data downloaded from FAO and over FAO cropland Fraction"
   )+
   facet_wrap(
     ~adm0_es
@@ -70,11 +72,130 @@ df_vhi_yearly_flags %>%
   ggplot(aes(x= yr, y= num_months_flagged,color=adm0_es) )+
   geom_point()+
   geom_line()+
+  labs(
+    y="Nuber of threshold crossings",
+       title = "Vegetative Health Index - Proposed Threshold Analysis",
+       subtitle ="Number of VHI Trigger Moments/Year (Trigger: VHI ≤ 0.35 for ≥ 25 % of cropland)",
+       caption = "VHI Monthly data downloaded from FAO and over FAO cropland Fraction"
+  )+
+  
   scale_x_date(
     date_breaks = "1 year",date_labels = "%y"
   )+
   theme(
-    axis.text.x = element_text(angle=90)
+    axis.text.x = element_text(angle=90),
+    axis.title.x = element_blank(),
+    legend.title = element_blank()
+    
   )
 ```
 
+## % Months Breaching by both threshold
+
+```{r}
+df_cropland_wrangled <- df_cropland_lte_vhi_threshold %>% 
+  ungroup() %>% 
+  mutate(
+    date = ym(date),
+    pct_100 = pct_crop_pixels_lte_thresh*100
+  ) %>%
+  rename(
+    pct_crop_pixels ="pct_crop_pixels_lte_thresh"
+  ) 
+
+
+df_cropland_pct_lte <- seq(0,1, by=0.02) %>% 
+  map_dfr(
+    ~df_cropland_wrangled %>% 
+      mutate(
+        area_pct_thresh = .x,
+        gte_area_pct_thresh = pct_crop_pixels>=area_pct_thresh
+      )
+  ) %>% 
+  group_by(
+    adm0_es,
+    vhi_threshold = threshold,
+    area_pct_thresh
+  ) %>% 
+  summarise(
+    n_gte_thresh = sum(gte_area_pct_thresh),
+    pct_gte_thresh = n_gte_thresh/n(),
+    .groups = "drop"
+  ) 
+  
+  
+def_breaks <- c(0,.1,seq(.2,1 ,by=0.2))
+fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "Blues")
+  
+df_cropland_pct_lte %>% 
+  ggplot(aes(x=vhi_threshold, y= area_pct_thresh))+
+  geom_tile(aes(fill=pct_gte_thresh))+
+  geom_vline(xintercept = 0.35)+
+  geom_hline(yintercept = 0.25)+
+  binned_scale(
+    aesthetics = "fill",
+    scale_name = "custom", 
+    palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
+               guide = "bins",
+               breaks = def_breaks
+    
+      )+
+  labs(
+    x= "VHI Threshold (Pixels ≤ threshold)",
+    y ="% Cropland Pixels ≤ VHI threshold"
+  )+
+  facet_wrap(~adm0_es)
+```
+
+
+## % years that have a breach
+by both thresholds
+```{r}
+df_max_pct_crop_yr <- df_cropland_wrangled %>% 
+      group_by(adm0_es,
+               threshold,year=year(date)) %>% 
+      summarise(
+        max_pct_crop = max(pct_crop_pixels)
+      ) %>% 
+  ungroup()
+
+df_cropland_max_pct_lte <- seq(0,1, by=0.02) %>% 
+  map_dfr(
+    ~ df_max_pct_crop_yr%>% 
+      mutate(
+        area_pct_thresh = .x,
+        gte_area_pct_thresh = max_pct_crop>=area_pct_thresh
+      )
+  ) %>% 
+  group_by(
+    adm0_es,
+    vhi_threshold = threshold,
+    area_pct_thresh
+  ) %>% 
+  summarise(
+    n_gte_thresh = sum(gte_area_pct_thresh),
+    pct_gte_thresh = n_gte_thresh/n(),
+    .groups = "drop"
+  )
+
+
+
+df_cropland_max_pct_lte %>% 
+  ggplot(aes(x=vhi_threshold, y= area_pct_thresh))+
+  geom_tile(aes(fill=pct_gte_thresh))+
+  geom_vline(xintercept = 0.35)+
+  geom_hline(yintercept = 0.25)+
+  binned_scale(
+    aesthetics = "fill",
+    scale_name = "custom", 
+    palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
+               guide = "bins",
+               breaks = def_breaks
+    
+      )+
+  labs(
+    x= "VHI Threshold (Pixels ≤ threshold)",
+    y ="% Cropland Pixels ≤ VHI threshold"
+  )+
+  facet_wrap(~adm0_es)
+```
