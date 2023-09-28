@@ -15,3 +15,15 @@ vhi_year_month_composites|function|ca8ce0860544d5bf|||||||||||||||
 vhi_zonal|function|524bd441e5290fb5|||||||||||||||
 vhi_zonal_pct_lte_thresh|function|0972ca9c5de9a5a4|||||||||||||||
 zonal_sum_cropland|function|f6cb2a92e96f7434|||||||||||||||
+vhi_year_month_composites|function|ca8ce0860544d5bf
+load_proj_admins|function|09d2fd9d45a754a8
+vhi_zonal_pct_lte_thresh|function|0972ca9c5de9a5a4
+pct_cropland_lte_vhi_thresh|function|79274c76cf4797f1
+iri_nc_to_r|function|2cf0f55df395a689
+.Random.seed|object|02ee53440eb47aa2
+vhi_zonal|function|524bd441e5290fb5
+cropland_lte_vhi_thresh|function|2b0be58b9de17b68
+fp_iri_prob|object|be2208e64c26e452
+zonal_sum_cropland|function|f6cb2a92e96f7434
+vhi_mo_composite_reduce_region|function|5ae004a1eca97058
+vhi_mo_composite_reduce_region_batch|function|10fe3a09971aba92

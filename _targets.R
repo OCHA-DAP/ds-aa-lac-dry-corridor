@@ -80,7 +80,7 @@ list(
   ),
   tar_target(
     name = df_cropland_lte_vhi_threshold,
-    command  =sum_cropland_lte_vhi_thresh(
+    command  =cropland_lte_vhi_thresh(
       
       # all monthly VHI raster directory
       vhi_raster_dir= file.path(Sys.getenv("AA_DATA_DIR"),
