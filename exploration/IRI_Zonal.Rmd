@@ -1,0 +1,173 @@
+---
+title: "IRI Zonal"
+output: html_document
+date: "2023-09-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intro 
+
+This notebook holds the processing of IRI data to zonal mean and median statistics
+
+
+
+```{r libs_data}
+library(targets)
+library(terra)
+library(tidync)
+library(sf)
+library(tidyverse)
+library(exactextractr)
+library(gghdx)
+library(janitor)
+library(rhdx)
+
+gghdx()
+tar_source()
+
+gdf_aoi_adm <- load_proj_admins() %>%
+  map(~ .x %>%
+    st_make_valid() %>%
+    select(matches("^adm\\d_[ep]")))
+
+
+fp_iri_prob <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "processed",
+  "lac",
+  "iri",
+  "lac_iri_forecast_seasonal_precipitation_tercile_prob_Np18Sp10Em83Wm93.nc"
+)
+```
+
+
+
+
+```{r}
+# convert to list of rasters
+lr_iri_prob <- iri_nc_to_r(
+  tnc_object = tidync(fp_iri_prob),
+  type = "prob"
+)
+
+
+# Run zonal stats on each leadtime bavg band
+df_iri_adm0 <- lr_iri_prob %>%
+  imap_dfr(
+    \(rtmp, nm){
+      r_bavg <- deepcopy(rtmp[[1]]) # bavg
+      exact_extract(
+        x = r_bavg,
+        y = gdf_aoi_adm$adm0,
+        fun = c("mean", "median"),
+        append_cols = c("adm0_es", "adm0_pcode")
+      ) %>%
+        pivot_longer(-matches("adm0_")) %>%
+        separate(name, into = c("stat", "date"), sep = "\\.") %>%
+        pivot_wider(names_from = "stat", values_from = "value") %>%
+        # add season information by combing dates w/ leadtimes
+        mutate(
+          leadtime = parse_number(nm),
+          predict_start_mo = as_date(date) + months(leadtime),
+          predict_mo1_abbr = str_sub(month(predict_start_mo, abbr = T, label = T), start = 1, end = 1),
+          predict_mo2_abbr = str_sub(month(predict_start_mo + months(1), abbr = T, label = T), start = 1, end = 1),
+          predict_mo3_abbr = str_sub(month(predict_start_mo + months(2), abbr = T, label = T), start = 1, end = 1),
+          end_yr_abbr = format(predict_start_mo + months(2), "%y")
+        ) %>%
+        unite(
+          "seas", predict_mo1_abbr:end_yr_abbr,
+          sep = ""
+        )
+    }
+  )
+
+# The above has been integrated into a target
+# it will be accessible in future w/ just
+# tar_load(df_iri_adm0)
+```
+
+
+
+```{r}
+# tak max probability (bavg) across leadtimes
+df_iri_adm0_max <- df_iri_adm0 %>%
+  group_by(
+    across(starts_with("adm")),
+    predict_start_mo, seas
+  ) %>%
+  summarise(
+    across(.cols = c("mean", "median"), ~ max(.x))
+  )
+
+
+# filter to just relevant seasons
+df_iri_adm0_max_relevant_season <- df_iri_adm0_max %>%
+  ungroup() %>%
+  filter(
+    str_detect(seas, "MJJ|JJA|SON")
+  )
+```
+
+## Plot Mean Probability
+
+```{r}
+df_iri_adm0_max_relevant_season %>%
+  ggplot(
+    aes(x = predict_start_mo, y = mean, color = adm0_es)
+  ) +
+  geom_point() +
+  geom_line() +
+  scale_x_date(
+    breaks = unique(df_iri_adm0_max_relevant_season$predict_start_mo),
+    labels = unique(df_iri_adm0_max_relevant_season$seas)
+  ) +
+  labs(
+    x = "Season",
+    y = "Mean Probability",
+    title = "IRI Seasonal Forecast - Mean probability of below normal forecast per country",
+    subtitle = "Month groupings from proposed trigger windows (window 1: MJJ, window 2: JJA, window 3: SON)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90),
+    axis.title.x = element_blank()
+  )
+```
+
+## Plot Median Probability
+
+```{r}
+df_iri_adm0_max_relevant_season %>%
+  ggplot(
+    aes(x = predict_start_mo, y = median, color = adm0_es)
+  ) +
+  geom_point() +
+  geom_line() +
+  scale_x_date(
+    breaks = unique(df_iri_adm0_max_relevant_season$predict_start_mo),
+    labels = unique(df_iri_adm0_max_relevant_season$seas)
+  ) +
+  labs(
+    x = "Season",
+    y = "Median Probability",
+    title = "IRI Seasonal Forecast - Median probability of below normal forecast per country",
+    subtitle = "Month groupings from proposed trigger windows (window 1: MJJ, window 2: JJA, window 3: SON)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90),
+    axis.title.x = element_blank()
+  )
+```
+
+
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

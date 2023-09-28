@@ -1,0 +1,91 @@
+---
+title: "Download IRI"
+format: html
+editor: visual
+---
+
+## Intro
+
+This quarto document downloads & preprocesses the IRI seasonal precipitation forecasts data Nicaragua, Honduras, El Salvador, and Guatemala.
+
+## Set AOI
+
+ochanticipy has some nice features to download and pre-process IRI data. However, it is designed to to work with country config files on a country by country basis.
+
+Since this is a regional project I have fiddle around a bit to create an AOI/country config file - create bbox in R and convert to python with `{reticulate}` - create a dummy country config file `lac.yaml` it just contains "iso3:lac"
+
+```{r}
+library(sf)
+library(rnaturalearth)
+library(tidyverse)
+library(reticulate)
+reticulate::use_virtualenv("./.venv")
+
+
+
+# I get errors using `{rhdx}` to try to et CODs for these countries so going w/ natural earth
+aoi_countries <- ne_countries(country = c("Nicaragua",
+                                          "Honduras",
+                                          "Guatemala",
+                                          "El Salvador")) %>% 
+  st_as_sf() %>% 
+  select(
+    contains("admin"),
+    iso_a3
+  )
+
+aoi_bbox <-  st_bbox(aoi_countries) %>% 
+  st_as_sfc()
+
+
+```
+
+```{r}
+# pass to python
+aoi_bbox_py <- reticulate::r_to_py(aoi_bbox)
+
+```
+
+## Download IRI data
+
+```{python}
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Polygon
+from ochanticipy import GeoBoundingBox
+from ochanticipy import IriForecastDominant
+from ochanticipy import create_custom_country_config
+from ochanticipy import IriForecastProb
+
+
+coords_array = r.aoi_bbox_py
+coords_array_unnested = coords_array[0][0]
+aoi_poly = Polygon(coords_array_unnested)
+
+gdf_aoi_poly = gpd.GeoDataFrame({'geometry':[aoi_poly]})
+
+fp_country_config = "./lac.yaml"
+country_config = create_custom_country_config(fp_country_config)
+
+geo_bounding_box=GeoBoundingBox.from_shape(gdf_aoi_poly)
+
+# download dominant tercile probability forecast
+iri_dominant = IriForecastDominant(country_config=country_config,
+                                   geo_bounding_box=geo_bounding_box)
+
+# download tercile probability forecast
+iri_prob = IriForecastProb(country_config=country_config,
+                           geo_bounding_box=geo_bounding_box)
+                           
+iri_dominant.download(clobber=True)
+iri_dominant.process(clobber=True) # process
+iri_dom_data = iri_dominant.load() # can load into python to see how it looks
+iri_dom_data.F.values
+
+
+# download and process prob
+iri_prob.download(clobber= True)
+iri_prob.process(clobber= True)
+iri_prob_data = iri_prob.load()
+iri_prob_data.F.values
+```
