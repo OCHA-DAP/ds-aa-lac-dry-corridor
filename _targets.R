@@ -32,10 +32,9 @@ tar_source()
 list(
   tar_target(
     name = gdf_aoi_adm,
-    command = load_proj_admins() %>% 
-      map(~.x %>% 
-            st_make_valid() %>% 
-            select(matches("^adm\\d_[ep]"))
-      )
+    command = load_proj_admins() %>%
+      map(~ .x %>%
+        st_make_valid() %>%
+        select(matches("^adm\\d_[ep]")))
   )
 )
