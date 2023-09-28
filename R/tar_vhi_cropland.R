@@ -36,7 +36,6 @@ cropland_lte_vhi_thresh <- function(
     ),
     simplify_poly = 0.01,
     threshold_seq = seq(0.05, 1, by = 0.05)) {
-  
   fp_r_vhi <- list.files(vhi_raster_dir, full.names = T)
   chr_yyyymm <- str_extract(basename(fp_r_vhi), "\\d{4}-\\d{2}")
   r_vhi <- rast(fp_r_vhi)
@@ -95,37 +94,37 @@ cropland_lte_vhi_thresh <- function(
 
   df_sum_cropland_lte <- threshold_seq %>%
     map_dfr(\(thresh){
-      cat(thresh,"\n")
+      cat(thresh, "\n")
 
-      
+
       # not sure why this doesn't work at all!
-      
+
       # m <- c(
       #   -Inf, thresh, 1,
       #   thresh, Inf, 0
       # )
-      # 
-      # reclass_matrix <- matrix(m, 
+      #
+      # reclass_matrix <- matrix(m,
       #                          ncol = 3,
       #                          byrow = TRUE)
-      # 
+      #
       # r_vhi_reclassed <- classify(
       #   r_vhi_clean,
-      #   reclass_matrix, 
+      #   reclass_matrix,
       #   include.lowest = T
       #   )
 
       r_vhi_binary <- deepcopy(r_vhi_clean)
-      r_vhi_binary[r_vhi_binary>thresh] <- NA
-      r_vhi_binary[!is.na(r_vhi_binary)]<-1
-  
+      r_vhi_binary[r_vhi_binary > thresh] <- NA
+      r_vhi_binary[!is.na(r_vhi_binary)] <- 1
 
-  
+
+
       cat("multiplying binary VHI again crop frac\n")
       r_cropland_lte_vhi_thresh <- r_vhi_binary * r_cropland_resampled
 
-      cat("zonal stats - sum pixels ≤ ", thresh,"\n")
-      
+      cat("zonal stats - sum pixels ≤ ", thresh, "\n")
+
       exact_extract(
         x = r_cropland_lte_vhi_thresh,
         y = poly_simp,
@@ -139,7 +138,7 @@ cropland_lte_vhi_thresh <- function(
         ) %>%
         mutate(threshold = thresh)
     })
-  
+
   ret <- df_sum_cropland_lte %>%
     rename(
       sum_crop_pixels_lte_thresh = "value"
