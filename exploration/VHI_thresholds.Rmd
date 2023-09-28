@@ -8,12 +8,18 @@ date: "2023-09-26"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Intro
+# Intro
 
-Visualize VHI as % of cropland per country. Will think of this in the context of the framework w/ the 2 thresholds provided by partners:
+Visualize VHI as % of cropland per country.
+
+We will first think of this in the context of the framework w/ the 2 thresholds provided by partners:
 
 - VHI threshold= 0.35
 - % Area ≤ VHI threshold (0.35) = 25%
+
+Then we will evaluate other threshold combinations.
+
+**Takeaway** After evaluating all threshold combinations, those provided by partners seem reasonable:
 
 ```{r cars}
 library(targets)
@@ -34,6 +40,9 @@ df_vhi_area_thresh <- df_cropland_lte_vhi_threshold %>%
     flag_area_thresh = pct_crop_pixels_lte_thresh>=area_thresh
   )
 ```
+
+
+## Using Proposed Thresholds
 
 # Flagging Months
 
@@ -92,7 +101,16 @@ df_vhi_yearly_flags %>%
 
 ## % Months Breaching by both threshold
 
+We check the % cropland pixels For each VHI threshold (0,0.05,0.1,..1) for each record/month. We then calculate the % of months where the area % threshold was greater than each threshold (0,2,4,6,..98, 100 %) for each threshold.
+
+When we plot VHI threshold (x) by % Cropland threshold and color the fill by the % of months this combination was met we get an idea of the number/% months out of all this trigger would have been flagged.
+
 ```{r}
+# define breaks and fill palette at top of each chunk so I can play with it in the different scenarios
+def_breaks <- c(0,.1,seq(.2,1 ,by=0.2))
+fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "YlOrRd")
+
+
 df_cropland_wrangled <- df_cropland_lte_vhi_threshold %>% 
   ungroup() %>% 
   mutate(
@@ -124,8 +142,7 @@ df_cropland_pct_lte <- seq(0,1, by=0.02) %>%
   ) 
   
   
-def_breaks <- c(0,.1,seq(.2,1 ,by=0.2))
-fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "Blues")
+
   
 df_cropland_pct_lte %>% 
     mutate(
@@ -152,8 +169,13 @@ df_cropland_pct_lte %>%
 
 
 ## % years that have a breach
-by both thresholds
+
+If we do the same process as above but this time take this time summarise to the max values per year we can view the % of years this trigger would have been flagged rather than months - this might be more similar to how people conceptualize return period
+
 ```{r}
+def_breaks <- c(-Inf,seq(0,1, by=0.25))
+fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "YlOrRd")
+
 df_max_pct_crop_yr <- df_cropland_wrangled %>% 
       group_by(adm0_es,
                threshold,year=year(date)) %>% 
@@ -208,9 +230,12 @@ df_cropland_max_pct_lte %>%
 
 ## How about by Season & Country
 
-Here we see for each country the % of time the different threshold combinations are met
+Same as above but this time by seasons of interest and country
 
 ```{r}
+def_breaks <- c(-Inf,seq(0,1, by=0.25))
+fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "YlOrRd")
+
 df_max_pct_crop_yr_seas <- df_cropland_wrangled %>% 
   mutate(
     season_vhi = case_when(
@@ -257,8 +282,6 @@ df_cropland_max_pct_season_lte<- seq(0,1, by=0.02) %>%
     .groups = "drop"
   )
 
-def_breaks <- c(-Inf,seq(0,1, by=0.25))
-fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "Blues")
 
 df_cropland_max_pct_season_lte %>% 
   mutate(
@@ -276,6 +299,8 @@ df_cropland_max_pct_season_lte %>%
                breaks = def_breaks
     
       )+
+  scale_x_continuous(labels = scales::label_number())+
+  scale_y_continuous(labels = scales::label_percent())+
   labs(
     x= "VHI Threshold (Pixels ≤ threshold)",
     y ="% Cropland Pixels ≤ VHI threshold"
@@ -287,8 +312,9 @@ df_cropland_max_pct_season_lte %>%
 
 ## What if we look at all countries together
 
-If we combine all countries we can see it's met betwee 50-75 % of the time in primera one and 
+Same as above but this time by seasons last, but this time remove the country. So here we can look at a more regional level and see the % of time the trigger/target would have been reached/flagged in any of the 4 countries
 
+We see for "Primera 2" the proposed threshold put us in the range of ~50-60 % which roughly equates to 2 year RP which might be reasonable for this project.
 ```{r}
 def_breaks <- c(-Inf,0.15,0.25,0.35,0.5,seq(.6,1, by=0.15))
 fill_cols<- RColorBrewer::brewer.pal(n = length(def_breaks),name = "YlOrRd")
@@ -357,6 +383,8 @@ df_cropland_max_pct_season_lte_together %>%
                breaks = def_breaks
     
       )+
+  scale_x_continuous(labels = scales::label_number())+
+  scale_y_continuous(labels = scales::label_percent())+
   labs(
     x= "VHI Threshold (Pixels ≤ threshold)",
     y ="% Cropland Pixels ≤ VHI threshold"
