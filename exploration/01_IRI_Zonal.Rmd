@@ -133,8 +133,13 @@ df_iri_adm0_max_relevant_season %>%
   ) +
   theme(
     axis.text.x = element_text(angle = 90),
-    axis.title.x = element_blank()
+    axis.title.x = element_blank(),
+    legend.title = element_blank()
   )
+
+df_iri_adm0_max_relevant_season %>% 
+  group_by(adm0_es) %>% 
+  slice_max(order_by = mean,n = 3)
 ```
 
 ## Plot Median Probability
