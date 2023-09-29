@@ -26,9 +26,6 @@ options(clustermq.scheduler = "multicore")
 
 tar_source()
 
-
-
-
 list(
   tar_target(
     name = gdf_aoi_adm,
