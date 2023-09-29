@@ -364,8 +364,6 @@ df_vhi_seas_aligned <- df_vhi_seas_flagged %>%
 
 
 
-
-
 df_iri_adm0_flag %>% 
   ggplot(
     aes(x= date_cat,y=adm0_es,fill=mean)
@@ -396,7 +394,12 @@ df_iri_adm0_flag %>%
       )+
   labs(
     title = "Dry Corridor Central America",
-    subtitle= "Green Cells Indicate Where IRI Seasonal Forecast Thresholds were met\nand Black outline indicates when VHI threshold was met"
+    subtitle= paste0("Green cells indicate where probability of below average rainfall was ≥ ",
+                     round(thresh_iri_pbavg*100,1),
+                     " %\nRed outline indicates when ≥ ",
+                     round(thresh_area*100,0),
+                     " % of cropland had a VHI ≤ ",
+                     thresh_vhi)
   )+
   scale_x_continuous(
     breaks= unique(df_iri_adm0_flag$date_cat),
