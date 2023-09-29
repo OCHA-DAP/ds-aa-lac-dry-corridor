@@ -33,14 +33,15 @@ tar_load(df_iri_adm0)
 
 thresh_vhi <- 0.35
 thresh_area <-  0.25
-thresh_iri_pbavg <- 0.45
+thresh_iri_pbavg <- 0.425
 ```
 
 
 Initial triggers:
 
-1. Average probability of below average rainfall is ≥ 45 %
+1. Average probability of below average rainfall is ≥ **`r round(thresh_iri_pbavg*100,1)`%***
 2. ≥ 25 % of cropland with VHI ≤ 0.25 - only monitored for Primera (phase 2) and Postera (phase 3)
+
 
 ```{r}
 
@@ -251,6 +252,8 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
      axis.text.x = element_text(angle=90),
    )
  
+ # i might have to play around with these parameters if I want to knit or export pngs
+ 
   # theme(
   #    panel.border = element_rect(color="grey",fill = NA),
   #    legend.position = "none",
@@ -315,14 +318,6 @@ df_vhi_thresh %>%
   scale_fill_continuous(name= "% cropland",
                         labels=scales::label_percent()
                         )+
-  # binned_scale(
-  #   aesthetics = "fill",
-  #   scale_name = "custom", 
-  #   palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
-  #              guide = "bins",
-  #              breaks = c(0,thresh_iri_pbavg,1), 
-  #   
-  #     )+
   facet_wrap(~monitoring_window,nrow=2)+
   scale_x_continuous(
     breaks= unique(df_vhi_thresh$yr)
@@ -336,7 +331,6 @@ df_vhi_thresh %>%
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
     legend.text = element_text(angle=90)
-    # legend.position="none"
   )
 
 ```
