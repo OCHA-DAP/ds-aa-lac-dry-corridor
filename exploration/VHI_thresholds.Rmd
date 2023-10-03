@@ -52,7 +52,7 @@ df_vhi_area_thresh %>%
     aes(x = date, y = pct_crop_pixels_lte_thresh)
   ) +
   geom_point(aes(color = flag_area_thresh)) +
-  # geom_line()+
+  geom_line(alpha=0.3)+
   geom_hline(yintercept = area_thresh, linetype = "dashed", color = "tomato") +
   scale_y_continuous_hdx(labels = scales::label_percent()) +
   labs(
