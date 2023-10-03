@@ -52,7 +52,7 @@ df_vhi_area_thresh %>%
     aes(x = date, y = pct_crop_pixels_lte_thresh)
   ) +
   geom_point(aes(color = flag_area_thresh)) +
-  geom_line(alpha=0.3)+
+  geom_line(alpha = 0.3) +
   geom_hline(yintercept = area_thresh, linetype = "dashed", color = "tomato") +
   scale_y_continuous_hdx(labels = scales::label_percent()) +
   labs(
@@ -177,9 +177,10 @@ df_max_pct_crop_yr <- df_cropland_wrangled %>%
     year = year(date)
   ) %>%
   summarise(
-    max_pct_crop = max(pct_crop_pixels)
-  ) %>%
-  ungroup()
+    max_pct_crop = max(pct_crop_pixels),
+    .groups = "drop"
+  )
+
 
 df_cropland_max_pct_lte <- seq(0, 1, by = 0.02) %>%
   map_dfr(

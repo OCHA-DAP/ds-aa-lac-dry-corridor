@@ -118,8 +118,6 @@ cropland_lte_vhi_thresh <- function(
       r_vhi_binary[r_vhi_binary > thresh] <- NA
       r_vhi_binary[!is.na(r_vhi_binary)] <- 1
 
-
-
       cat("multiplying binary VHI again crop frac\n")
       r_cropland_lte_vhi_thresh <- r_vhi_binary * r_cropland_resampled
 
