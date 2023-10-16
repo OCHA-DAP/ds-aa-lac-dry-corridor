@@ -20,11 +20,15 @@ library(tidync)
 library(terra)
 library(patchwork)
 library(gt)
+library(targets)
 gghdx()
 tar_source()
 
 
-# I get errors using `{rhdx}` to try to et CODs for these countries so going w/ natural earth
+#' I get errors using `{rhdx}` to try to et CODs for these countries so going w/ natural earth
+#' even after "fixing" the CODs to the point that they can be loaded - they are  far too complex
+#' no point using them at this stage in the project as they just slow everything down 
+
 aoi_countries <- ne_countries(country = c("Nicaragua",
                                           "Honduras",
                                           "Guatemala",
@@ -88,13 +92,17 @@ lr_iri_prob <- iri_nc_to_r(
 
 ### Historgrams by leadtime
 
-```{r}
-
+```{r plot-histo-combined-by-lt}
+df_prob_bavg_values %>% count(leadtime)
 # grab all values
 df_prob_bavg_values <- lr_iri_prob %>% 
   imap_dfr(\(rt,nm){
     # [[1]] first element is bavg (c1)
-    rt[[1]] %>% 
+    rt_copy <- deepcopy(rt[[1]])
+  
+    # clip to aoi (instead of just bbox)
+    rt_clipped <- mask(rt_copy,aoi_dissolved)
+    rt_clipped %>% 
       terra::values() %>% 
       data.frame() %>% 
       pivot_longer(everything()) %>% 
@@ -141,9 +149,9 @@ df_prob_bavg_values%>%
 
 ### Histograms by leadtime and season
 
-```{r plot-histo-bavg-by-lt-and-phase}
+This is a bit too much detail for most people and the for the slide deck, but can stay in exploratory
 
-#***** figure out if firs tpub mo is righ!
+```{r plot-histo-bavg-by-lt-and-phase}
 # use publication month sequence to shift for months predicted
 pub_mo_seq <- as_date(names(lr_iri_prob$lt1[[1]]))
 
@@ -166,12 +174,14 @@ r_prob_bavg_labelled <- c(lt1=1, lt2=2,lt3=3, lt4=4) %>%
   }
   )
 
-
-
 # grab values by sesason
 df_prob_bavg_values_seas <- r_prob_bavg_labelled %>% 
   imap_dfr(\(rt,nm){
-    rt %>% 
+    rt_copy <- deepcopy(rt)
+    
+    # clip to aoi (instead of just bbox)
+    rt_clipped <- mask(rt_copy,aoi_dissolved)
+    rt_clipped %>% 
       terra::values() %>% 
       data.frame() %>% 
       pivot_longer(everything()) %>% 
@@ -257,7 +267,7 @@ p_hist_bavg_prob_window_lt$`Window 1`+
 
 Just look at max probability across leadtimes per season
 
-```{r}
+```{r plot-histo-combinedAOI-by-season-lt}
 all_seasons <- r_prob_bavg_labelled %>% 
   map(~.x %>% names()) %>% 
   unlist() %>% 
@@ -313,7 +323,12 @@ r_bavg_max_prob <- seasons_of_interest_split %>%
 # extract raster values into a data.frame for plotting
 df_prob_bavg_values_seas_combined <- r_bavg_max_prob %>% 
   imap_dfr(\(rt,nm){
-    rt %>% 
+    rt_copy <- deepcopy(rt)
+    
+    # clip to aoi (instead of just bbox)
+    rt_clipped <- mask(rt_copy,aoi_dissolved)
+    
+    rt_clipped %>% 
       terra::values() %>% 
       data.frame() %>% 
       pivot_longer(everything()) %>% 
@@ -368,6 +383,8 @@ df_prob_bavg_values_seas_combined %>%
 
 ```
 
+
+## playing with some thresholds
 ```{r}
 r_bavg_max_prob_copy <-r_bavg_max_prob
 df_pct_max_prob_gte_thresh <- r_bavg_max_prob_copy %>% 
@@ -529,57 +546,6 @@ df_pct_gte_threshold$`Window 2` %>%
 
   
 
-counts_gte_threshold_by_lt <-r_mjj %>% 
-  imap_dfr(\(rt,nm){
-    seq(1,50,1) %>% 
-      map_dfr(
-        \(thresh){
-          rt[rt<thresh]<-0
-          rt[rt>=thresh]<-1
-          # rt[is.na(thresh)]<-0
-          
-          exact_extract(
-            x=rt,
-            y=aoi_dissolved,
-            fun= c("sum","count")) %>% 
-            pivot_longer(everything() )%>%
-            separate(name, into = c("stat", "date"), sep = "\\.") %>% 
-            mutate(
-              threshold=thresh
-            )
-        }
-      ) %>% 
-      mutate(
-        leadtime =nm
-      )
-  }
-  )
-
-pct_pix_gte_threshold_by_lt <- counts_gte_threshold_by_lt %>% 
-  pivot_wider(
-    names_from= "stat",
-    values_from="value"
-  ) %>% 
-  mutate(
-    pct_gte =sum/count
-  )
-
-pct_pix_gte_threshold_by_lt %>% 
-  group_by(date, threshold) %>% 
-  summarise(
-    pct_gte= max(pct_gte)
-  ) %>% 
-    ggplot(aes(x=threshold,y=pct_gte))+
-  geom_point()+
-  geom_line()+
-  geom_vline(xintercept = c(40,50),linetype="dashed", color="tomato")+
-  facet_wrap(~date)+
-  labs(title = "Dry Corridor: May-June-July (MJJ)",
-       subtitle = "% Pixels that breached each threshold (across all leadtimes)",
-       x= "threshold (proability below average rainfall)",
-       y= "% pixels breaching threshold"
-       )
-
 ```
 
 I think this is actually a more useful viz -- let's look at the critical range which appears to be between 40 & 45.
@@ -600,7 +566,7 @@ bind_rows(df_pct_gte_threshold) %>%
     .groups="drop"
   ) %>% 
   filter(
-    between(threshold,40,45)
+    between(threshold,40,50)
   ) %>%
   
   ggplot(aes(
@@ -608,12 +574,6 @@ bind_rows(df_pct_gte_threshold) %>%
     y=pct_gte
   ))+
   geom_line(aes( color= threshold,group=threshold))+ 
-  # scale_color_brewer(
-  #   name = "threshold\n(prob below normal rainfall)",
-  #   type = "seq",
-  #   palette = "Set1",
-  #   direction =-1
-  # )+  
   scale_color_distiller()+
   geom_point()+
   scale_y_continuous_hdx(
@@ -631,6 +591,7 @@ bind_rows(df_pct_gte_threshold) %>%
         nudge_x = 0.4
       )+
   labs(
+    x= "Year",
     title="Central American Dry Corridor",
     subtitle= "Max % Pixels that breached each threshold (across all leadtimes)",
     y= "% pixels breaching threshold"
@@ -656,7 +617,7 @@ df_pct_gte_threshold %>%
   distinct(yr)
 
 
-df_all_thresh <- windows_season %>% 
+df_all_thresh <- window_periods %>% 
   map(\(window_set){
     cat(window_set,"\n")
     r_prob_bavg_labelled %>% 
@@ -699,7 +660,7 @@ df_all_thresh <- windows_season %>%
 
 
 # there are 7 years of data therefore what is the optimal number of times to trigger for each season
-RColorBrewer::brewer.pal(n = 11,name = "Spectral") %>% dput()
+#RColorBrewer::brewer.pal(n = 11,name = "Spectral") %>% dput()
 
 c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#FEE08B", "#FFFFBF", 
 "#E6F598", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2")
@@ -827,11 +788,11 @@ df_double_thresh %>%
     type = optimal_num_trig_pal
   )+
   scale_y_continuous_hdx(
-    breaks = seq(0.0,top_pct_area_limit, by=0.05),
+    # breaks = seq(0.0,top_pct_area_limit, by=0.05),
     labels=scales::label_percent()
   )+
   scale_x_continuous(
-    breaks = seq(prob_range[1],prob_range[2], by=1)
+    # breaks = seq(prob_range[1],prob_range[2], by=1)
   )+
   geom_tile(lwd=0.02,
             color="lightgrey"
@@ -857,7 +818,7 @@ df_double_thresh %>%
     legend.key = element_rect(colour = "black")
   )
 
-?colorspaces
+
 df_double_thresh %>% 
   mutate(
     pct_years_triggered = num_trig/7
@@ -880,11 +841,11 @@ df_double_thresh %>%
   #   type = optimal_num_trig_pal
   # )+
   scale_y_continuous_hdx(
-    breaks = seq(0.0,top_pct_area_limit, by=0.05),
+    # breaks = seq(0.0,top_pct_area_limit, by=0.05),
     labels=scales::label_percent()
   )+
   scale_x_continuous(
-    breaks = seq(prob_range[1],prob_range[2], by=1)
+    # breaks = seq(prob_range[1],prob_range[2], by=1)
   )+
   geom_tile(lwd=0.5,
             # color="lightgrey"
@@ -910,64 +871,8 @@ df_double_thresh %>%
     legend.key = element_rect(colour = "black")
   )
 
-
-library(patchwork)
-p_double_thresh$`Window 1`
-p_double_thresh$`Window 2`
-p_double_thresh$`Window 3`
-
-p_double_thresh$`Window 1`+
-  p_double_thresh$`Window 2`+
-  theme(plot.subtitle = element_blank())+
-  p_double_thresh$`Window 3`+
-  theme(plot.subtitle = element_blank())+
-  plot_layout(ncol = 3)
-
-
 ```
 
-```{r}
-c("lt1", "lt2","lt3","lt4") %>% 
-  map_dfr(\(lt){
-    rt <- r_mjj[[lt]]
-    rt[rt<thresh]<-0
-    rt[rt>=thresh]<-1
-    rt[is.na(rt)]<-0
-    exact_extract(
-      x=rt,
-      y=aoi_countries,
-      append_cols = "admin",
-      fun= "sum") %>% 
-    pivot_longer(-admin )%>%
-    separate(name, into = c("stat", "date"), sep = "\\.") %>% 
-      mutate(
-        leadtime =lt
-      )
-  }
-  ) %>% 
-  filter(value!=0)
-
-c("lt1", "lt2","lt3","lt4") %>% 
-  map_dfr(\(lt){
-    rt <- r_mjj[[lt]]
-    rt[rt<thresh]<-0
-    rt[rt>=thresh]<-1
-    rt[is.na(rt)]<-0
-    exact_extract(
-      x=rt,
-      y=aoi_countries,
-      append_cols = "admin",
-      fun= "sum") %>% 
-    pivot_longer(-admin )%>%
-    separate(name, into = c("stat", "date"), sep = "\\.") %>% 
-      mutate(
-        leadtime =lt
-      )
-  }
-  ) %>% 
-  filter(value!=0)
-
-```
 
 ## ZonL
 
@@ -978,9 +883,12 @@ c("lt1", "lt2","lt3","lt4") %>%
 window_ids = c("MJJ","JJA","SON")
 window_id_rgx <-glue_collapse(x = paste0("^",window_ids),"|")
 
-df_bavg_zonal_adm0 <- r_prob_list %>% 
+
+
+
+df_bavg_zonal_adm0 <- r_prob_bavg_labelled %>% 
   imap_dfr(\(rt,nm){
-    r_bavg <- rt[[1]] 
+    r_bavg <- deepcopy(rt )
     # exact_extract(x=r_bavg,y = aoi_countries)
     exact_extract(x = r_bavg,
               y = aoi_countries,
@@ -1002,10 +910,11 @@ df_bavg_zonal_adm0 <- r_prob_list %>%
       )
   }
   ) 
-  
+  df_bavg_zonal_adm0 %>% count(seas_cat_1)
 df_bavg_zonal_adm0 %>% 
   filter(
-    str_detect(date,window_id_rgx)
+    # str_detect(date,window_id_rgx)
+    seas_cat_1!="other"
   ) %>% 
   ggplot(aes(x=median, fill=admin))+
   geom_histogram()+
@@ -1051,9 +960,6 @@ df_bavg_max_prob %>%
   scale_x_date(
     breaks = unique(df_bavg_max_prob$date_seas_start),date_labels = unique(df_bavg_max_prob$season)
     )+
-  scale_y_continuous(
-    breaks = seq(.15,.50, by =.05),labels = scales::label_percent(),limits = c(0.18,0.50)
-    )+
   labs(x= "Season",
        y= "Mean Probability",
        title = "IRI Seasonal Forecast - Mean probability of below normal forecast per country",
@@ -1063,7 +969,10 @@ df_bavg_max_prob %>%
     axis.text.x = element_text(angle=90),
     legend.title = element_blank()
   )
-  df_bavg_max_prob %>% 
+  
+
+
+df_bavg_max_prob %>% 
     mutate(
     median = median/100
   ) %>% 
@@ -1073,9 +982,9 @@ df_bavg_max_prob %>%
   scale_x_date(
     breaks = unique(df_bavg_max_prob$date_seas_start),date_labels = unique(df_bavg_max_prob$season)
     )+
-    scale_y_continuous(
-    breaks = seq(.15,.50, by =.05),labels = scales::label_percent(),limits = c(0.18,0.50)
-    )+
+    # scale_y_continuous(
+    # breaks = seq(.15,.50, by =.05),labels = scales::label_percent(),limits = c(0.18,0.50)
+    # )+
   labs(x= "Season",
        y= "Median Probability",
        title = "IRI Seasonal Forecast - Median probability of below normal forecast per country",
@@ -1098,34 +1007,6 @@ df_bavg_zonal_adm0 %>%
   )
 ```
 
-```{r}
-country_pixel_stats <- r_dom_lt_split %>% 
-  imap(\(rtemp,nm){
-    exact_extract(x = rtemp,
-              y = aoi_countries,
-              fun="count",
-              append_cols ="admin") %>% 
-    pivot_longer(-matches("admin")) %>%
-    separate(name, into = c("stat", "date"), sep = "\\.") %>%
-    pivot_wider(names_from = "stat", values_from = "value") %>% 
-    mutate(
-      date_forecast_made= as_date(date)
-    ) %>% 
-  left_join(full_pixel_counts %>% 
-              rename(total_pix =count)) %>% 
-      mutate(
-        pct_pix= count/total_pix,
-        month = month(date,labe=T),
-        pct_missing = 1- pct_pix,
-        lt = parse_number(nm),
-        date_predicted = date_forecast_made + months(lt),
-        mo_pred = glue(
-          "{month(date_predicted,label=T,abbr = T)}-{month(date_predicted+months(1),label=T,abbr = T)}-{month(date_predicted+months(2),label=T,abbr = T)}"
-          )
-      )
-  }
-  )
-```
 
 # Appendix
 
@@ -1141,7 +1022,7 @@ country_pixel_stats <- r_dom_lt_split %>%
 
 r_dom_sample <- lr_iri_dom$lt1$`2017-02-01`
 
-r_dom_sample[is.na(r_sample)]<-1
+r_dom_sample[is.na(r_dom_sample)]<-1
 
 
 df_dom_pixel_count_adm0 <- exact_extract(x = r_dom_sample,
