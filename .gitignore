@@ -3,6 +3,11 @@
 .RData
 .Ruserdata
 
+# ignore outputs
+outputs/*
+# rm knitted files
+*.html 
+data/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

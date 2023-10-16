@@ -143,8 +143,6 @@ df_prob_bavg_values%>%
 
 ```{r plot-histo-bavg-by-lt-and-phase}
 
-
-
 #***** figure out if firs tpub mo is righ!
 # use publication month sequence to shift for months predicted
 pub_mo_seq <- as_date(names(lr_iri_prob$lt1[[1]]))
@@ -438,8 +436,6 @@ p_pct_max_prob_gte_thresh <- df_pct_max_prob_gte_thresh %>%
 p_pct_max_prob_gte_thresh$`Window 1`
 p_pct_max_prob_gte_thresh$`Window 2`
 p_pct_max_prob_gte_thresh$`Window 3`
-
-
 
 ```
 
