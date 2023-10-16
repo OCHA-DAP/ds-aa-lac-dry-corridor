@@ -147,27 +147,6 @@ df_prob_bavg_values%>%
 # use publication month sequence to shift for months predicted
 pub_mo_seq <- as_date(names(lr_iri_prob$lt1[[1]]))
 
-
-# original here - figured out discrepancy w/ zonal
-# r_prob_bavg_labelled <- c(lt1=1, lt2=2,lt3=3, lt4=4) %>% 
-#   map(\(lt){
-#     r_prob_lt <- deepcopy(lr_iri_prob[[lt]][[1]]) # below av
-#     month_seq <- pub_mo_seq+months(lt)
-#     end_dt = pub_mo_seq + months(3) # *****issuue here im calling pub_seq_mo
-#     start_mo  = str_sub(format(month_seq + months(1),"%b"),start = 1,end = 1) # this one mo ahead
-#     middle_mo  = str_sub(format(month_seq + months(2),"%b"),start = 1,end = 1)
-#     end_mo <- str_sub(format(month_seq + months(3),"%b"),start = 1,end = 1)
-#     end_yr <-  format(month_seq + months(3),"%y") ***** here calling mon_seq
-#     seas_label <- paste0(start_mo, middle_mo, end_mo,end_yr)
-#     cat(seas_label,
-#         "\n")
-#     seas_label %>% length() %>% print()
-#     r_prob_lt %>% 
-#       set.names(seas_label)
-#     return(r_prob_lt)
-#   }
-#   )
-
 r_prob_bavg_labelled <- c(lt1=1, lt2=2,lt3=3, lt4=4) %>% 
   map(\(lt){
     r_prob_lt <- deepcopy(lr_iri_prob[[lt]][[1]]) # below av
@@ -184,8 +163,6 @@ r_prob_bavg_labelled <- c(lt1=1, lt2=2,lt3=3, lt4=4) %>%
     r_prob_lt %>% 
       set.names(seas_label)
     return(r_prob_lt)
-    
-    
   }
   )
 
