@@ -1245,21 +1245,28 @@ okay clearly there is an issue w/ dominant tercile probability missing pixels in
 
 ```{r map-id-missing-pix}
 
+
 m_4_draw <- tm_basemap(server = leaflet::providers$OpenStreetMap)+
-  tm_shape(r_dom_lt_split$lt1[[79]])+
+  tm_shape(lr_iri_dom$lt1[[79]])+
   tm_raster()
 
 
-# I drew these points w/ `{mapedit}` and hardcoded using `dput()` like this:
-# library(leaflet)
-# ml_4_draw <- tmap_leaflet(m_4_draw)
-# pts_missing <- mapedit::drawFeatures(map =ml_4_draw )
-# st_coordinates(pts_missing) %>% 
-#   dput()
+#' I drew these points w/ `{mapedit}` and hardcoded using `dput()` like this:
+#' library(leaflet)
+#' ml_4_draw <- tmap_leaflet(m_4_draw)
+#' pts_missing <- mapedit::drawFeatures(map =ml_4_draw )
+#' st_coordinates(pts_missing) %>% 
+#'   dput()
 
 
-df_pts_missing <- data.frame(structure(c(-86.941185, -85.716667, -88.846602, 14.141615, 13.367872, 
-                                         15.061327), dim = 3:2, dimnames = list(NULL, c("X", "Y"))))
+df_pts_missing <- data.frame(structure(c(-86.941185, 
+                                         -85.716667,
+                                         -88.846602,
+                                         14.141615,
+                                         13.367872, 
+                                         15.061327), 
+                                       dim = 3:2, 
+                                       sdimnames = list(NULL, c("X", "Y"))))
 
 gdf_pts_missing <- df_pts_missing %>% 
   mutate(
@@ -1277,27 +1284,35 @@ m_4_draw+
 Table below suggests that when 2 pixels values are tied as the dominant value (or close to it) the `Dominant` value goes to `NA` . This is probably documetned somewhere, but I could not find it.
 
 ```{r}
-df_sampled_pixels_prob_dom_vals<- c(1:3) %>% 
-  map2(.y=c("below_normal","normal", "above_normal"),
-    \(ri,lb){
-      r_prob_list$lt1[[ri]] %>% 
-        set.names(dt_all_month)
-      
-      rp_t <- r_prob_list$lt1[[ri]][[79]]
-      
-      extract(x=rp_t, y=gdf_pts_missing) %>% 
-        rename(
-          !!sym(lb):= "2023-08-01"
-        )
-    }
-  ) %>% 
+
+df_sampled_pixels_prob_dom_vals<- map2(
+  # cycle through 3 terciles
+  .x=c(1:3),
+  .y=c("below_normal",
+       "normal",
+       "above_normal"),\(tercile_idx,tercile_label){
+         
+         # will compare 79th probability of tercile to dominant tercile probability
+         r_tercile_prob <- lr_iri_prob$lt1[[tercile_idx]][[79]]
+         
+         # extract values at drawn points
+         extract(
+           x=r_tercile_prob,
+           y=gdf_pts_missing
+         ) %>% 
+           rename(
+             !!sym(tercile_label):= "2023-08-01"
+           )
+       }
+) %>% 
   reduce(left_join,"ID") %>% 
   left_join(
-    extract(x=r_dom_lt_split$lt1[[79]], y=gdf_pts_missing) %>% 
-  rename(
-    dom_tercile_prob="2023-08-01"
+    extract(x= lr_iri_dom$lt1[[79]], y=gdf_pts_missing) %>% 
+      rename(
+        dom_tercile_prob="2023-08-01"
+      )
   )
-  )
+
 df_sampled_pixels_prob_dom_vals %>% 
   gt::gt()
 
@@ -1308,13 +1323,13 @@ df_sampled_pixels_prob_dom_vals %>%
 
 Okay regardless, of the potential issue w/ `Dominant` missing pixels. The proposed framework is designed based on the probability of below average so let's check that out
 
-Here we have a map showing total number of missing pixels across all months for the terciel probability of below average band (leadtime 1). The map doesn't change based on leadtime (not shown), indicating it is probably just certain pixels for a certain publication month
+Here we have a map showing total number of missing pixels across all months for the tercile probability of below average band (leadtime 1). The map doesn't change based on leadtime (not shown), indicating it is probably just certain pixels for a certain publication month
 
 ```{r}
 
 r_bavg_missing_by_lt <- c("lt1", "lt2","lt3","lt4") %>% 
   map(\(lt){
-    r_prob_bavg <- r_prob_list[[lt]][[1]]
+    r_prob_bavg <- lr_iri_prob[[lt]][[1]]
     r_prob_bavg[!is.na(r_prob_bavg)]<-0
     r_prob_bavg[is.na(r_prob_bavg)]<-1
     return(sum(r_prob_bavg))
@@ -1326,123 +1341,3 @@ plot(r_bavg_missing_by_lt$lt1)
 plot(aoi_countries,add=T,col=NA)
 
 ```
-
-Table below shows the dates and total number of missing pixels. It's all from one publication month
-
-```{r}
-dt_latest_month <- as_date("2023-08-01")
-dt_earliest_month <- as_date("2023-08-01")-months(78)
-dt_all_month <- seq(dt_earliest_month,dt_latest_month, by ="month") 
-
-# to find out i can just run zonal stats on binary na raster?
-r_bavg_missing_by_lt <- c("lt1", "lt2","lt3","lt4") %>% 
-  map_dfr(\(lt){
-    r_prob_bavg <- r_prob_list[["lt1"]][[1]]
-    r_prob_bavg[!is.na(r_prob_bavg)]<-0
-    r_prob_bavg[is.na(r_prob_bavg)]<-1
-    # set.names(r_prob_bavg,dt_all_month)
-    exact_extract(
-      x=r_prob_bavg,
-      y=aoi_dissolved,
-      fun= "sum") %>% 
-    pivot_longer(cols = everything()) %>%
-    separate(name, into = c("stat", "date"), sep = "\\.") %>%
-    pivot_wider(names_from = "stat", values_from = "value") %>% 
-      mutate(leadtime =lt)
-  })
-
-# confirmed
-r_bavg_missing_by_lt %>% 
-      filter(sum !=0) %>% 
-  gt()
-```
-
-```{r, eval=F}
-r_dom_bavg_missing_by_lt <- c("lt1", "lt2","lt3","lt4") %>% 
-  map(\(lt){
-    r_dom_bavg <- r_dom_lt_split[[lt]]
-    r_dom_bavg[!is.na(r_dom_bavg)]<-0
-    r_dom_bavg[is.na(r_dom_bavg)]<-1
-    return(sum(r_dom_bavg))
-  }) %>% 
-  set_names( c("lt1", "lt2","lt3","lt4"))
-
-
-# okay bigger problem for DOM for sure.
-plot(r_dom_bavg_missing_by_lt$lt1)
-plot(r_dom_bavg_missing_by_lt$lt2)
-plot(r_dom_bavg_missing_by_lt$lt3)
-plot(r_dom_bavg_missing_by_lt$lt4)
-plot(aoi_countries,add=T,col=NA)
-```
-
-```{r}
-p_optimal_thresh_qual <- map2(
-  df_pct_gte_threshold,
-  plot_title_season,
-  \(dft,title_suffix){
-    dft %>% 
-      filter(
-        between(threshold, 40, 45)
-      ) %>% 
-      group_by(date, threshold) %>% 
-      summarise(
-        pct_gte = max(pct_gte)
-      ) %>% 
-      mutate(
-        threshold =as_factor(threshold)
-      ) %>% 
-      ggplot(aes(
-        x=date,
-        y=pct_gte
-      ))+
-      
-      geom_line(aes( color= threshold,group=threshold))+ 
-      geom_point()+
-      
-    scale_color_brewer(
-      name = "threshold\n(prob below normal rainfall)",
-      type = "seq",direction =-1
-    )+
-      scale_y_continuous_hdx(
-        labels =scales::label_percent(),
-        limits= c(0,1)
-      )+
-      labs(
-        title = glue("Dry Corridor: {title_suffix}"),
-        subtitle= "Max % Pixels that breached each threshold (across all leadtimes)",
-        y= "% pixels breaching threshold"
-      ) +
-      theme(
-        axis.title.x =element_blank()
-      )
-  }
-)
-
-p_optimal_thresh_qual$`Window 1`+
-geom_text(data = . %>% 
-            filter(date=="MJJ23"),
-        aes(x="MJJ23",
-            y= pct_gte,
-            label=threshold),nudge_x = 0.4
-      )
-p_optimal_thresh_qual$`Window 2`+
-  geom_text(data = . %>% 
-            filter(date=="JJA23"),
-        aes(x="JJA23",
-            y= pct_gte,
-            label=threshold),
-        nudge_x = 0.4
-      )
-p_optimal_thresh_qual$`Window 3`+
-  geom_text(data = . %>% 
-            filter(date=="SON23"),
-        aes(x="SON23",
-            y= pct_gte,
-            label=threshold),
-        nudge_x = 0.4
-      )
-
-```
-
-\`\`\`
