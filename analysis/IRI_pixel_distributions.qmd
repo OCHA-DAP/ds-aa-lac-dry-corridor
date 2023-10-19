@@ -1,0 +1,805 @@
+---
+title: "IRI Pixel Explore"
+format:
+  html:
+    embed-resoures: true # trying to figure out how to not create a folder when knitting -idk yet.
+editor: visual
+project:
+     execute-dir: project
+---
+
+## Intro
+
+This document explores the distribution of IRI forecast values over the Area of Interest (AOI): The Central American Dry Corridor (CADC). The exploration is done with the aim of informing a discussions regarding thresholds for trigger activation.
+
+### Background:
+
+- Currently proposal documents have written trigger: "Seasonal forecast for MJJ/JJA/SON indicate > 50% probability for below average
+  + discussions have indicated that what is means is that seasonal forecast below average probability thresholds is >= 50 % and that x % of area should breach that threshold for the trigger
+- based on previous work using IRI foreasts we know that this threshold is likely too high
+
+### Quick summary takeaways:
+
+- Rather than setting a probablity threshold and then a % area/pixels threshold (2 thresholds), it seems justifiable to just set a threshold on a zonal mean/median (i.e 1 threshold)
+- 50 % probability will be too high and unlikely to occur
+- Historical analysis of just 7 years of forecast data is limited and exact threshold will depend largely on frequency the key partners think the the trigger "should" be activated.
+
+```{r}
+library(sf)
+library(rnaturalearth)
+library(tidyverse)
+# library(reticulate)
+# library(ggridges)
+library(glue)
+library(gghdx)
+library(exactextractr)
+# library(tmap)
+library(tidync)
+library(terra)
+# library(patchwork)
+library(gt)
+library(targets)
+library(here)
+gghdx()
+
+tar_source(here("R")) # Qmds don't behave exactly like rmds w/ working directories - let's just go w/ `{here}
+# looks like the `store` argument might be a good waay to store tar objects in shared space
+tar_load(
+  df_iri_adm0, 
+  store = here("_targets/")
+)
+
+#' I get errors using `{rhdx}` to try to et CODs for these countries so going w/ natural earth
+#' even after "fixing" the CODs to the point that they can be loaded - they are  far too complex
+#' no point using them at this stage in the project as they just slow everything down 
+
+aoi_countries <- ne_countries(country = c("Nicaragua",
+                                          "Honduras",
+                                          "Guatemala",
+                                          "El Salvador")) %>% 
+  st_as_sf() %>% 
+  select(
+    contains("admin"),
+    iso_a3
+  )
+
+# use this at some point
+aoi_dissolved <- aoi_countries %>% 
+  summarise()
+
+aoi_bbox <-  st_bbox(aoi_countries) %>% 
+  st_as_sfc()
+
+
+# tercile probability forecast
+fp_iri_prob <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "processed",
+  "lac",
+  "iri",
+  "lac_iri_forecast_seasonal_precipitation_tercile_prob_Np18Sp10Em83Wm93.nc"
+) 
+
+iri_prob <- tidync(fp_iri_prob)
+
+# list of rasters (lr) IRI prob
+lr_iri_prob <- iri_nc_to_r(
+  tnc_object = iri_prob,
+  type = "prob"
+)
+```
+
+# Investigate Thresholds
+
+## Probability Below Average Distributions
+
+### Historgrams by leadtime
+
+```{r plot-histo-combined-by-lt}
+# grab all values
+df_prob_bavg_values <- lr_iri_prob %>% 
+  imap_dfr(\(rt,nm){
+    # [[1]] first element is bavg (c1)
+    rt_copy <- deepcopy(rt[[1]])
+  
+    # clip to aoi (instead of just bbox)
+    rt_clipped <- mask(rt_copy,aoi_dissolved)
+    rt_clipped %>% 
+      terra::values() %>% 
+      data.frame() %>% 
+      pivot_longer(everything()) %>% 
+      mutate(
+        leadtime = str_replace(nm,"lt", "leadtime "),
+        prob_cat = case_when(
+          value <40~ "lt 40",
+          value <50 ~"lt 50",
+          value >=50 ~"gte 50")
+      )
+  }
+  )
+
+
+# histograms by leadtime
+df_prob_bavg_values%>% 
+  mutate(
+    value =value/100
+  ) %>% 
+  ggplot(
+    aes(x=value, fill= prob_cat)
+    )+
+  geom_histogram(bins=100)+
+  geom_vline(xintercept = c(.4,0.5),linetype="dashed", color=hdx_hex("tomato-hdx"))+
+  scale_x_continuous(labels = scales::label_percent())+
+       scale_fill_manual(
+                                           values = c(`lt 40` = hdx_hex("sapphire-hdx"),
+                                                      `lt 50` = hdx_hex("mint-hdx"),
+                                                      `gte 50` = hdx_hex("tomato-hdx")
+                                           
+                                         ))+
+  facet_wrap(~leadtime)+
+  labs(
+    title = "IRI Seasonal Forecast - Dry Corridor (Central America)",
+    subtitle = "2017 - current: Probability of below average rainfall (value distribution)",
+    x = "% probability below average "
+         )+
+  theme(
+    legend.position  ="none"
+    
+  )
+
+```
+
+### Histograms by leadtime and season
+
+
+```{r plot-histo-bavg-by-lt-and-phase}
+# use publication month sequence to shift for months predicted
+pub_mo_seq <- as_date(names(lr_iri_prob$lt1[[1]]))
+
+r_prob_bavg_labelled <- c(lt1=1, lt2=2,lt3=3, lt4=4) %>% 
+  map(\(lt){
+    r_prob_lt <- deepcopy(lr_iri_prob[[lt]][[1]]) # below av
+    month_seq <- pub_mo_seq+months(lt)
+    end_dt = month_seq + months(2)
+    start_mo  = str_sub(format(month_seq,"%b"),start = 1,end = 1)
+    middle_mo  = str_sub(format(month_seq + months(1),"%b"),start = 1,end = 1)
+    end_mo <- str_sub(format(month_seq + months(2),"%b"),start = 1,end = 1)
+    end_yr <-  format(month_seq + months(2),"%y")
+    seas_label <- paste0(start_mo, middle_mo, end_mo,end_yr)
+    cat(seas_label,
+        "\n")
+    seas_label %>% length() %>% print()
+    r_prob_lt %>% 
+      set.names(seas_label)
+    return(r_prob_lt)
+  }
+  )
+
+# extact values by sesaon to df
+df_prob_bavg_values_seas <- r_prob_bavg_labelled %>% 
+  imap_dfr(\(rt,nm){
+    rt_copy <- deepcopy(rt)
+    
+    # clip to aoi (instead of just bbox)
+    rt_clipped <- mask(rt_copy,aoi_dissolved) # be aware this will create NA values for mask
+    rt_clipped %>% 
+      terra::values() %>% 
+      data.frame() %>% 
+      pivot_longer(everything()) %>% 
+      mutate(
+        leadtime = str_replace(nm,"lt", "leadtime ")
+      ) 
+  }
+  )
+
+# filter to monitored windows and add some categorical attributes
+df_prob_bavg_values_seas_mon <- df_prob_bavg_values_seas %>% 
+  mutate(
+    seas_cat_1 = case_when(
+      str_detect(name,"^MJJ.*")~ "Window 1",
+      str_detect(name,"^JJA.*")~ "Window 2",
+      str_detect(name,"^SON.*")~ "Window 3",
+      .default = "other"
+    ),
+    prob_cat = case_when(
+      value <40~ "lt 40",
+      value <50 ~"lt 50",
+      value >=50 ~"gte 50")
+    
+  ) %>% 
+  # get rid of unmonitored season
+  filter(seas_cat_1!="other") %>% 
+  mutate(
+    # make facet titles for plots - annoying need to fct_relevel so 
+    # facets are in right order
+    seas_facet_title = case_when(
+      seas_cat_1 =="Window 1"~ "Primera Phase/Window 1\nMonitoring: January-March",
+      seas_cat_1 =="Window 2"~"Primera Phase/Window 2\nMonitoring: April-June",
+      seas_cat_1 =="Window 3"~   "Postera Phase/Window 3\nMonitoring:July-Sept")
+   %>% 
+  fct_relevel("Primera Phase/Window 1\nMonitoring: January-March",
+              "Primera Phase/Window 2\nMonitoring: April-June",
+              "Postera Phase/Window 3\nMonitoring:July-Sept"),
+  # convert value to %
+  value = value/100
+)
+    
+  
+df_prob_bavg_values_seas_mon %>% 
+  ggplot(
+    aes(
+      x=value,
+      fill= prob_cat
+    )
+  )+
+  geom_histogram(bins=100)+
+  geom_vline(xintercept = c(.4,0.5),linetype="dashed", color=hdx_hex("tomato-hdx"))+
+  scale_x_continuous(labels = scales::label_percent())+
+  scale_fill_manual(
+    values = c(`lt 40` = hdx_hex("sapphire-hdx"),
+               `lt 50` = hdx_hex("mint-hdx"),
+               `gte 50` = hdx_hex("tomato-hdx")
+               
+    ))+
+  facet_grid(cols = vars(seas_facet_title),rows = vars(leadtime))+
+  labs(
+    title = "Below average forecast probability by monitoring window & leadtime",
+    subtitle = glue("Central American Dry Corridor"),
+    x = "% probability below average "
+  )+
+  theme(
+    legend.position  ="none",
+    plot.subtitle = element_text(size=10),
+    plot.title  = element_text(size=10),
+    axis.text.x = element_text(angle=90) 
+  )
+```
+
+## Histogram by season simplified
+
+Just look at max probability across leadtimes per season
+
+```{r plot-histo-combinedAOI-by-season-lt}
+all_seasons <- r_prob_bavg_labelled %>% 
+  map(~.x %>% names()) %>% 
+  unlist() %>% 
+  unique()
+
+window_periods <-  c(`Window 1`= "MJJ",
+                     `Window 2`="JJA",
+                     `Window 3`= "SON")
+
+seasons_of_interest_split <-window_periods %>% 
+  map(
+    ~str_subset(all_seasons,.x)
+  )
+
+
+# Create a list of rasters 3 raster stacks - 1 stack per window (i.e. MJJ, JJA, SON)
+# the elements of the stack are specific seasons (i.e MJJ17, MJJ18) but w/ max values across leadtimes
+r_bavg_max_prob <- seasons_of_interest_split %>% 
+  # we go through each window set (i.e MJJ17-23)
+  map(\(window_set){
+    window_set %>% 
+      map(\(individual_window){
+        
+        r_prob_max_composite <- r_prob_bavg_labelled %>% 
+          # then we go throug each raster leadtime
+          # and subset to specific season
+        map( 
+          \(rtmp_lt){
+            
+            # no lt3 or lt4 for MJJ2017
+            if(individual_window %in% names(rtmp_lt)){
+              rtmp_lt[individual_window]  # pull season from each leadtime
+            }
+          }
+        ) %>% 
+          # once subset we can merge the different lead times together for each specific season
+          # and take the max value
+        rast() %>% 
+        max() 
+      
+      # set unique appropriate names
+      r_prob_max_composite %>% 
+        set.names(paste0(individual_window,"_max"))
+      return(r_prob_max_composite)
+      
+    }) %>% 
+  rast()
+  }
+  )
+
+
+# extract raster values into a data.frame for plotting
+df_prob_bavg_values_seas_combined <- r_bavg_max_prob %>% 
+  imap_dfr(\(rt,nm){
+    rt_copy <- deepcopy(rt)
+    
+    # clip to aoi (instead of just bbox)
+    rt_clipped <- mask(rt_copy,aoi_dissolved)
+    
+    rt_clipped %>% 
+      terra::values() %>% 
+      data.frame() %>% 
+      pivot_longer(everything()) %>% 
+      # classifying w/ case_when for plotting
+      mutate(
+        window =nm,
+        prob_cat = case_when(
+          value <40~ "lt 40",
+          value <50 ~"lt 50",
+          value >=50 ~"gte 50")
+      )
+  }
+  )
+
+
+df_prob_bavg_values_seas_combined %>% 
+  mutate(
+    window_time= str_extract(name, "MJJ|JJA|SON"),
+    window_time= fct_relevel(window_time, "MJJ","JJA","SON"),
+    value = value/100
+  ) %>% 
+  ggplot(
+    aes(
+      x=value,
+      fill= prob_cat
+    )
+  )+
+  geom_histogram(bins=100)+
+  geom_vline(xintercept = c(.4,0.5),linetype="dashed", color=hdx_hex("tomato-hdx"))+
+  scale_x_continuous(labels = scales::label_percent())+
+  scale_fill_manual(
+    values = c(`lt 40` = hdx_hex("sapphire-hdx"),
+               `lt 50` = hdx_hex("mint-hdx"),
+               `gte 50` = hdx_hex("tomato-hdx")
+               
+    ))+
+  facet_wrap(~window_time)+
+  labs(
+    title = glue("IRI seasonal forecast: probability of below average rainfall - pixel distribution"),
+    subtitle = glue("Dry Corridor: Guatemala, Honduras, Nicaragua, El Salvador"),
+    x = "% probability below average ",
+    caption = "The values displayed in the above distributions are the maximum probability values calculated across all leadtimes (1-4) at the pixel level"
+  )+
+  theme(
+    legend.position  ="none",
+    plot.subtitle = element_text(size=10),
+    plot.title  = element_text(size=10),
+    axis.text.x = element_text(angle=90) ,
+    plot.caption= element_text(hjust=0,vjust=-2.5)
+  )
+
+
+```
+
+
+## Preliminary Threshold Look:
+
+Not entirely sure if this section belongs here or exploratory at this stage of the research...
+
+Let's look at the entire dry corridor (AOI) together to get an indication of how thresholds look more generally
+
+### % Pixels vs Threshold
+
+So far trigger has mostly been talked about as thresholding by first a probability and then defining the % area that needs to reach the threshold. So here we try to visualize these 2 dimensions
+
+```{r}
+# iterate through thresholds 1-50 reclassifying rasters to binary based on whether they 
+# are ≥ threshold - then run zonal stats at the AOI level
+
+df_pct_gte_threshold <- seasons_of_interest_split %>% 
+  map_dfr(\(window_set){
+    cat(window_set,"\n")
+    r_prob_bavg_labelled %>% 
+      imap_dfr(\(rtmp_lt,nm){
+        cat(nm,"\n")
+        rgx_window <- glue_collapse(paste0("^",window_set),"|")
+        rtmp_win<- rtmp_lt[rgx_window]
+        seq(1,50,1) %>% 
+          map_dfr(
+            \(thresh){
+              rtmp_win[rtmp_win<thresh]<-0
+              rtmp_win[rtmp_win>=thresh]<-1
+              # rt[is.na(thresh)]<-0
+          
+          exact_extract(
+            x=rtmp_win,
+            y=aoi_dissolved,
+            fun= c("sum","count")) %>% 
+            pivot_longer(everything() )%>%
+            separate(name, into = c("stat", "date"), sep = "\\.") %>% 
+            mutate(
+              threshold=thresh
+            )
+        }
+      ) %>% 
+      mutate(
+        leadtime =nm
+      ) %>% 
+      pivot_wider(
+    names_from= "stat",
+    values_from="value"
+  ) %>% 
+  mutate(
+    pct_gte =sum/count
+  )
+    
+  })
+    
+  })
+
+```
+
+I think this is an interesting way of looking at historical data w/ respect to different thresholds:
+
+- All historical IRI data across monitoring window against % pixels ≥ each threshold (40-50)
+
+```{r}
+df_pct_gte_threshold %>% 
+  mutate(
+    seas_label = case_when(
+      str_detect(date,"^MJJ")~"May-June-July (MJJ)",
+      str_detect(date,"^JJA")~"June-July-August (JJA)",
+      str_detect(date,"^SON")~"Sept-Oct-Nov (SON)",
+      .default =NA
+    )
+  ) %>% 
+  group_by(seas_label,
+           seas_abbr = date,
+           yr = as_factor(2000+parse_number(seas_abbr)),
+           threshold) %>% 
+  summarise(
+    pct_gte= max(pct_gte),
+    .groups="drop"
+  ) %>% 
+  filter(
+    between(threshold,40,50)
+  ) %>%
+  
+  ggplot(aes(
+    x=yr,
+    y=pct_gte
+  ))+
+  geom_line(aes( color= threshold,group=threshold))+ 
+  scale_color_distiller()+
+  geom_point()+
+  scale_y_continuous_hdx(
+    labels =scales::label_percent(),
+    limits= c(0,1)
+  )+
+  facet_wrap(~seas_label,nrow = 3, scales="free_x")+
+  geom_text(data = . %>% 
+            filter(
+              yr=="2023"
+              ),
+        aes(x=as_factor(2023),
+            y= pct_gte,
+            label=threshold),
+        nudge_x = 0.4
+      )+
+  labs(
+    x= "Year",
+    title="Central American Dry Corridor",
+    subtitle= "Max % Pixels that breached each threshold (across all leadtimes)",
+    y= "% pixels breaching threshold"
+  ) +
+  theme(
+    axis.title.x =element_blank(),
+    axis.text.x =element_text(angle = 90)
+  )
+
+
+```
+
+Let's remove the temporal element and see how frequently different combinations of % area and thresholds occur
+
+```{r}
+
+# run through all thresholds 0-70 reclassifying each raster as binary >= threshold = T, else F
+# do this for each window set and leadtime
+# then run zonal stats on each of the reclassified rasters at the AOI level
+
+df_all_thresh <- window_periods %>% 
+  map(\(window_set){
+    cat(window_set,"\n")
+    r_prob_bavg_labelled %>% 
+  imap_dfr(\(rtmp_lt,nm){
+    cat(nm,"\n")
+    rgx_window <- glue_collapse(paste0("^",window_set),"|")
+    rtmp_win<- deepcopy(rtmp_lt[rgx_window])
+    seq(0,70,1) %>% 
+      map_dfr(
+        \(thresh){
+          rtmp_win[rtmp_win<thresh]<-0
+          rtmp_win[rtmp_win>=thresh]<-1
+          # rt[is.na(thresh)]<-0
+          
+          exact_extract(
+            x=rtmp_win,
+            y=aoi_dissolved,
+            fun= c("sum","count")) %>% 
+            pivot_longer(everything() )%>%
+            separate(name, into = c("stat", "date"), sep = "\\.") %>% 
+            mutate(
+              threshold=thresh
+            )
+        }
+      ) %>% 
+      mutate(
+        leadtime =nm
+      ) %>% 
+      pivot_wider(
+    names_from= "stat",
+    values_from="value"
+  ) %>% 
+  mutate(
+    pct_gte =sum/count
+  )
+    
+  })
+    
+  })
+
+
+# there are 7 years of data therefore what is the optimal number of times to trigger for each season?
+#RColorBrewer::brewer.pal(n = 11,name = "Spectral") %>% dput()
+
+# every 2 years -- let's subjectively say 2 years out of 7 for the purpose of a neat visual
+opt_val =2 
+
+optimal_num_trig_pal <- c(
+  `0`="#5E4FA2",
+  `1`="#3288BD",
+  `2`="#66C2A5",
+  `3`="#99D594",
+  `4`= "#FFFFBF",
+  `5`="#FDAE61", 
+  `6`= "#F46D43",
+  `7`="#D53E4F")
+
+
+plot_title_season <- c("May-June-July (MJJ)", "June-July-August (JJA)", "Sept-Oct-Nov (SON)")
+# sorry about this object name
+df_double_thresh <- df_all_thresh %>%
+  map2_dfr(plot_title_season,
+    \(dft,plot_title){
+      dft_max_pct_per_thresh <- dft %>% 
+        group_by(date, threshold) %>% 
+        summarise(
+          # get max across leadtimes
+          pct_gte= max(pct_gte),.groups = "drop"
+        ) %>% 
+        group_by(threshold) %>%
+        # No sense in plotting probabilities where where 100 % of pixels are always below or above
+        filter(
+          !all(pct_gte<=0),
+          !all(pct_gte==1)
+        )
+      area_pct_range <- dft_max_pct_per_thresh$pct_gte %>% range()
+      prob_range <- dft_max_pct_per_thresh$threshold %>% range()
+      
+      cat(prob_range,"\n")
+      cat(seq(prob_range[1],prob_range[2], by=1),"\n")
+      
+      top_pct_area_limit <- round(area_pct_range[2],digits=2)
+      
+      tmp_pct_thresholds <- seq(area_pct_range[1],top_pct_area_limit,0.02)
+      dft_double_thresh_grid <- tmp_pct_thresholds %>% 
+        map_dfr(
+          \(pct_thresh){
+            dft_max_pct_per_thresh %>% 
+              group_by(threshold) %>% 
+              mutate(
+                pct_threshold = pct_thresh,
+                trigger_lgl =pct_gte>=pct_thresh
+              )
+          }
+        )
+      dft_trig_sum <- dft_double_thresh_grid %>% 
+        group_by(threshold,pct_threshold) %>% 
+        summarise(
+          num_trig =sum(trigger_lgl),
+          optimal = (opt_val- num_trig)/max(num_trig),
+          .groups="drop"
+        ) %>%
+        mutate(
+          cat = plot_title
+        )
+      return(dft_trig_sum)
+    }
+  )
+```
+
+
+```{r}
+df_double_thresh %>% 
+     ggplot(aes(
+     x= threshold,
+     y=pct_threshold,
+     fill = as_factor(num_trig),
+     color = optimal
+   )
+   )+
+  scale_fill_discrete(
+    "Number years\ntriggered",
+    type = optimal_num_trig_pal
+  )+
+  scale_y_continuous_hdx(
+    # breaks = seq(0.0,top_pct_area_limit, by=0.05),
+    labels=scales::label_percent()
+  )+
+  scale_x_continuous(
+    # breaks = seq(prob_range[1],prob_range[2], by=1)
+  )+
+  geom_tile(lwd=0.02,
+            color="lightgrey"
+  )+
+  labs(
+    title="IRI Seasonal Foreast Threshold Investigation",
+    x= "Probabilty Threshold",
+    y= "% Area Threshold",
+    subtitle = "In the last 7 years how many times would we trigger under different threshold conditions"
+    
+  )+
+  guides(fill = guide_legend(
+    nrow = 1,label.position = "top"
+    
+    ),byrow=T
+    )+
+  facet_wrap(~cat,nrow = 3)+
+  theme(
+    axis.text.x = element_text(angle=90, size= 9),
+    axis.text.y= element_text(size=9),
+    legend.text = element_text(size=9),
+    legend.position = "bottom",
+    legend.key = element_rect(colour = "black")
+  )
+```
+
+
+```{r}
+df_double_thresh %>% 
+  mutate(
+    pct_years_triggered = num_trig/7
+  ) %>% 
+     ggplot(aes(
+     x= threshold,
+     y=pct_threshold,
+     fill = pct_years_triggered,
+     color = pct_years_triggered
+   )
+   )+
+  scale_fill_binned(
+    breaks= c(0.3,seq(0.4,0.65, by=0.05),1),type = "viridis"
+    )+
+  scale_colour_binned(
+    breaks= c(0.3,seq(0.4,0.65, by=0.05),1),type = "viridis"
+    )+
+  # scale_fill_discrete(
+  #   "Number years\ntriggered",
+  #   type = optimal_num_trig_pal
+  # )+
+  scale_y_continuous_hdx(
+    # breaks = seq(0.0,top_pct_area_limit, by=0.05),
+    labels=scales::label_percent()
+  )+
+  scale_x_continuous(
+    # breaks = seq(prob_range[1],prob_range[2], by=1)
+  )+
+  geom_tile(lwd=0.5,
+            # color="lightgrey"
+  )+
+  labs(
+    title="IRI Seasonal Foreast Threshold Investigation",
+    x= "Probabilty Threshold",
+    y= "% Area Threshold",
+    subtitle = "In the last 7 years how many times would we trigger under different threshold conditions"
+    
+  )+
+  guides(fill = guide_legend(
+    nrow = 1,label.position = "top"
+    
+    ),byrow=T
+    )+
+  facet_wrap(~cat,nrow = 3)+
+  theme(
+    axis.text.x = element_text(angle=90, size= 7),
+    axis.text.y= element_text(size=7),
+    legend.text = element_text(size=7),
+    legend.position = "bottom",
+    legend.key = element_rect(colour = "black")
+  )
+
+```
+
+## IRI Zonal
+
+We think there is probably a decent case to be made to just use a single threshold for each country based on the zonal stat (mean/median) for a couple reasons:
+
+1. Lowers complexity of trigger (1 threshold vs 2)
+2. IRI pixels so large that calculating a % of pixels ≥ to a threshold doesn't have much added value (for example
+El Salvador is covered by approx 1.7 IRI pixels)
+
+```{r}
+
+# zonal stats already created in target - this was previously reviewed - just adding here for easy comparisons
+
+# tak max probability (bavg) across leadtimes
+df_iri_adm0_max <- df_iri_adm0 %>%
+  group_by(
+    across(starts_with("adm")),
+    predict_start_mo, seas
+  ) %>%
+  summarise(
+    across(.cols = c("mean", "median"), ~ max(.x)),
+    .groups="drop"
+  )
+
+
+# filter to just relevant seasons
+df_iri_adm0_max_relevant_season <- df_iri_adm0_max %>%
+  ungroup() %>%
+  filter(
+    str_detect(seas, "MJJ|JJA|SON")
+  )
+```
+
+### Zonal Mean Probability
+
+```{r}
+df_iri_adm0_max_relevant_season %>%
+  ggplot(
+    aes(x = predict_start_mo, y = mean, color = adm0_es)
+  ) +
+  geom_point() +
+  geom_line() +
+  scale_x_date(
+    breaks = unique(df_iri_adm0_max_relevant_season$predict_start_mo),
+    labels = unique(df_iri_adm0_max_relevant_season$seas)
+  ) +
+  labs(
+    x = "Season",
+    y = "Mean Probability",
+    title = "IRI Seasonal Forecast - Mean probability of below normal forecast per country",
+    subtitle = "Month groupings from proposed trigger windows (window 1: MJJ, window 2: JJA, window 3: SON)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90),
+    axis.title.x = element_blank(),
+    legend.title = element_blank()
+  )
+
+df_iri_adm0_max_relevant_season %>%
+  group_by(adm0_es) %>%
+  slice_max(order_by = mean, n = 3)
+```
+
+## Zonal median probability
+
+```{r}
+df_iri_adm0_max_relevant_season %>%
+  ggplot(
+    aes(x = predict_start_mo, y = median, color = adm0_es)
+  ) +
+  geom_point() +
+  geom_line() +
+  scale_x_date(
+    breaks = unique(df_iri_adm0_max_relevant_season$predict_start_mo),
+    labels = unique(df_iri_adm0_max_relevant_season$seas)
+  ) +
+  labs(
+    x = "Season",
+    y = "Median Probability",
+    title = "IRI Seasonal Forecast - Median probability of below normal forecast per country",
+    subtitle = "Month groupings from proposed trigger windows (window 1: MJJ, window 2: JJA, window 3: SON)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90),
+    axis.title.x = element_blank()
+  )
+```
+
+

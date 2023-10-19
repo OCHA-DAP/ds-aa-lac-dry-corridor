@@ -79,8 +79,6 @@ cropland_lte_vhi_thresh <- function(
     summarise() %>%
     st_simplify(dTolerance = simplify_poly)
 
-
-
   # quickly sum of all crop fraction pixels per country - use this later to calculate %
   df_total_cropland <- exact_extract(
     x = r_cropland_resampled,
@@ -90,7 +88,6 @@ cropland_lte_vhi_thresh <- function(
   ) %>%
     ungroup() %>%
     rename(sum_crop_pixels = "sum")
-
 
   df_sum_cropland_lte <- threshold_seq %>%
     map_dfr(\(thresh){

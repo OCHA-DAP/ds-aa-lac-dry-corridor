@@ -1,7 +1,9 @@
 ---
-title: "IRI Explore"
+title: "IRI Pixel Explore"
 format: html
 editor: visual
+project:
+     execute-dir: project
 ---
 
 ## Intro
@@ -21,9 +23,10 @@ library(terra)
 library(patchwork)
 library(gt)
 library(targets)
+library(here)
 gghdx()
-tar_source()
-
+# tar_source() # hmm wonder if this issue has been raised - `tar_source()` behaviour in `.qmd` when "knitting"
+map(list.files(here("R"),full.names = T),~source(.x))
 
 #' I get errors using `{rhdx}` to try to et CODs for these countries so going w/ natural earth
 #' even after "fixing" the CODs to the point that they can be loaded - they are  far too complex
@@ -45,7 +48,6 @@ aoi_dissolved <- aoi_countries %>%
 
 aoi_bbox <-  st_bbox(aoi_countries) %>% 
   st_as_sfc()
-
 
 
 # load dominant tercile and prob terciles forecasts
@@ -93,7 +95,6 @@ lr_iri_prob <- iri_nc_to_r(
 ### Historgrams by leadtime
 
 ```{r plot-histo-combined-by-lt}
-df_prob_bavg_values %>% count(leadtime)
 # grab all values
 df_prob_bavg_values <- lr_iri_prob %>% 
   imap_dfr(\(rt,nm){
@@ -873,10 +874,9 @@ df_double_thresh %>%
 
 ```
 
-
-## ZonL
-
 ## Zonal
+
+Rather than looking at pixel distribution of bavg values per adin. Let's take a zonal stat per admin.
 
 ```{r}
 
@@ -1256,7 +1256,7 @@ m_4_draw <- tm_basemap(server = leaflet::providers$OpenStreetMap)+
 #' ml_4_draw <- tmap_leaflet(m_4_draw)
 #' pts_missing <- mapedit::drawFeatures(map =ml_4_draw )
 #' st_coordinates(pts_missing) %>% 
-#'   dput()
+#'    dput()
 
 
 df_pts_missing <- data.frame(structure(c(-86.941185, 
@@ -1266,7 +1266,7 @@ df_pts_missing <- data.frame(structure(c(-86.941185,
                                          13.367872, 
                                          15.061327), 
                                        dim = 3:2, 
-                                       sdimnames = list(NULL, c("X", "Y"))))
+                                       dimnames = list(NULL, c("X", "Y"))))
 
 gdf_pts_missing <- df_pts_missing %>% 
   mutate(
