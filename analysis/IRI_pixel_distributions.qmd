@@ -2,7 +2,19 @@
 title: "IRI Pixel Explore"
 format:
   html:
-    embed-resoures: true # trying to figure out how to not create a folder when knitting -idk yet.
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
 editor: visual
 project:
      execute-dir: project
@@ -14,15 +26,15 @@ This document explores the distribution of IRI forecast values over the Area of 
 
 ### Background:
 
-- Currently proposal documents have written trigger: "Seasonal forecast for MJJ/JJA/SON indicate > 50% probability for below average
-  + discussions have indicated that what is means is that seasonal forecast below average probability thresholds is >= 50 % and that x % of area should breach that threshold for the trigger
-- based on previous work using IRI foreasts we know that this threshold is likely too high
+-   Currently proposal documents have written trigger: "Seasonal forecast for MJJ/JJA/SON indicate \> 50% probability for below average
+    -   discussions have indicated that what is means is that seasonal forecast below average probability thresholds is \>= 50 % and that x % of area should breach that threshold for the trigger
+-   based on previous work using IRI forecasts we know that this threshold is likely too high
 
 ### Quick summary takeaways:
 
-- Rather than setting a probablity threshold and then a % area/pixels threshold (2 thresholds), it seems justifiable to just set a threshold on a zonal mean/median (i.e 1 threshold)
-- 50 % probability will be too high and unlikely to occur
-- Historical analysis of just 7 years of forecast data is limited and exact threshold will depend largely on frequency the key partners think the the trigger "should" be activated.
+-   Rather than setting a probability threshold and then a % area/pixels threshold (2 thresholds), it seems justifiable to just set a threshold on a zonal mean/median (i.e 1 threshold)
+-   50 % probability will be too high and unlikely to occur
+-   Historical analysis of just 7 years of forecast data is limited and exact threshold will depend largely on frequency the key partners think the the trigger "should" be activated.
 
 ```{r}
 library(sf)
@@ -90,7 +102,6 @@ lr_iri_prob <- iri_nc_to_r(
 )
 ```
 
-# Investigate Thresholds
 
 ## Probability Below Average Distributions
 
@@ -152,8 +163,7 @@ df_prob_bavg_values%>%
 
 ### Histograms by leadtime and season
 
-
-```{r plot-histo-bavg-by-lt-and-phase}
+```{r , echo=FALSE}
 # use publication month sequence to shift for months predicted
 pub_mo_seq <- as_date(names(lr_iri_prob$lt1[[1]]))
 
@@ -167,9 +177,6 @@ r_prob_bavg_labelled <- c(lt1=1, lt2=2,lt3=3, lt4=4) %>%
     end_mo <- str_sub(format(month_seq + months(2),"%b"),start = 1,end = 1)
     end_yr <-  format(month_seq + months(2),"%y")
     seas_label <- paste0(start_mo, middle_mo, end_mo,end_yr)
-    cat(seas_label,
-        "\n")
-    seas_label %>% length() %>% print()
     r_prob_lt %>% 
       set.names(seas_label)
     return(r_prob_lt)
@@ -224,8 +231,9 @@ df_prob_bavg_values_seas_mon <- df_prob_bavg_values_seas %>%
   # convert value to %
   value = value/100
 )
-    
-  
+```
+
+```{r plot-histo-bavg-by-lt-and-phase}
 df_prob_bavg_values_seas_mon %>% 
   ggplot(
     aes(
@@ -392,10 +400,10 @@ So far trigger has mostly been talked about as thresholding by first a probabili
 
 df_pct_gte_threshold <- seasons_of_interest_split %>% 
   map_dfr(\(window_set){
-    cat(window_set,"\n")
+    # cat(window_set,"\n") # dont want printing in quarto render
     r_prob_bavg_labelled %>% 
       imap_dfr(\(rtmp_lt,nm){
-        cat(nm,"\n")
+        # cat(nm,"\n")
         rgx_window <- glue_collapse(paste0("^",window_set),"|")
         rtmp_win<- rtmp_lt[rgx_window]
         seq(1,50,1) %>% 
@@ -426,18 +434,16 @@ df_pct_gte_threshold <- seasons_of_interest_split %>%
   mutate(
     pct_gte =sum/count
   )
-    
   })
-    
   })
 
 ```
 
 I think this is an interesting way of looking at historical data w/ respect to different thresholds:
 
-- All historical IRI data across monitoring window against % pixels ≥ each threshold (40-50)
+-   All historical IRI data across monitoring window against % pixels ≥ each threshold (40-50)
 
-```{r}
+```{r, fig.height=10}
 df_pct_gte_threshold %>% 
   mutate(
     seas_label = case_when(
@@ -490,8 +496,6 @@ df_pct_gte_threshold %>%
     axis.title.x =element_blank(),
     axis.text.x =element_text(angle = 90)
   )
-
-
 ```
 
 Let's remove the temporal element and see how frequently different combinations of % area and thresholds occur
@@ -504,10 +508,10 @@ Let's remove the temporal element and see how frequently different combinations 
 
 df_all_thresh <- window_periods %>% 
   map(\(window_set){
-    cat(window_set,"\n")
+    # cat(window_set,"\n") # dont want printing in render
     r_prob_bavg_labelled %>% 
   imap_dfr(\(rtmp_lt,nm){
-    cat(nm,"\n")
+    # cat(nm,"\n")
     rgx_window <- glue_collapse(paste0("^",window_set),"|")
     rtmp_win<- deepcopy(rtmp_lt[rgx_window])
     seq(0,70,1) %>% 
@@ -581,8 +585,9 @@ df_double_thresh <- df_all_thresh %>%
       area_pct_range <- dft_max_pct_per_thresh$pct_gte %>% range()
       prob_range <- dft_max_pct_per_thresh$threshold %>% range()
       
-      cat(prob_range,"\n")
-      cat(seq(prob_range[1],prob_range[2], by=1),"\n")
+      # remove for rendering
+      # cat(prob_range,"\n")
+      # cat(seq(prob_range[1],prob_range[2], by=1),"\n")
       
       top_pct_area_limit <- round(area_pct_range[2],digits=2)
       
@@ -612,7 +617,6 @@ df_double_thresh <- df_all_thresh %>%
     }
   )
 ```
-
 
 ```{r}
 df_double_thresh %>% 
@@ -658,7 +662,6 @@ df_double_thresh %>%
     legend.key = element_rect(colour = "black")
   )
 ```
-
 
 ```{r}
 df_double_thresh %>% 
@@ -719,9 +722,8 @@ df_double_thresh %>%
 
 We think there is probably a decent case to be made to just use a single threshold for each country based on the zonal stat (mean/median) for a couple reasons:
 
-1. Lowers complexity of trigger (1 threshold vs 2)
-2. IRI pixels so large that calculating a % of pixels ≥ to a threshold doesn't have much added value (for example
-El Salvador is covered by approx 1.7 IRI pixels)
+1.  Lowers complexity of trigger (1 threshold vs 2)
+2.  IRI pixels so large that calculating a % of pixels ≥ to a threshold doesn't have much added value (for example El Salvador is covered by approx 1.7 IRI pixels)
 
 ```{r}
 
@@ -801,5 +803,3 @@ df_iri_adm0_max_relevant_season %>%
     axis.title.x = element_blank()
   )
 ```
-
-

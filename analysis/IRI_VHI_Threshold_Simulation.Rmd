@@ -47,7 +47,7 @@ Initial triggers:
 
 ```{r}
 
-# tak max probability (bavg) across leadtimes
+# take max probability (bavg) across leadtimes
 df_iri_adm0_max <- df_iri_adm0 %>% 
   group_by(
     across(starts_with("adm")), 
