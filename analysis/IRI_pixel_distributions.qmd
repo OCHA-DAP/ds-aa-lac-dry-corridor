@@ -779,7 +779,7 @@ df_iri_adm0_max_relevant_season %>%
   slice_max(order_by = mean, n = 3)
 ```
 
-## Zonal median probability
+### Zonal median probability
 
 ```{r}
 df_iri_adm0_max_relevant_season %>%
