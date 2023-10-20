@@ -1,26 +1,28 @@
 ---
-title: "Trigger Simulation"
+title: "Central American Dry Corridor -Trigger Simulation"
 output: 
     bookdown::html_document2:
         toc: true
         toc_float: true
-        toc_depth: 4
+        toc_depth: 3
+        code_folding: hide
 date: "2023-09-26"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = FALSE,
+  echo = TRUE,
   warning = FALSE,
   message = FALSE, 
   eval = TRUE,
-  results = "asis"
+  results = "asis",
+  out.width= "100%"
 )
 ```
 
-## Intro
+# Intro
 
-In this document we simulate the trigger using historical IRI and historical VHI data.
+In this document we simulate the trigger using historical IRI and historical VHI data. The purpose of this document is not performance testing/historical validation of thresholds. Rather, we simply visualize all historical VHI (FAO) and Forecast (IRI) data with respect to provided thresholds. If/when more optimal thresholds are identified we can update or appends new visualizations using/modifying the code below.
 
 ```{r libsData,include=F}
 library(targets)
@@ -40,7 +42,7 @@ thresh_iri_pbavg <- 0.425
 Initial triggers:
 
 1. Average probability of below average rainfall is ≥ **`r round(thresh_iri_pbavg*100,1)`%***
-2. ≥ 25 % of cropland with VHI ≤ 0.25 - only monitored for Primera (phase 2) and Postera (phase 3)
+2. ≥ **`r round(thresh_area*100,0)` %** of cropland with VHI ≤ **`r thresh_vhi`** - only monitored for Primera (phase 2) and Postera (phase 3) - observational
 
 
 ```{r}
@@ -64,9 +66,10 @@ df_iri_adm0_max_relevant_season <- df_iri_adm0_max %>%
 ```
 
 
-## IRI
+# IRI
 
 ```{r}
+# prep IRI data - create boolean flag indicating if threshold was crossed
 df_iri_adm0_flag <- df_iri_adm0_max_relevant_season %>% 
   group_by(across(starts_with("adm")),seas) %>% 
   mutate(
@@ -78,13 +81,20 @@ df_iri_adm0_flag <- df_iri_adm0_max_relevant_season %>%
     # especially when we overlay the vhi data as a transparent tile
     date_cat = dplyr::dense_rank(predict_start_mo)
   )
+```
 
+
+The table below shows the mean probability of a below average rainfall for each "monitored" season that IRI data is available historically. The cell values are colored by the amount the exceed the current proposed threshold of  **`r round(thresh_iri_pbavg*100,1)`%***
+
+```{r}
 df_iri_adm0_flag %>% 
   select(adm0_es,Season=seas,mean) %>% 
   pivot_wider(
     names_from = adm0_es,
     values_from=mean
   ) %>% 
+  # i thought `gt()` would be cool to use - but the solution i came up 
+  # w/ below is a bit tedious
   gt() %>% 
   fmt_number(decimals=2) %>% 
   data_color(
@@ -110,10 +120,10 @@ df_iri_adm0_flag %>%
 
 ```
 
+Below is another representation of the same data, just showing the timeline and displaying where and when the IRI threshold would have been exceeded.
+
 ```{r}
-
 fill_cols <- c("white",hdx_hex("mint-hdx"))
-
 
 df_iri_adm0_flag %>% 
   mutate(
@@ -148,14 +158,16 @@ df_iri_adm0_flag %>%
   )
 ```
 
-## VHI
+# VHI
 
 ```{r}
+# VHI is observational and involves monitoring the previous month of data
+
 df_vhi_season <- df_cropland_lte_vhi_threshold %>% 
   mutate(
     date= ym(date),
     monitoring_window = case_when(
-      # Primera 2 is JJA- there fore monitoring MJJ
+      # Primera 2 is JJA- therefore monitoring MJJ
       month(date) %in% c(5,6,7) ~ "Primera (phase 2) Monitoring",
       
       # Primera 3 is SON - therefore monitoring ASO
@@ -169,6 +181,7 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
                                     "Primera (phase 2) Monitoring",
                                     "Postera (phase 3) Monitoring")
   )
+
 
  df_vhi_seas_flagged <- df_vhi_season %>% 
    filter(
@@ -186,9 +199,7 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
 ```
  
  
- 
-   
-### Line plot historical activations
+Below we visualize a timeline of all historical VHI data available by the 2 monitoring windows where VHI is a proposed trigger indicator. The y- axis is the % of cropland (per country) with a VHI≤ `r thresh_vhi`.  Years where the % cropland area (`r round(thresh_area*100,0)`) breached are colored in blue.
 ```{r}
  p_line_vhi_historical <- df_vhi_season %>% 
    filter(
@@ -202,6 +213,11 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
      y=pct_crop_pixels_lte_thresh
      
    ))+
+    geom_hline(
+    yintercept = thresh_area,
+    color= hdx_hex("sapphire-hdx"),
+    alpha= 0.3
+  )+
    geom_vline(
      data= df_vhi_seas_flagged,
      aes(xintercept = date),linetype= "dashed",
@@ -212,9 +228,9 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
    geom_point(
      aes(
        color=pt_color
-     )
+     ), size=0.8
    )+
-   geom_line()+
+   geom_line(color="grey")+
    scale_x_date(
      date_breaks = "1 year",
      date_labels = "%y",
@@ -229,7 +245,7 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
        
      ),angle=90,
      color= hdx_hex("tomato-dark"),
-     size=3
+     size=2
      
    )+
    labs(
@@ -237,10 +253,6 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
      title = paste0("Dry Corridor - Central America: % Cropland with VHI ≤ ",thresh_vhi),
      subtitle = "Red lines indicate seasons where trigger would be activated (threshold = 25%)"
    )+
-   # geom_hline(
-   #   yintercept = 0.25,
-   #   linetype= "dashed"
-   # )+
    scale_y_continuous(
      labels = scales::label_percent()
    )+
@@ -251,7 +263,8 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
      panel.border = element_rect(color="grey",fill = NA),
      legend.position = "none",
      axis.title.x = element_blank(),
-     axis.text.x = element_text(angle=90),
+     axis.text.x = element_text(angle=90,size=7),
+     axis.text.y = element_text(size=7)
    )
  
 
@@ -259,8 +272,9 @@ df_vhi_season <- df_cropland_lte_vhi_threshold %>%
 
 ```
 
-### Heat plot historial activations
+
 ```{r}
+
 df_vhi_thresh<- df_vhi_season %>% 
   # glimpse() %>% 
    ungroup() %>% 
@@ -287,8 +301,7 @@ df_vhi_thresh<- df_vhi_season %>%
   ) 
 ```
 
-
-
+The same data is represented in a simplified heat plot below. The heat plot cell values are colored by the % cropland breaching the propsed VHI threshold and years which breach the % cropland threshold are outlined in red.
 ```{r}
 df_vhi_thresh %>% 
   ggplot(
@@ -325,7 +338,9 @@ df_vhi_thresh %>%
 
 ```
 
-## IRI + VHI Combined
+# IRI + VHI Combined
+
+As the framework proposes using both triggers (IRI & VHI) - let's see how they line up for all the years that we have both historically.
 
 ```{r}
 fill_cols <- c("white",hdx_hex("mint-hdx"))
