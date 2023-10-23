@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 
 # Intro
 
-In this document we simulate the trigger using historical IRI and historical VHI data. The purpose of this document is not performance testing/historical validation of thresholds. Rather, we simply visualize all historical VHI (FAO) and Forecast (IRI) data with respect to provided thresholds. If/when more optimal thresholds are identified we can update or appends new visualizations using/modifying the code below.
+In this document we simulate the trigger using historical IRI and historical VHI data. The purpose of this document is not performance testing/historical validation of thresholds. Rather, we simply visualize all historical VHI (FAO) and Forecast (IRI) data with respect to provided/proposed thresholds. If/when more optimal thresholds are identified we can update or append new visualizations using/modifying the code below.
 
 ```{r libsData,include=F}
 library(targets)
