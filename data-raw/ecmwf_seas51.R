@@ -26,25 +26,37 @@ ecmwfr::wf_set_key(
 )
 
 
+# Check Metadata/attributes for appropriate selection ---------------------
+
+## List data sets available
 df_cds_datasets<- wf_datasets(
   user=Sys.getenv("ECMWF_USER_UID"),
   service = "cds"
 )
+
+# filter data set table to those w/ seas
+# find "seasonal-monthly-single-levels" dataset in list (and can explore others)
 df_cds_datasets %>% 
   tibble() %>% 
   filter(
     str_detect(name, "seas")
   )
+
+# get metdata of that specific data set ("seasonal-monthly-single-levels")
 prod_info <- wf_product_info(
   dataset = "seasonal-monthly-single-levels",
   user=Sys.getenv("ECMWF_USER_UID"),
   service = "cds"
 )
 
+# rich_abstract has the most info, but hard to read so let's parse out the variable names like this
+# this just for helping select correct variables
 cat("printing layers\n")
 str_extract_all(prod_info$rich_abstract,pattern = "<td class='variables-name'>(.*?)</td>")
 
 
+
+# Define AOI ---------------------------------------------------------------
 cat("defining bbox for extraction\n")
 aoi_countries <- ne_countries(country = c("Nicaragua","Honduras","Guatemala","El Salvador")) %>% 
   st_as_sf() %>% 
@@ -55,12 +67,20 @@ aoi_countries <- ne_countries(country = c("Nicaragua","Honduras","Guatemala","El
 aoi_bbox <- st_bbox(aoi_countries) 
 
 
+# Create API requests ---------------------------------------------------------
+
+
 cat("writing data requests to list\n")
 request_coords<- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/{aoi_bbox['xmax']}")
 
 
+# Have to split current year from all historical data because API call fails if we enter a month
+# that doesn't have data yet (i.e at the time of running - no data published 2023 October).
+# it would be nice if API let you access the last month available programmatically - alas it does not
+# there is a confluence issue somewhere that if I can find will share,
+
 request_lte_2022 <- c(1:4) %>% 
-  map(
+  walk(
     ~list(
       product_type = "monthly_mean",
       format = "netcdf",
@@ -77,7 +97,7 @@ request_lte_2022 <- c(1:4) %>%
   )
 
 request_2023 <- c(1:4) %>% 
-  map(
+  walk(
     ~list(
       product_type = "monthly_mean",
       format = "netcdf",
@@ -95,7 +115,7 @@ request_2023 <- c(1:4) %>%
 
 cat("Downloading 2023 data\n")
 request_2023 %>% 
-  map(\(rq){
+  walk(\(rq){
     wf_request(user     = Sys.getenv("ECMWF_USER_UID"),  # user ID (for authentication)
                request  = rq,  # the request
                transfer = TRUE,   # download the file
@@ -105,7 +125,7 @@ cat("2023 data Jan - September downloaded to AA_DATA_DIR")
 
 cat("Downloading data 1981-2022\n")
 request_lte_2022 %>% 
-  map(\(rq){
+  walk(\(rq){
     wf_request(user     = Sys.getenv("ECMWF_USER_UID"),  # user ID (for authentication)
                request  = rq,  # the request
                transfer = TRUE,   # download the file
