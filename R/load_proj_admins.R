@@ -1,4 +1,5 @@
 library(rhdx)
+library(janitor)
 
 load_proj_admins <- function() {
   # Nicaragua

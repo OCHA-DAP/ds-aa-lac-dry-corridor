@@ -1,6 +1,8 @@
 name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
-.Random.seed|object|a418ee51ac4e4f0b|||||||||||||||
-df_cropland_lte_vhi_threshold|stem|bb2c0b30f198070c|027a974e808bd1e9|80a7caf5fdcb6c6d|-1387170407||t19628.9229110738s|2e115d2c77394670|515160|rds|local|vector|||3248.613|repeating attributes for all subgeometries for which they may not be constant|
+.Random.seed|object|01012fca84f1a6ba|||||||||||||||
+cropland_lte_vhi_thresh|function|2b0be58b9de17b68|||||||||||||||
+df_aoi_pixel_values|stem|cccd1e6ef33bbb3c|f2d60126f2420c85|fa7e997be5174c63|-178710626||t19647.7695581263s|97b2e440767e885a|133693|rds|local|vector|||29.115||
+df_cropland_lte_vhi_threshold|stem|bb2c0b30f198070c|1bc18422ba8d8fec|21edcc7221dd448c|-1387170407||t19647.8087834275s|2e115d2c77394670|515160|rds|local|vector|||3388.985|repeating attributes for all subgeometries for which they may not be constant|
 df_iri_adm0|stem|a5e222512fc22fa4|7dac976f330c7afb|e0d9d2ebfdd858b9|796467628||t19628.8845827851s|998fe425e8f859d9|17252|rds|local|vector|||1.109||
 df_sum_cropland_lte_vhi_threshold|stem|4f55cb618766d967|027a974e808bd1e9|b2946e987018b26b|-786424025||t19626.7683888529s|a9ee31395401f82e|257185|rds|local|vector|||913.746|repeating attributes for all subgeometries for which they may not be constant|
 fp_iri_prob|object|be2208e64c26e452|||||||||||||||
@@ -15,15 +17,3 @@ vhi_year_month_composites|function|ca8ce0860544d5bf|||||||||||||||
 vhi_zonal|function|524bd441e5290fb5|||||||||||||||
 vhi_zonal_pct_lte_thresh|function|0972ca9c5de9a5a4|||||||||||||||
 zonal_sum_cropland|function|f6cb2a92e96f7434|||||||||||||||
-vhi_year_month_composites|function|ca8ce0860544d5bf
-load_proj_admins|function|09d2fd9d45a754a8
-vhi_zonal_pct_lte_thresh|function|0972ca9c5de9a5a4
-pct_cropland_lte_vhi_thresh|function|79274c76cf4797f1
-iri_nc_to_r|function|2cf0f55df395a689
-.Random.seed|object|02ee53440eb47aa2
-vhi_zonal|function|524bd441e5290fb5
-cropland_lte_vhi_thresh|function|2b0be58b9de17b68
-fp_iri_prob|object|be2208e64c26e452
-zonal_sum_cropland|function|f6cb2a92e96f7434
-vhi_mo_composite_reduce_region|function|5ae004a1eca97058
-vhi_mo_composite_reduce_region_batch|function|10fe3a09971aba92

@@ -82,6 +82,37 @@ list(
       )
   ),
   tar_target(
+    name = df_aoi_pixel_values,
+    command =iri_nc_to_r(
+      tnc_object = tidync(fp_iri_prob),
+      type = "prob"
+    ) %>% 
+      imap_dfr(\(rt,nm){
+        # [[1]] first element is bavg (c1)
+        rt_copy <- deepcopy(rt[[1]])
+        
+        # clip to aoi (instead of just bbox)
+        rt_clipped <- mask(
+          rt_copy,
+          # dissolve adm0 to 1 poly
+          gdf_aoi_adm$adm0 %>%
+            summarise()
+          )
+        rt_clipped %>% 
+          terra::values() %>% 
+          data.frame() %>% 
+          pivot_longer(everything()) %>% 
+          mutate(
+            leadtime = str_replace(nm,"lt", "leadtime "),
+            prob_cat = case_when(
+              value <40~ "lt 40",
+              value <50 ~"lt 50",
+              value >=50 ~"gte 50")
+          )
+      }
+      )
+  ),
+  tar_target(
     name = df_cropland_lte_vhi_threshold,
     command = cropland_lte_vhi_thresh(
 

@@ -12,8 +12,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This notebook holds the processing of IRI data to zonal mean and median statistics
 
-
-
 ```{r libs_data}
 library(targets)
 library(terra)
@@ -45,8 +43,6 @@ fp_iri_prob <- file.path(
 ```
 
 
-
-
 ```{r}
 # convert to list of rasters
 lr_iri_prob <- iri_nc_to_r(
@@ -54,11 +50,12 @@ lr_iri_prob <- iri_nc_to_r(
   type = "prob"
 )
 
-
 # Run zonal stats on each leadtime bavg band
 df_iri_adm0 <- lr_iri_prob %>%
   imap_dfr(
     \(rtmp, nm){
+      cat(nm, "\n")
+      cat(parse_number(nm), "\n")
       r_bavg <- deepcopy(rtmp[[1]]) # bavg
       exact_extract(
         x = r_bavg,
@@ -133,8 +130,13 @@ df_iri_adm0_max_relevant_season %>%
   ) +
   theme(
     axis.text.x = element_text(angle = 90),
-    axis.title.x = element_blank()
+    axis.title.x = element_blank(),
+    legend.title = element_blank()
   )
+
+df_iri_adm0_max_relevant_season %>%
+  group_by(adm0_es) %>%
+  slice_max(order_by = mean, n = 3)
 ```
 
 ## Plot Median Probability
@@ -161,13 +163,3 @@ df_iri_adm0_max_relevant_season %>%
     axis.title.x = element_blank()
   )
 ```
-
-
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
