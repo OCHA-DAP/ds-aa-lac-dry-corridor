@@ -29,6 +29,7 @@ library(terra)
 library(exactextractr)
 library(targets)
 library(glue)
+library(gghdx)
 gghdx()
 
 tar_load(gdf_aoi_adm)
@@ -220,6 +221,117 @@ df_zonal_adm0 <- bind_rows(
     total_mean_mm = (mean * (60 * 60 * 24 * 30)) * 1000
   )
 ```
+
+How about converting to trimester
+```{r}
+library(zoo)
+df_regional_trim %>% 
+  print(n=100)
+df_regional_trim <- df_zonal_regional %>% 
+  rename(
+    date_predict = "date"
+  ) %>% 
+  mutate(
+    date_forecast_gen = date_predict - months(leadtime-1)
+  ) %>% 
+  arrange(date_forecast_gen, date_predict) %>% 
+  # group_by(date_forecast_gen) %>%
+  # mutate(
+  #   roll3= rollsumr(total_mean_mm, 3, fill = NA)
+  # )
+    mutate(
+    lgl_mjj = month(date_predict) %in% c(5,6,7),
+    lgl_jja = month(date_predict) %in% c(6,7,8),
+    lgl_son = month(date_predict) %in% c(9,10,11)
+  ) %>% 
+#   group_by(
+#     yr = floor_date(date_predict,"year"),
+#     date_forecast_gen,
+#     lgl_mjj
+#   ) %>% 
+#   summarise(
+#     total_mm= sum(total_mean_mm,na.rm=T)
+#   )
+# 
+# df_regional_trim %>% 
+#   print(n=100)
+
+  pivot_longer(
+    cols = starts_with("lgl_"),
+    names_to = "window",
+    values_to = "in_season"
+  ) %>%
+  filter(in_season) %>% 
+  arrange(date_forecast_gen, date_predict)
+
+df_regional_trim_sum <- df_regional_trim %>% 
+    group_by(
+    yr = floor_date(date_predict,"year"),
+    date_forecast_gen,
+    window
+  ) %>% 
+  summarise(
+    sum_mm =sum(total_mean_mm, na.rm = TRUE),
+    n=n()
+  )
+
+df_regional_trim_max_per_year <- df_regional_trim_sum %>% 
+  group_by(
+    yr, window
+  ) %>% 
+  slice_max(sum_mm, n=1) 
+
+```
+
+
+
+```{r}
+df_regional_trim_max_per_year %>% 
+  split(.$window) %>% 
+  map(
+    \(dft){
+      
+    }
+  )
+```
+
+
+
+
+ck<- df_regional_trim %>% 
+  split(.$window)
+ck$`lgl_jja` %>% 
+  arrange(date_forecast_gen, date_predict) %>% 
+
+
+  group_by(
+    yr = floor_date(date_predict,"year"),
+    date_forecast_gen,
+    window
+  ) %>% 
+  summarise(
+    mean_mm =sum(total_mean_mm, na.rm = TRUE),
+    n=n()
+  )
+
+  arrange(date) %>% 
+  mutate(
+    
+    roll3 = rollsumr(total_mean_mm, 3, fill = NA, align = "right"),
+    start_mo_tri = month(date)
+  ) %>% 
+  group_by(date,start_mo_tri) %>%
+  summarise(
+    # total_mean_mm = mean(total_mean_mm, na.rm = TRUE),
+    roll3 = max(roll3, na.rm = TRUE),.group="drop"
+  ) %>% 
+
+
+
+
+
+```
+
 
 # ECMWF Monthly Forecast values
 

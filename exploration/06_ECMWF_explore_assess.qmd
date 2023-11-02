@@ -1,0 +1,728 @@
+---
+title: "ECMWF SEAS 51 Assess/Explore"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
+editor: visual
+project:
+     execute-dir: project
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r cars}
+library(tidyverse)
+library(tidync)
+library(rhdx)
+library(sf)
+library(rnaturalearth)
+library(ncdf4)
+library(terra)
+library(exactextractr)
+library(targets)
+library(glue)
+library(gghdx)
+library(zoo)
+library(here)
+library(extRemes)
+
+gghdx()
+
+tar_load(
+  gdf_aoi_adm,
+  store = here("_targets/")
+  
+  )
+
+fp_seas51 <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "raw",
+  "lac",
+  "ecmwf_seasonal",
+  "seas51"
+)
+
+fp_seas51_sah <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "public",
+  "raw",
+  "sah",
+  "ecmwf"
+)
+rast(list.files(fp_seas51_sah,full.names = T)[9]) %>%time()
+
+
+# lets simplify admin 1 - remove slivers/islands
+adm0_main <- gdf_aoi_adm$adm0 %>%
+  st_cast("POLYGON") %>%
+  mutate(
+    area = as.numeric(st_area(.))
+  ) %>%
+  filter(
+    area > 1e10
+  )
+
+poly_simp_adm0 <- adm0_main %>%
+  group_by(adm0_es) %>%
+  summarise() %>%
+  st_simplify(dTolerance = 0.01)
+
+
+
+fnames <- dir(fp_seas51)
+
+fp <- file.path(fp_seas51, fnames[5])
+rast(list.files(fp_seas51,full.names = T)[7])
+rast(list.files(fp_seas51,full.names = T)[6])
+
+bla <- nc_open(fp)
+ncmeta::nc_meta(fp)
+tidync::tidync(fp)
+
+ncdf4::ncatt_get(bla,"time","calendar")
+ncvar_get(bla, "time")
+rast(fp) %>% 
+  names()
+tibble(
+  r_names = as_datetime(time(r_ck)),
+       month = month(r_names),
+       yr = year (r_names)
+) %>%
+  group_by(yr, month) %>%
+  count()
+
+rast(fp) %>% 
+  time()
+
+# list of rasters
+lr <- fnames %>%
+  map(
+    \(fname){
+      fp <- file.path(fp_seas51, fname)
+      nf <- nc_open(fp)
+      
+
+      # get precipitation rate
+      # it's 4D for each value there is 1. lat, 2. lon, 3. ensemble, 4. time)
+      tprate_array <- ncvar_get(nf, "tprate")
+      
+      scale_factor <- ncatt_get(nf, "tprate", "scale_factor")
+      add_offset <- ncatt_get(nf, "tprate", "add_offset")
+
+      # get fill value
+      fill_value <- ncatt_get(nf, "tprate", "_FillValue")
+
+      # fill array w/ standard NA
+      tprate_array[tprate_array == fill_value$value] <- NA
+      tprate_mean_array <- apply(tprate_array, c(1, 2, 4), mean, na.rm = T)
+      
+   
+
+
+      lon <- ncvar_get(nf, "longitude")
+      lat <- ncvar_get(nf, "latitude")
+      varlat <-ncdim_def(name='latitude', units='degrees_north',vals=lat)
+      varlon <- ncdim_def(name='longitude', units='degrees_east',vals=lon)
+      
+      t_hours <- ncvar_get(nf, "time")
+
+      r <- rast(
+        x = aperm(tprate_mean_array, c(2, 1, 3)),
+        extent = ext(
+          min(lon) - .5,
+          max(lon) + .5,
+          min(lat) - .5,
+          max(lat) + 0.5
+        ),
+        crs = "EPSG:4326"
+      )
+      dates_predicted <- as_date(as_date("1900-01-01") + hours(t_hours))
+      set.names(r, dates_predicted)
+      return(r)
+    }
+  ) %>%
+  set_names(fnames)
+
+df_lr_names <- tibble(
+  lt4_name =lr$ecmwf_forecast_lte2022_lt4.nc %>% names(),
+  lt3_name =lr$ecmwf_forecast_lte2022_lt3.nc %>% names(),
+  lt2_name =lr$ecmwf_forecast_lte2022_lt2.nc %>% names(),
+  lt1_name =lr$ecmwf_forecast_lte2022_lt1.nc %>% names(),
+  year_lt4 = year(lt4_name),
+  year_lt3 = year(lt3_name),
+  year_lt2 = year(lt2_name),
+  year_lt1 = year(lt1_name),
+  month_lt4 = month(lt4_name),
+  month_lt3 = month(lt3_name),
+  month_lt2 = month(lt2_name),
+  month_lt1 = month(lt1_name),
+) 
+
+df_lr_names %>% View()
+calc_yr_count <- function(df,x){
+  df %>% 
+    rename(
+      year =x
+    ) %>% 
+    group_by(year) %>%
+    summarise(
+      !!paste0("n_",x):= n()
+    ) %>% 
+    ungroup()
+}
+df_lr_names %>% 
+  calc_yr_count("year_lt1") %>% 
+  left_join(
+   df_lr_names %>% 
+  calc_yr_count("year_lt2") 
+  ) %>% 
+  left_join(
+   df_lr_names %>% 
+  calc_yr_count("year_lt3") 
+  ) %>% 
+  left_join(
+   df_lr_names %>% 
+  calc_yr_count("year_lt4") 
+  ) %>% 
+  tibble() %>% 
+  # slice(30:42)
+  print(n=nrow(.))
+  
+```
+
+```{python}
+import xarray as xr
+import numpy as np
+import pandas as pd
+from pathlib import Path
+import os
+import rioxarray as rxr
+import rasterio as rio
+import cftime
+import cfgrib
+
+# set file path to data set with os library
+DATA_DIR = Path(os.getenv("AA_DATA_DIR"))
+FP_CADC_SEAS51= Path(DATA_DIR,
+  "private",
+  "raw",
+  "lac",
+  "ecmwf_seasonal",
+  "seas51"
+)
+
+FP_SAH_SEAS51 = Path(
+  DATA_DIR,
+  "public",
+  "raw",
+  "sah",
+  "ecmwf"
+)
+
+os.listdir(
+  Path(FP_CADC_SEAS51,"testing")
+  )
+os.listdir(FP_CADC_SEAS51)
+
+# list files in directory with os library
+
+# dry corridro files - in different formats
+dc_historical_nc_fname = Path(FP_CADC_SEAS51,'ecmwf_forecast_lte2022_lt4.nc')
+dc_1981_grb_fname = Path(FP_CADC_SEAS51,'testing','ecmwfr_testlt4_test.grib')
+dc_1981_nc_fname = Path(FP_CADC_SEAS51,'testing','ecmwfr_testlt4_test.nc')
+
+
+ds_historical_nc = xr.open_dataset(dc_historical_nc_fname)
+ds_1981_grb = xr.open_dataset(dc_1981_grb_fname,engine="cfgrib")
+ds_1981_nc = xr.open_dataset(dc_1981_nc_fname, engine = 'netcdf4')
+
+ds_1981_nc.time.values
+ck=ds_1981_grb.valid_time.values
+ds_1981_grb.latitude.values
+
+os.listdir(FP_SAH_SEAS51)
+
+sah_fname = Path(FP_SAH_SEAS51,'ecmwf-total-leadtime-4_sys51.grib')
+dc_xa_grb  =xr.open_dataset(sah_fname,engine="cfgrib")
+
+
+```
+
+```{r}
+fp_testing <- file.path(
+  fp_seas51,"testing"
+) 
+rast(
+  file.path(fp_testing,"ecmwfr_testlt4_test.grib")
+) %>% 
+  time()
+
+library(gribr)
+wtf <- grib_open(
+  file.path(fp_testing,"ecmwfr_testlt4_test.grib")
+) 
+wtf$valid_time()
+rast(
+  file.path(fp_testing,"ecmwfr_testlt4_test.nc")
+) %>% time()
+
+```
+
+```{r}
+# install.packages("path/to/cloned/gribr/repo",
+#                  repos = NULL, 
+#                  configure.vars = c("ECCODES_LIBS=-L/opt/homebrew/opt/eccodes/lib",
+#                                           "ECCODES_CPPFLAGS=-I/opt/homebrew/opt/eccodes/lib"))
+# 
+# devtools::install_github("nawendt/gribr", 
+#                          configure.vars=c("ECCODES_LIBS=-L/opt/homebrew/opt/eccodes/lib",
+#                                           "ECCODES_CPPFLAGS=-I/opt/homebrew/opt/eccodes/include"))
+
+library(gribr)
+  ck<- gribr::grib_open(list.files(fp_seas51,full.names = T)[7])
+gribr::grib_close(ck)
+
+?gribr
+gribr::grib_cube(ck)
+gribr::grib_get(ck,"valid_time")
+```
+
+
+```{r}
+# run zonal stats at regional level (all 4 countries)
+
+# list rasters historical
+lr_historical <- lr %>%
+  keep_at(~ str_detect(.x, "2022"))
+
+# list rasters latest
+lr_latest <- lr %>%
+  keep_at(~ str_detect(.x, "2023"))
+```
+
+```{r}
+names(lr)
+r_ck<- c("lt1","lt2","lt3","lt4") %>% 
+  map(
+    \(lt){
+      nc_file_names <- str_subset(names(lr),lt)
+      r_lt <- nc_file_names %>% 
+        map(\(rn){
+          rast(lr[[rn]])
+        }) %>%
+        rast() %>% c()
+      print(r_lt)
+      r_lt_names<- names(r_lt)
+      cat(r_lt_names)
+      r_lt_names_ordered <- as.character(order(as_date(r_lt_names)))
+      
+      print(r_lt_names_ordered)
+      subset(r_lt, r_lt_names_ordered)
+    }
+  )
+
+lr$ecmwf_forecast_2023_lt1.nc %>% names()
+lr$ecmwf_forecast_lte2022_lt1.nc %>% names()
+
+r_ck[[1]] %>% rast() %>% names()
+c(lr$ecmwf_forecast_lte2022_lt4.nc,
+  lr$ecmwf_forecast_2023_lt4.nc) %>% names()
+```
+
+
+
+```{r}
+
+df_zonal_historical_regional <- map2_dfr(
+  lr_historical,
+  c(lt = 1, lt = 2, lt = 3, lt = 4),
+  \(rtmp, lt){
+    exact_extract(
+      x = rtmp,
+      y = poly_simp_adm0 %>%
+        summarise(),
+      fun = "mean"
+    ) %>%
+      pivot_longer(everything()) %>%
+      separate(name, into = c("stat", "date"), sep = "\\.") %>%
+      pivot_wider(names_from = "stat", values_from = "value") %>%
+      mutate(
+        date = as_date(date),
+        leadtime = lt
+      )
+  }
+)
+
+df_zonal_latest_regional <- map2_dfr(
+  lr_latest,
+  c(lt = 1, lt = 2, lt = 3, lt = 4),
+  \(rtmp, lt){
+    exact_extract(
+      x = rtmp,
+      y = poly_simp_adm0 %>%
+        summarise(),
+      fun = "mean"
+    ) %>%
+      pivot_longer(everything()) %>%
+      separate(name, into = c("stat", "date"), sep = "\\.") %>%
+      pivot_wider(names_from = "stat", values_from = "value") %>%
+      mutate(
+        date = as_date(date),
+        leadtime = lt
+      )
+  }
+)
+
+df_zonal_regional <- bind_rows(
+  df_zonal_historical_regional,
+  df_zonal_latest_regional,
+) %>%
+  mutate(
+    # units are m/s - convert to meters: 60 s * 60 minutes * 24 hours * 30 days
+    # meters to mm = m * 1000
+    total_mean_mm = (mean * (60 * 60 * 24 * 30)) * 1000
+  )
+```
+
+```{r}
+df_zonal_historical_adm0 <- map2_dfr(
+  lr_historical,
+  c(lt = 1, lt = 2, lt = 3, lt = 4),
+  \(rtmp, lt){
+    exact_extract(
+      x = rtmp,
+      y = poly_simp_adm0,
+      fun = "mean",
+      append_cols = "adm0_es"
+    ) %>%
+      pivot_longer(-matches("adm0_es")) %>%
+      separate(name, into = c("stat", "date"), sep = "\\.") %>%
+      pivot_wider(names_from = "stat", values_from = "value") %>%
+      mutate(
+        date = as_date(date),
+        leadtime = lt
+      )
+  }
+)
+
+df_zonal_latest_adm0 <- map2_dfr(
+  lr_latest,
+  c(lt = 1, lt = 2, lt = 3, lt = 4),
+  \(rtmp, lt){
+    exact_extract(
+      x = rtmp,
+      y = poly_simp_adm0,
+      fun = "mean",
+      append_cols = "adm0_es"
+    ) %>%
+      pivot_longer(-matches("adm0_es")) %>%
+      separate(name, into = c("stat", "date"), sep = "\\.") %>%
+      pivot_wider(names_from = "stat", values_from = "value") %>%
+      mutate(
+        date = as_date(date),
+        leadtime = lt
+      )
+  }
+)
+
+df_zonal_adm0 <- bind_rows(
+  df_zonal_historical_adm0,
+  df_zonal_latest_adm0
+) %>%
+  mutate(
+    # units are m/s - convert to meters: 60 s * 60 minutes * 24 hours * 30 days
+    # meters to mm = m * 1000
+    total_mean_mm = (mean * (60 * 60 * 24 * 30)) * 1000
+  )
+```
+
+You can add options to executable code like this
+
+```{r}
+
+df_adm0_trim <- df_zonal_adm0 %>% 
+  rename(
+    date_predict = "date"
+  ) %>% 
+  mutate(
+    date_forecast_gen = date_predict - months(leadtime-1)
+  ) %>% 
+  arrange(date_forecast_gen, date_predict) %>% 
+    mutate(
+    lgl_mjj = month(date_predict) %in% c(5,6,7),
+    lgl_jja = month(date_predict) %in% c(6,7,8),
+    lgl_son = month(date_predict) %in% c(9,10,11)
+  ) %>% 
+  pivot_longer(
+    cols = starts_with("lgl_"),
+    names_to = "window",
+    values_to = "in_season"
+  ) %>%
+  filter(in_season) %>% 
+  arrange(date_forecast_gen, date_predict)
+
+df_adm0_trim_sum <- df_adm0_trim %>% 
+    group_by(
+      adm0_es,
+    yr = floor_date(date_predict,"year"),
+    date_forecast_gen,
+    window
+  ) %>% 
+  summarise(
+    sum_mm =sum(total_mean_mm, na.rm = TRUE),
+    n=n(), # just for checking
+    .groups = "drop"
+  )
+
+df_adm0_trim_max_per_year <- df_adm0_trim_sum %>% 
+  group_by(
+   adm0_es, yr, window
+  ) %>% 
+  slice_max(sum_mm, n=1) 
+
+```
+
+```{r}
+
+
+
+df_adm0_rps <- df_adm0_trim_max_per_year %>% 
+  split(.$adm0_es) %>% 
+  imap(
+    \(dft_country,country){
+      dft_country %>% 
+        split(.$window) %>% 
+        imap(
+          \(dft_window,window){
+          gev_fit <- fevd(dft_window$sum_mm, type = "GEV")
+          return_levels_ci <- return.level(
+            x = gev_fit,
+            return.period = c(2,5),
+            do.ci = TRUE,
+            alpha = 0.05
+          )
+          tibble(
+            RP = c(2,5),
+            estimate_low = xyz.coords(return_levels_ci)$x,
+            estimate_upp = xyz.coords(return_levels_ci)$z,
+            estimate = xyz.coords(return_levels_ci)$y,
+            window =window
+          )
+          }
+        ) %>% 
+        list_rbind() %>% 
+        mutate(
+          adm0_es = country
+        )
+    }
+  ) %>% 
+  list_rbind() %>% 
+  mutate(
+  seas_label = case_when(
+      str_detect(window,"jja$")~ "JJA",
+      str_detect(window,"mjj$")~ "MJJ",
+      str_detect(window,"son$")~ "SON",
+    )  %>% 
+    fct_relevel(c("MJJ","JJA","SON"))
+  )
+  
+```
+
+## RPs
+
+After Runningn RP calcs, I realized RPs don't make sense because we are looking at drought 🤦‍♂️
+
+```{r}
+library(gt)
+df_rp_table <- df_adm0_rps %>% 
+  select(RP,adm0_es,RP_value = estimate, seas_label) %>% 
+  mutate(
+    seas_rp_label = glue("{seas_label} ({RP} yr RP)")
+  ) %>% 
+  select(adm0_es, RP_value,seas_rp_label) %>% 
+  pivot_wider(names_from = seas_rp_label, values_from = RP_value) 
+
+df_rp_table %>% 
+  gt() %>% 
+  fmt_number(
+    columns = everything(),
+    decimals = 0
+  ) 
+```
+
+```{r}
+
+df_adm0_trim_class <- df_adm0_trim_max_per_year %>% 
+  ungroup() %>% 
+  left_join(
+    df_adm0_rps %>% 
+      select(RP, adm0_es, estimate, window) %>% 
+      pivot_wider(names_from = RP, values_from = estimate, names_prefix = "RP_"), 
+    ) %>% 
+  ungroup() %>% 
+  mutate(
+  class_rp=case_when(
+    sum_mm >= RP_5 ~ "≥ 5 year RP",
+    sum_mm >= RP_2 ~ "≥ 2 year RP",
+    .default= "< 2 year RP"
+  ),
+   seas_label = case_when(
+      str_detect(window,"jja$")~ "JJA",
+      str_detect(window,"mjj$")~ "MJJ",
+      str_detect(window,"son$")~ "SON",
+    ) %>% 
+    fct_relevel(c("MJJ","JJA","SON"))
+  ) 
+
+use_date_breaks <-  
+  c(seq(as_date("1981-01-01"), as_date("2010-01-01"), by = "5 year"),
+    seq(as_date("2011-01-01"), as_date("2020-01-01"), by = "2 year"),
+    seq(as_date("2021-01-01"), as_date("2023-01-01"), by = "1 year")
+  )
+    
+    
+df_adm0_trim_class %>% 
+  ggplot(aes(x=yr, y= sum_mm))+
+  geom_point(aes(color=class_rp))+
+  geom_line()+
+  facet_grid(
+    rows = vars(adm0_es), 
+    cols=vars(seas_label)
+    )+
+  geom_hline(
+    data= df_adm0_rps,
+    aes(yintercept= estimate))+
+  scale_x_date(
+    breaks = as_date(use_date_breaks),
+    date_labels = "%y"
+  )+
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  )
+
+```
+
+## Percentiles
+
+Maybe percentiles make more sense then.
+
+```{r}
+df_adm0_trim_sum <- df_adm0_trim %>% 
+    group_by(
+      adm0_es,
+    yr = floor_date(date_predict,"year"),
+    date_forecast_gen,
+    window
+  ) %>% 
+  summarise(
+    sum_mm =sum(total_mean_mm, na.rm = TRUE),
+    n=n(), # just for checking
+    .groups = "drop"
+  )
+
+df_adm0_trim_min_per_year <- df_adm0_trim_sum %>% 
+  filter(n>=3) %>% 
+  group_by(
+   adm0_es, yr, window
+  ) %>% 
+  slice_min(sum_mm, n=1) %>% 
+  ungroup() %>% 
+  mutate(
+    uid = row_number()
+  )
+
+
+df_adm0_pctile_class <- df_adm0_trim_min_per_year %>% 
+  group_by(
+    adm0_es,window
+  ) %>% 
+  reframe(
+    pctile = c(0.01, 
+               0.05,
+               0.1,
+               seq(.15, .95, .05),
+               0.99),
+    mm= quantile(sum_mm, c(0.01, 0.05,0.1, seq(.15, .95, .05), 0.99))
+    # mm= quantile(sum_mm, unique(pctile))
+    ) %>% 
+  mutate(
+     seas_label = case_when(
+      str_detect(window,"jja$")~ "JJA",
+      str_detect(window,"mjj$")~ "MJJ",
+      str_detect(window,"son$")~ "SON",
+    ) %>% 
+    fct_relevel(c("MJJ","JJA","SON"))
+  )
+ df_adm0_pctile_class %>% 
+   filter(
+     pctile==0.01
+   )
+ 
+ df_min_years <- df_adm0_trim_min_per_year %>% 
+   group_by(adm0_es,window) %>% 
+   slice_min(sum_mm,n=8)
+
+df_adm0_trim_min_per_year %>% 
+  ungroup() %>% 
+    mutate(
+     seas_label = case_when(
+      str_detect(window,"jja$")~ "JJA",
+      str_detect(window,"mjj$")~ "MJJ",
+      str_detect(window,"son$")~ "SON",
+    ) %>% 
+    fct_relevel(c("MJJ","JJA","SON")),
+    min_year = uid %in% df_min_years$uid 
+    ) %>% 
+  ggplot(aes(x=yr,
+             y= sum_mm))+
+    # geom_vline(data= . %>% 
+    #            filter(min_year),
+    #          aes(xintercept= yr),
+    #          color = hdx_hex("tomato-hdx")
+    #          )+
+  geom_point(aes(color=min_year))+
+  geom_line()+
+  facet_grid(
+    rows = vars(adm0_es), 
+    cols=vars(seas_label)
+    )+
+  geom_hline(
+    data= df_adm0_pctile_class %>% 
+      filter(pctile%in% c(0.05,0.2)),
+    aes(yintercept= mm))+
+      geom_text(data= . %>% 
+               filter(min_year),
+             aes(x=yr,y = sum_mm,label=format(yr,"%y")),
+             nudge_y = -50
+             
+             )+
+  scale_x_date(
+    breaks = as_date(use_date_breaks),
+    date_labels = "%y"
+  )+
+  
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  )
+```
+
+## chatting w/ tristan
