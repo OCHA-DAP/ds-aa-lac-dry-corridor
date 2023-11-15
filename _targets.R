@@ -173,7 +173,7 @@ list(
         "adm0_pcode"
       ),
       simplify_poly = 0.01
-     
     )
   )
 )
+
