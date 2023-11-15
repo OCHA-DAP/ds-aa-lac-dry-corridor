@@ -1,30 +1,22 @@
-# Created by use_targets().
-# Follow the comments below to fill in this target script.
-# Then follow the manual to check and run the pipeline:
-#   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline
-
 # Load packages required to define the pipeline:
 library(targets)
-library(rnaturalearth)
-library(sf)
-library(tidyverse)
-library(rgee)
-library(janitor)
-library(rgee)
-library(tidyrgee)
-library(exactextractr)
-library(terra)
-library(tidync)
-
-# library(tarchetypes) # Load other packages as needed.
-
+tar_source()
 # Set target options:
 tar_option_set(
-  packages = c("tibble") # packages that your targets need to run
+  packages = c("rnaturalearth",
+               "sf",
+               "tidyverse",
+               "rgee",
+               "janitor",
+               "tidyrgee",
+               "exactextractr",
+               "terra",
+               "tidync"
+               ) # packages that your targets need to run
 )
 options(clustermq.scheduler = "multicore")
 
-tar_source()
+
 
 fp_iri_prob <- file.path(
   Sys.getenv("AA_DATA_DIR"),
@@ -147,6 +139,41 @@ list(
 
       # All VHI thresholds to run
       threshold_seq = seq(0.05, 1, by = 0.05)
+    )
+  ),
+  tar_target(
+    name = df_vhi_median_over_crop,
+    command = cropland_vhi_pt_estimate(
+
+      # all monthly VHI raster directory
+      vhi_raster_dir = file.path(
+        Sys.getenv("AA_DATA_DIR"),
+        "private",
+        "raw",
+        "lac",
+        "vhi_fao"
+      ),
+      # file path to cropland fraction raster
+      cropland_raster_fp = file.path(
+        Sys.getenv("AA_DATA_DIR"),
+        "public",
+        "raw",
+        "glb",
+        "cropland",
+        "GlcShare_v10_02",
+        "glc_shv10_02.Tif"
+      ),
+
+      # admin 0 polygon
+      poly = gdf_aoi_adm$adm0,
+
+      # retain these cols in zonal stats
+      poly_cols = c(
+        "adm0_es",
+        "adm0_pcode"
+      ),
+      simplify_poly = 0.01
+     
     )
   )
 )
