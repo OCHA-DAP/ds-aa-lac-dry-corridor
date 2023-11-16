@@ -1,0 +1,966 @@
+---
+title: "IRI_VHI_Trigger_Proposal_Revised V1"
+format: html
+editor: visual
+---
+
+## Intro
+
+This document will attempt to propose a v1 trigger for all 3 monitoring windows using just IRI seasonal forecast and VHI (FAO) data. In v2 of the proposal we may want to also consider ECMWF seasonal foreast data.
+
+From previous analysis it's fairly clear that we can aggregate VHI (by median value) for each country and set a reasonable threshold between 40 & 50. Due to lack of historical IRI data this threshold is not well informed.
+
+FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of ≥25 % of cropland with a VHI < 0.35. This is based on some global analysis they have peformed. However, all the details are not yet available. 
+
+Therefore let's more critically examine the VHI indicator.
+
+
+## VHI
+
+Come up w/ 3 year RP joint prob. However, if using IRI data we don;t have long enough record to justify lowering it due to VHI, Therefore let's go with an extremem 5-10 year RP for VHI that will trigger it on it's own or allow for a just over bavg forecastr -- have to be pick in months
+
+## IRI approx 42.5
+
+Boom
+
+
+## IRI 40 + VHI 5 year
+
+
+```{r}
+library(targets)
+library(janitor)
+library(tidyverse)
+tar_load(df_vhi_median_over_crop)
+df_chirps <- read_csv(file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "public",
+  "processed",
+  "lac",
+  "chirps_monthly_adm0.csv"
+))
+
+
+
+```
+
+
+## Driest years
+```{r}
+df_vhi_chirps <- bind_rows(
+  df_vhi_median_over_crop %>% 
+    mutate(
+      date= as_date(paste0(date,"-01")),
+      indicator = "Median VHI"
+    ),
+  df_chirps %>% 
+    clean_names() %>% 
+    select(adm0_es=adm0_name, stat=parameter, date ,value) %>% 
+    mutate(
+      indicator = "monthly precip"
+    )
+)
+
+
+
+df_vhi_chirps %>% 
+  filter(indicator =="monthly precip") %>% 
+  ggplot(
+    aes(
+      x= date, y= value
+    )
+    
+  )+
+  geom_line(color =hdx_hex("sapphire-dark"),
+    alpha=0.5)+
+  geom_line(
+    data= df_vhi_chirps %>% 
+  filter(indicator =="Median VHI"),
+  aes(x= date, y= value *500), color=hdx_hex("mint-dark"),alpha=0.8
+  )+
+  scale_y_continuous(name = "monthly precip",
+                     sec.axis = sec_axis(~./500, name = "Median VHI")
+                     )+
+  facet_wrap(~adm0_es)
+
+
+df_chirps_yearly_historical <- df_vhi_chirps %>% 
+  filter(
+    indicator =="monthly precip",
+    year(date)<2023
+         ) %>% 
+  group_by(yr= floor_date(date,"year"),adm0_es) %>% 
+  
+  summarise(
+    mm_yearly = sum(value),.groups="drop"
+  )
+
+driest_yrs<- df_chirps_yearly_historical %>% 
+  group_by(adm0_es) %>% 
+  slice_min(n = 5,order_by = mm_yearly)
+
+p_yearly<- df_chirps_yearly_historical %>% 
+  ggplot(
+    aes(x= yr,
+        y= mm_yearly, 
+        color = adm0_es,
+        group=adm0_es)
+  )+
+  geom_line()+
+  geom_point(
+    data= driest_yrs,
+    aes(x= yr, y= mm_yearly)
+  )
+
+p_yearly
+
+```
+
+ Table
+```{r}
+gt_table_driest_years <-  df_chirps_yearly_historical %>% 
+  group_by(adm0_es) %>% 
+   arrange(
+     mm_yearly
+   ) %>% 
+   mutate(
+     rank = row_number()
+   ) %>% 
+  pivot_wider(
+    names_from = adm0_es,
+    values_from = mm_yearly:rank
+  ) %>% 
+   arrange(yr) %>% 
+  gt() %>% 
+  gt::cols_hide(
+    starts_with("rank")
+    ) %>% 
+   gt::cols_label(
+     yr="Year",
+    mm_yearly_Honduras= "Honduras",
+    `mm_yearly_El Salvador`= "El Salvador",
+    `mm_yearly_Nicaragua`= "Nicaragua",
+    `mm_yearly_Guatemala`= "Guatemala",
+    
+   ) %>% 
+  tab_header(
+    title = "Driest years by country"
+  ) %>% 
+  data_color(
+        columns= c("mm_yearly_El Salvador"),
+        rows = `rank_El Salvador`<=5,
+        method = "numeric",
+        palette = "YlOrRd",
+        reverse=T
+      ) %>% 
+  data_color(
+        columns= c("mm_yearly_Guatemala"),
+        rows = `rank_Guatemala`<=5,
+        method = "numeric",
+        palette = "YlOrRd",
+        reverse=T
+      ) %>% 
+  data_color(
+        columns= c("mm_yearly_Honduras"),
+        rows = `rank_Honduras`<=5,
+        method = "numeric",
+        palette = "YlOrRd",
+        reverse=T
+      ) %>% 
+  data_color(
+        columns= c("mm_yearly_Nicaragua"),
+        rows = `rank_Nicaragua`<=5,
+        method = "numeric",
+        palette = "YlOrRd",
+        reverse=T
+      ) 
+
+
+gt_table_driest_years
+  
+```
+
+```{r}
+df_chirps_yearly_historical %>% 
+  ggplot(
+    aes(x= mm_yearly)
+  )+
+  geom_histogram()+
+  facet_wrap(~adm0_es)
+
+yearly_lower_33<- df_chirps_yearly_historical %>% 
+  group_by(adm0_es) %>% 
+  summarise(
+    q33= quantile(mm_yearly,0.33),
+  )
+
+df_chirps_classified<- df_chirps %>% 
+  clean_names() %>% 
+  group_by(adm0_es=adm0_name, yr= floor_date(date,"year")) %>% 
+  mutate(
+   mm_yearly = sum(value)
+ ) %>% 
+  ungroup() %>% 
+  left_join(yearly_lower_33) %>% 
+  mutate(
+    drier_third =mm_yearly<= q33
+  )
+
+df_chirps_classified %>% 
+  group_by(
+    adm0_es,drier_third, month = month(date, label =T)
+  ) %>% 
+  summarise(
+    mm = mean(value)
+  ) %>% 
+  ggplot(
+    aes(x= month, y= mm)
+  )+
+  geom_bar(
+    aes(fill= drier_third), stat= "identity",position="dodge"
+  )
+
+df_chirps_classified %>% 
+  group_by(
+    adm0_es, mo = month(date, label =T)
+  ) %>% 
+  slice_min(
+    order_by = value,n=3
+  ) %>% 
+  select(adm0_es, mo, date,value) %>% 
+  filter(
+    mo %in% c("Jul","Jun","Aug")
+  ) %>% 
+  arrange(mo) %>% 
+  print(n=nrow(.))
+
+df_chirps_windows <- df_chirps_classified %>% 
+  group_by(
+    lgl_mjj =month(date)%in% c(5,6,7),
+    lgl_jja =month(date)%in% c(6,7,8),
+    lgl_son =month(date)%in% c(9,10,11),
+  )
+
+df_chirps_windows_summed <- c("lgl_mjj","lgl_jja","lgl_son") %>% 
+  map(
+    ~df_chirps_windows %>% 
+      group_by(
+        across(starts_with("adm")),
+        yr_date=floor_date(date,"year"),
+        !!sym(.x)
+      ) %>% 
+      summarise(
+        mm = sum(value),.groups="drop"
+      ) %>% 
+      filter(!!sym(.x)) %>% 
+      mutate(
+        window = .x
+      ) %>% 
+      select(-any_of(.x))
+  ) %>% 
+  list_rbind()
+
+
+
+lower_third_windows <- df_chirps_windows_summed %>% 
+  group_by(adm0_es, window) %>% 
+  summarise(
+    q_33= quantile(mm,0.33)
+  )
+
+df_chirps_windows_summed_classified <- df_chirps_windows_summed %>% 
+  left_join(
+    lower_third_windows
+  ) %>% 
+  mutate(
+    lgl_q33 = mm<=q_33
+  ) 
+
+df_chirps_windows_summed_classified %>% 
+  ggplot(
+    aes(x= yr_date, y= mm)
+  )+
+  geom_line()+
+  geom_point(aes(col= lgl_q33))+
+  facet_grid (
+    cols = vars(window),
+    rows= vars(adm0_es)
+  )
+
+
+df_chrirps_windows_wide <- df_chirps_windows_summed_classified %>% 
+  ungroup() %>% 
+  select(-adm0_name) %>% 
+  group_by(adm0_es, window) %>% 
+  arrange(mm) %>% 
+  mutate(
+    rank = row_number()
+  ) %>% 
+  select(
+    adm0_es, yr_date,window, rank,mm,
+  ) %>% 
+  pivot_wider(
+    names_from = c("window","adm0_es"),
+    values_from=c("rank","mm")
+  ) %>% 
+  arrange(yr_date) 
+  df_chrirps_windows_wide %>% 
+    glimpse()
+  
+mute_palette <-  "Oranges"
+mute_alpha <- 0.1
+
+  
+df_chrirps_windows_wide %>% 
+  gt() %>% 
+  #   tab_style(
+  #   style = list(
+  #     cell_text(color = "black", weight = "bold")
+  #   )
+  # )
+  cols_hide(columns= starts_with("rank")) %>% 
+  cols_label(
+    yr_date="Year",
+    mm_lgl_mjj_Honduras= "MJJ (window 1)",
+    mm_lgl_jja_Honduras= "JJA (window 2)",
+    mm_lgl_son_Honduras= "SON (window 3)",
+    mm_lgl_mjj_Nicaragua= "MJJ (window 1)",
+    mm_lgl_jja_Nicaragua= "JJA (window 2)",
+    mm_lgl_son_Nicaragua= "SON (window 3)",
+    mm_lgl_mjj_Guatemala= "MJJ (window 1)",
+    mm_lgl_jja_Guatemala= "JJA (window 2)",
+    mm_lgl_son_Guatemala= "SON (window 3)",
+    `mm_lgl_mjj_El Salvador`= "MJJ (window 1)",
+    `mm_lgl_jja_El Salvador`= "JJA (window 2)",
+    `mm_lgl_son_El Salvador`= "SON (window 3)",
+  ) %>%
+  tab_spanner(columns = c("mm_lgl_mjj_Honduras","mm_lgl_jja_Honduras","mm_lgl_son_Honduras"), label = "Honduras") %>% 
+  tab_spanner(columns = c("mm_lgl_mjj_Nicaragua","mm_lgl_jja_Nicaragua","mm_lgl_son_Nicaragua"), label = "Nicaragua") %>% 
+  tab_spanner(columns = c("mm_lgl_mjj_Guatemala","mm_lgl_jja_Guatemala","mm_lgl_son_Guatemala"), label = "Guatemala") %>% 
+  tab_spanner(columns = c("mm_lgl_mjj_El Salvador","mm_lgl_jja_El Salvador","mm_lgl_son_El Salvador"), label = "El Salvador") %>% 
+  # tab_spanner(columns = ends_with("Nicaragua"), label = "Nicarauga") %>% 
+  # tab_spanner(columns = ends_with("Guatemala"), label = "Guatemala") %>% 
+  # tab_spanner(columns = ends_with("El Salvador"), label = "El Salvador") %>% 
+  tab_header(
+    title = "Driest years by country"
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_Honduras"),
+    rows = `rank_lgl_mjj_Honduras`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_Honduras"),
+    rows = `rank_lgl_mjj_Honduras`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_Honduras"),
+    rows = `rank_lgl_jja_Honduras`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_Honduras"),
+    rows = `rank_lgl_jja_Honduras`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_Honduras"),
+    rows = `rank_lgl_son_Honduras`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_Honduras"),
+    rows = `rank_lgl_son_Honduras`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_Nicaragua"),
+    rows = `rank_lgl_mjj_Nicaragua`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_Nicaragua"),
+    rows = `rank_lgl_mjj_Nicaragua`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_Nicaragua"),
+    rows = `rank_lgl_jja_Nicaragua`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_Nicaragua"),
+    rows = `rank_lgl_jja_Nicaragua`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_Nicaragua"),
+    rows = `rank_lgl_son_Nicaragua`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_Nicaragua"),
+    rows = `rank_lgl_son_Nicaragua`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_Guatemala"),
+    rows = `rank_lgl_mjj_Guatemala`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_Guatemala"),
+    rows = `rank_lgl_mjj_Guatemala`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_Guatemala"),
+    rows = `rank_lgl_jja_Guatemala`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_Guatemala"),
+    rows = `rank_lgl_jja_Guatemala`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_Guatemala"),
+    rows = `rank_lgl_son_Guatemala`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_Guatemala"),
+    rows = `rank_lgl_son_Guatemala`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_El Salvador"),
+    rows = `rank_lgl_mjj_El Salvador`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_mjj_El Salvador"),
+    rows = `rank_lgl_mjj_El Salvador`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_El Salvador"),
+    rows = `rank_lgl_jja_El Salvador`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_jja_El Salvador"),
+    rows = `rank_lgl_jja_El Salvador`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_El Salvador"),
+    rows = `rank_lgl_son_El Salvador`<=5,
+    method = "numeric",
+    palette = "YlOrRd",
+    alpha=1,
+    reverse=T
+  ) %>% 
+  data_color(
+    columns= c("mm_lgl_son_El Salvador"),
+    rows = `rank_lgl_son_El Salvador`>5,
+    method = "numeric",
+    palette = mute_palette,
+    alpha=mute_alpha,
+    reverse=T
+  ) 
+
+  glimpse()
+
+  split(.$adm0_es) %>% 
+  map(
+    \(dft){
+      dft %>% 
+        select(-lgl_q33, -q_33) %>% 
+        pivot_wider(
+          names_from = window,
+          values_from=mm
+        ) %>% 
+        gt() %>% 
+        cols_label(
+          yr_date="Year",
+          lgl_mjj= "MJJ (window 1)",
+          lgl_jja= "JJA (window 2)",
+          lgl_son= "SON (window 3)",
+        ) %>%
+        cols_hide(columns =c("adm0_code","adm0_name")) %>% 
+        tab_header(
+          title = "Driest years by country"
+        ) %>% 
+        data_color(
+          columns= c("lgl_mjj","lgl_jja","lgl_son"),
+          # rows = `rank_El Salvador`<=5,
+          method = "numeric",
+          palette = "YlOrRd",
+          alpha=0.5,
+          reverse=T
+        ) 
+    }
+  )
+
+gt_chirps_windows$Nicaragua
+gt_chirps_windows$Guatemala
+gt_chirps_windows$Honduras
+gt_chirps_windows$`El Salvador`
+
+```
+
+```{r}
+
+select(
+    date,
+    starts_with("adm"),
+    starts_with("lgl"),
+    value
+  ) %>% 
+  ungroup() %>% 
+  filter(
+    if_any(starts_with("lgl"),~.x==T)
+  ) %>% 
+  pivot_longer(
+    cols = starts_with("lgl"),
+    # names_to = "window",
+    values_to = "value"
+  ) 
+    
+  )
+  pivot_longer(
+    cols = starts_with("lgl"),
+    names_to = "window",
+    values_to = "lgl"
+  ) %>% 
+  group_by(
+    adm0_es,yr, window
+  ) %>% 
+  summarise(
+    mm= sum(value)
+  ) 
+  
+
+
+
+summarise(
+    mm = mean(value)
+  ) %>% 
+  ggplot(
+    aes(x= month, y= mm)
+  )+
+  geom_bar(
+    aes(fill= drier_third), stat= "identity",position="dodge"
+  )+
+  facet_wrap(~adm0_es)
+
+  
+  
+```
+
+
+```{r}
+df_vhi_chirps_anom <- df_vhi_chirps %>% 
+  mutate(
+    mo = month(date,label=T)
+  ) %>% 
+  group_by(
+    adm0_es,  indicator,mo
+  ) %>% 
+  mutate(
+    mean =mean(value),
+    stdev = sd(value),
+    diff_mean = value - mean,
+    z_score = diff_mean/stdev
+    
+  )
+
+df_vhi_chirps_anom %>% 
+  ggplot(
+    aes(
+      x= date, y= z_score, color =indicator, group=indicator
+    )
+    
+  )+
+  geom_line(
+    alpha=0.5)+
+  scale_y_continuous(
+                     
+                     )+
+  facet_wrap(~adm0_es)
+
+drought_years <-  c(2014, 2018)
+
+df_vhi_chirps_anom %>% 
+  select(adm0_es, indicator, date, z_score) %>% 
+  mutate(
+    in_drought = year(date)%in% drought_years
+  ) %>% 
+  pivot_wider(
+    names_from = indicator,
+    values_from = z_score
+  ) %>% 
+  ggplot(
+    aes(x= `monthly precip`, y= `Median VHI`, color=in_drought)
+  )+
+  geom_point()+
+  facet_wrap(
+    ~adm0_es
+  )
+
+```
+
+Since VHI is observed we can only look-back so what are the months we would be looking back at?
+
+- First trigger window is MJJ
+  + VHI not included in monitoring framework
+- Second trigger window is JJA
+  + at end of May/early July we can look back at **May** & **April**
+- Third trigger window is SON
+  + at end of August/early September we can look back at **August** & **July**
+
+```{r}
+# window 2
+  
+df_vhi_relevant_windows <- df_vhi_chirps_anom %>% 
+  mutate(
+    window = case_when(
+      mo %in% c("May","Apr") ~ "window 2",
+      mo %in% c("Aug","Jul") ~ "window 3"
+    )
+  ) %>% 
+  filter(!is.na(window),
+         indicator =="Median VHI")
+
+
+
+
+
+df_vhi_freq_thresh <- 
+  map2(
+    \(thresh_temp){
+      df_vhi_relevant_windows %>% 
+        split(,$window) %>% 
+        pivot_wider
+       mutate(
+         lgl_lte = value <= thresh_temp
+       ) %>% 
+       group_by(adm0_es,window,mo) %>%
+        summarise(
+          freq_pct = sum(lgl_lte)/n(),
+          freq_count = sum(lgl_lte),.groups="drop"
+        ) %>% 
+        mutate(
+          thresh= thresh_temp,
+        )
+    }
+  ) %>% 
+  list_rbind()
+
+target_rp <-  3
+target_pct <-  1/target_rp
+
+
+
+
+# filter to values closest to target pct
+df_thresh_optimal <- df_vhi_freq_thresh %>% 
+  mutate(
+    diff = abs(freq_pct - target_pct)
+  ) %>% 
+  arrange(diff) %>% 
+  group_by(window,adm0_es) %>% 
+  slice_min(n = 2, order_by = diff) %>% 
+  slice_min(n= 1, order_by= thresh) %>% 
+  mutate(
+    thresh_uid = paste0(adm0_es, window, mo)
+  )
+  
+  
+
+df_vhi_relevant_windows %>% 
+  ungroup() %>% 
+  mutate(
+    thresh_uid = paste0(adm0_es, window, mo),
+    lgl_breach = value < filter(df_thresh_optimal, thresh_uid == thresh_uid)$thresh
+  ) %>% 
+  ggplot(
+    aes(
+      x= date, y= value
+    )
+  )+
+  geom_line()+ 
+  geom_point(
+    aes(color=lgl_breach)
+  )+
+  scale_color_manual(values=c(hdx_hex("mint-hdx"),hdx_hex("tomato-hdx")))+
+  facet_grid(
+    cols = vars(adm0_es),
+    rows = vars(window)
+  )
+
+
+```
+
+## Joint 
+```{r}
+
+df_vhi_mean_sd <- df_vhi_relevant_windows %>% 
+  group_by(
+    across(starts_with("adm")),
+    window, 
+    mo = month(date)
+  ) %>% 
+  summarise(
+    mean = mean(value),
+    stdev = sd(value)
+  )
+df_vhi_window_z_min <- df_vhi_relevant_windows %>% 
+  group_by(
+    across(starts_with("adm")),
+    window, 
+    yr= year(date)
+  ) %>% 
+  summarise(
+    z_score =min(z_score)
+  )
+z_range <- df_vhi_window_z_min %>% 
+  pull(z_score) %>% 
+  range()
+
+df_vhi_relevant_windows %>% 
+  ggplot(
+    aes(x= z_score)
+  )+
+  geom_histogram()+
+  facet_grid(rows= vars(adm0_es),cols=vars(window))
+
+
+
+
+thresholds_quantiile <- df_vhi_window_z_min %>% 
+   group_by(
+    across(starts_with("adm")),
+    window) %>% 
+  summarise(
+    q_z_33 = quantile(z_score,0.33)
+    
+  ) %>% 
+  left_join(
+    df_vhi_mean_sd %>% 
+      group_by(
+        across(starts_with("adm")),
+        window
+      ) %>% 
+      arrange(
+        mo
+      ) %>% 
+      mutate(
+        mo_order = row_number()
+      ) %>% 
+      select(-mo) %>% 
+      pivot_wider(
+        names_from = mo_order,
+        values_from = c(mean,stdev),
+        names_glue = "{.value}_{mo_order}"
+      )
+    
+  ) %>% 
+  mutate(
+    q_abs_33_month1 = (q_z_33*stdev_1)+mean_1,
+    q_abs_33_month2 = (q_z_33*stdev_2)+mean_2
+  )
+  
+
+
+df_vhi_relevant_windows %>% 
+  left_join(thresholds_quantiile)
+
+
+
+seq(z_range[1], z_range[2], by =0.05) %>% 
+  map(\(thresh_temp){
+    df_vhi_relevant_windows %>% 
+                                     mutate(
+                                       z_score = z<= t1,
+                                       month_2_lte = month_2<= t2,
+                                       month_1_or_2_lte = month_1_lte|month_2_lte
+                                     ) 
+  }
+    
+  )
+```
+
+
+```{r}
+
+thresh_combos <- expand_grid(
+  thresh_1 = seq(0,1,0.01),
+  thresh_2 = seq(0,1,0.01)
+)
+
+df_vhi_relevant_for_thresholding <- df_vhi_relevant_windows %>% 
+  ungroup() %>% 
+  mutate(
+    yr = year(date)
+  ) %>% 
+  select(starts_with("adm"),yr,value,mo,window) %>% 
+  split(.$window) %>% 
+  map(
+    \(dft){
+      dft %>% 
+        pivot_wider(
+    names_from = "mo",
+    values_from = "value",
+  ) %>% 
+        
+        rename(
+          month_1 = 5,
+          month_2 = 6
+        )
+    }
+  ) %>% 
+  list_rbind() 
+
+df_vhi_conditional_thresh<- map2(thresh_combos$thresh_1, 
+                                 thresh_combos$thresh_2,
+                                 \(t1,t2){
+                                   df_vhi_relevant_for_thresholding %>% 
+                                     mutate(
+                                       month_1_lte = month_1<= t1,
+                                       month_2_lte = month_2<= t2,
+                                       month_1_or_2_lte = month_1_lte|month_2_lte
+                                     ) %>% 
+                                     group_by(adm0_es,window) %>%
+                                     summarise(
+                                       conditonal_pct = sum(month_1_or_2_lte)/n(),
+                                       conditional_count = sum(month_1_or_2_lte),
+                                       mo1_pct = sum(month_1_lte)/n(),
+                                       mo1_count = sum(month_1_lte),
+                                       mo2_pct = sum(month_2_lte)/n(),
+                                       mo2_count = sum(month_2_lte),
+                                       .groups="drop"
+                                     ) %>% 
+                                     mutate(
+                                       thresh1 = t1,
+                                       thresh2 = t2
+                                     )
+                                 }) %>% 
+  list_rbind()
+
+df_vhi_conditional_thresh %>% 
+  count(conditonal_pct) %>% 
+  print(n=nrow(.))
+df_vhi_conditional_thresh %>% 
+  mutate(
+    diff_conditional_targ = abs(conditonal_pct - target_pct)
+  ) %>% 
+  group_by(adm0_es,window) %>% 
+  slice_min(order_by = diff_conditional_targ,with_ties = T
+  ) %>% 
+  View()
+
+
+# filter to values closest to target pct
+df_conditional_thresh_optimal <- df_vhi_conditional_thresh %>% 
+  mutate(
+    diff = abs(freq_pct - target_pct),
+    thresh_diff= abs(thresh1 - thresh2)
+  ) %>% 
+  group_by(window,adm0_es) %>% 
+  filter(between(freq_pct,0.32,0.34)) %>% 
+  arrange(diff, thresh_diff)
+
+df_conditional_thresh_optimal %>% 
+  print(n=500)
+
+df_conditional_thresh_optimal %>% 
+  filter(window=="window 2") %>% 
+  filter(between(freq_pct,0.3,0.4)) %>% 
+  ggplot(
+    aes(x= thresh1, y= thresh2)
+  )+
+  geom_point()+
+  scale_x_continuous(breaks = seq(0,0.5,by =0.1))+
+  scale_y_continuous(breaks = seq(0,0.5,by =0.1))+
+  facet_wrap(
+    ~adm0_es
+  )
+  
+
+```
+
+
+
+```{r}
+
+
+
