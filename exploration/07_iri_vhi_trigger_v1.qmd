@@ -83,6 +83,8 @@ df_iri_adm0_z <- df_iri_adm0_pre %>%
   z_score_median = (median - mean_median)/stdev_median  
   )
 
+
+
 df_iri_adm0_summary_stats <- df_iri_adm0_pre %>% 
   # summmarise across lts
   group_by(adm0_es,predict_start_mo,seas_gen,seas) %>%
@@ -119,6 +121,79 @@ df_iri_adm0_summary_stats <- df_iri_adm0_pre %>%
  q_jp <- 1-eq_probs[1]
  rp_jp <- 1/eq_probs[1]
  
+ 
+ df_iri_adm0_pre_all_windows_threshold_straight <- df_iri_adm0_pre %>% 
+  group_by(adm0_es,predict_start_mo,seas_gen,seas) %>% 
+  summarise(
+    mean = max(mean),
+    median = max(median),.groups="drop"
+  ) %>% 
+  group_by(adm0_es, seas_gen) %>% 
+  summarise(
+    q_66_mean = quantile(mean,0.66),
+    q_66_median = quantile(median,0.66),
+    q_jp_mean = quantile(mean,q_jp),
+    q_jp_median = quantile(median,q_jp),
+  ) %>% 
+   filter(
+     seas_gen!="MJJ"
+   ) 
+   
+   
+gt_thresh_percentiles_straight <- df_iri_adm0_pre_all_windows_threshold_straight %>% 
+   pivot_wider(
+     names_from = seas_gen,
+     values_from = q_66_mean:q_jp_median
+   ) %>% 
+   ungroup() %>% 
+   gt() %>%
+   tab_spanner(
+     label="JJA (mean)",
+     ends_with("mean_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (mean)",
+     ends_with("mean_SON")
+   ) %>% 
+
+   tab_spanner(
+     label="JJA (median)",
+     ends_with("median_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (median)",
+     ends_with("median_SON")
+   ) %>% 
+   cols_label(
+     adm0_es= "Country",
+     q_66_mean_JJA = "3 year RP (weighted-chunks)",
+     q_jp_mean_JJA = "5.5 year RP (All-in)",
+     q_66_mean_SON = "3 year RP (weighted-chunks)",
+     q_jp_mean_SON = "5.5 year RP (All-in)",
+     q_66_median_JJA = "3 year RP (weighted-chunks)",
+     q_jp_median_JJA = "5.5 year RP (All-in)",
+     q_66_median_SON = "3 year RP (weighted-chunks)",
+     q_jp_median_SON = "5.5 year RP (All-in)"
+   ) %>% 
+   tab_spanner(
+     label ="Mean",
+     columns = contains("mean")
+   ) %>% 
+   tab_spanner(
+     label ="Median",
+     columns = contains("Median")
+   ) %>% 
+   fmt_number(
+     decimals = 1
+   ) %>% 
+   data_color(columns = where(is.numeric), 
+                 direction = "row",
+             colors = scales::col_numeric(palette = "Reds",
+                                          domain = NULL))
+   
+  
+
+ 
  df_iri_adm0_qunatiles <- df_iri_adm0_max_z%>% 
   group_by(adm0_es) %>% 
   summarise(
@@ -148,7 +223,80 @@ df_iri_prob_thresholds <- df_iri_adm0_summary_stats %>%
 The weighted chunk disbursement option lends itself towards setting the trigger thresholds to the desired RP independently. Since the desired RP is 3 years, we can set the threshold for each based on the 3 year RP. The "All-in" approach aligns better with considering a joint probability for either event as triggering. When considering joint probability of 2 events, there are limitless combinations of probabilities that can add up conditionally to reach any joint probability. Here we set the condition that both events will have the same probability of triggering which gives each event a 1 in **`r round(rp_jp,1)`** year RP. The table below compares how this would effect the threshold. Additionally, it compares how the thersholds are affected if the IRI values are aggregated by mean vs median.
 
 
+We've also been discussing whether or not it makes sense to set thresholds on anomalies or direct values. I think it make more sense to calcualte RPs on direct values in this specific use-case.
+
+
+### Thresholds Set on Percentiles Directly
+
+```{r}
+gt_thresh_percentiles_straight
+```
+
+
+
+### Thresholds set on Z-score Percentiles
 ```{r indepVsdep_table}
+
+gt_thresh_comparison <- df_iri_prob_thresholds %>% 
+  select(adm0_es,seas_gen,contains("_abs")) %>% 
+  ungroup() %>% 
+  pivot_wider(
+     names_from = seas_gen,
+     values_from = q_abs_66_mean:q_abs_jp_median
+   ) %>% 
+   ungroup() %>% 
+   gt() %>%
+   tab_spanner(
+     label="JJA (mean)",
+     ends_with("mean_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (mean)",
+     ends_with("mean_SON")
+   ) %>% 
+
+   tab_spanner(
+     label="JJA (median)",
+     ends_with("median_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (median)",
+     ends_with("median_SON")
+   ) %>% 
+   cols_label(
+     adm0_es= "Country",
+     q_abs_66_mean_JJA = "3 year RP (weighted-chunks)",
+     q_abs_jp_mean_JJA = "5.5 year RP (All-in)",
+     q_abs_66_mean_SON = "3 year RP (weighted-chunks)",
+     q_abs_jp_mean_SON = "5.5 year RP (All-in)",
+     q_abs_66_median_JJA = "3 year RP (weighted-chunks)",
+     q_abs_jp_median_JJA = "5.5 year RP (All-in)",
+     q_abs_66_median_SON = "3 year RP (weighted-chunks)",
+     q_abs_jp_median_SON = "5.5 year RP (All-in)"
+   ) %>% 
+   tab_spanner(
+     label ="Mean",
+     columns = contains("mean")
+   ) %>% 
+   tab_spanner(
+     label ="Median",
+     columns = contains("Median")
+   ) %>% 
+   fmt_number(
+     decimals = 1
+   ) %>% 
+   data_color(columns = where(is.numeric), 
+                 direction = "row",
+             colors = scales::col_numeric(palette = "Reds",
+                                          domain = NULL))
+
+gt_thresh_comparison
+```
+
+
+
+
+```{r eval= F, echo=F}
 gt_thresh_comparison <- df_iri_prob_thresholds %>% 
   select(adm0_es,seas_gen,contains("_abs")) %>% 
   ungroup() %>% 
@@ -194,6 +342,94 @@ However, partners have expressed that 1 month lead time is not sufficient to del
 - For JJA we monitor:FMA
 - For SON we monitor: MJJ
 
+### Percentiles/RPs from direct values
+
+```{r}
+
+
+  
+  df_iri_lt1_rm_thresholds_straight <- df_iri_adm0_pre %>% 
+    filter(
+    # May too late for JJA
+    !(seas_gen == "JJA" & month(date)==5),
+    # August too late for SON
+    !(seas_gen == "SON" & month(date)==8)
+  ) %>% 
+
+  group_by(adm0_es,predict_start_mo,seas_gen,seas) %>% 
+  summarise(
+    mean = max(mean),
+    median = max(median),.groups="drop"
+  ) %>% 
+  group_by(adm0_es, seas_gen) %>% 
+  summarise(
+    q_66_mean = quantile(mean,0.66),
+    q_66_median = quantile(median,0.66),
+    q_jp_mean = quantile(mean,q_jp),
+    q_jp_median = quantile(median,q_jp),
+  ) %>% 
+   filter(
+     seas_gen!="MJJ"
+   ) 
+
+gt_thresh_percentiles_straight_rm_lt1 <-  
+  df_iri_lt1_rm_thresholds_straight %>% 
+   pivot_wider(
+     names_from = seas_gen,
+     values_from = q_66_mean:q_jp_median
+   ) %>% 
+   ungroup() %>% 
+   gt() %>%
+   tab_spanner(
+     label="JJA (mean)",
+     ends_with("mean_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (mean)",
+     ends_with("mean_SON")
+   ) %>% 
+
+   tab_spanner(
+     label="JJA (median)",
+     ends_with("median_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (median)",
+     ends_with("median_SON")
+   ) %>% 
+   cols_label(
+     adm0_es= "Country",
+     q_66_mean_JJA = "3 year RP (weighted-chunks)",
+     q_jp_mean_JJA = "5.5 year RP (All-in)",
+     q_66_mean_SON = "3 year RP (weighted-chunks)",
+     q_jp_mean_SON = "5.5 year RP (All-in)",
+     q_66_median_JJA = "3 year RP (weighted-chunks)",
+     q_jp_median_JJA = "5.5 year RP (All-in)",
+     q_66_median_SON = "3 year RP (weighted-chunks)",
+     q_jp_median_SON = "5.5 year RP (All-in)"
+   ) %>% 
+   tab_spanner(
+     label ="Mean",
+     columns = contains("mean")
+   ) %>% 
+   tab_spanner(
+     label ="Median",
+     columns = contains("Median")
+   ) %>% 
+   fmt_number(
+     decimals = 1
+   ) %>% 
+   data_color(columns = where(is.numeric), 
+                 direction = "row",
+             colors = scales::col_numeric(palette = "Reds",
+                                          domain = NULL))
+
+
+gt_thresh_percentiles_straight_rm_lt1
+   
+```
+
+### Percentiles/RPs from anomalies (Z-scores)
 ```{r}
 df_iri_adm0_pre <- df_iri_adm0 %>% 
   mutate(
@@ -290,6 +526,63 @@ df_iri_prob_thresholds_lt1_rm <- df_iri_adm0_summary_stats %>%
 gt_thresh_comparison_lt1_removed <- df_iri_prob_thresholds_lt1_rm %>% 
   select(adm0_es,seas_gen,contains("_abs")) %>% 
   ungroup() %>% 
+  pivot_wider(
+     names_from = seas_gen,
+     values_from = q_abs_66_mean:q_abs_jp_median
+   ) %>% 
+   ungroup() %>% 
+   gt() %>%
+   tab_spanner(
+     label="JJA (mean)",
+     ends_with("mean_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (mean)",
+     ends_with("mean_SON")
+   ) %>% 
+
+   tab_spanner(
+     label="JJA (median)",
+     ends_with("median_JJA")
+   ) %>% 
+   tab_spanner(
+     label="SON (median)",
+     ends_with("median_SON")
+   ) %>% 
+   cols_label(
+     adm0_es= "Country",
+     q_abs_66_mean_JJA = "3 year RP (weighted-chunks)",
+     q_abs_jp_mean_JJA = "5.5 year RP (All-in)",
+     q_abs_66_mean_SON = "3 year RP (weighted-chunks)",
+     q_abs_jp_mean_SON = "5.5 year RP (All-in)",
+     q_abs_66_median_JJA = "3 year RP (weighted-chunks)",
+     q_abs_jp_median_JJA = "5.5 year RP (All-in)",
+     q_abs_66_median_SON = "3 year RP (weighted-chunks)",
+     q_abs_jp_median_SON = "5.5 year RP (All-in)"
+   ) %>% 
+   tab_spanner(
+     label ="Mean",
+     columns = contains("mean")
+   ) %>% 
+   tab_spanner(
+     label ="Median",
+     columns = contains("Median")
+   ) %>% 
+   fmt_number(
+     decimals = 1
+   ) %>% 
+   data_color(columns = where(is.numeric), 
+                 direction = "row",
+             colors = scales::col_numeric(palette = "Reds",
+                                          domain = NULL))
+gt_thresh_comparison_lt1_removed
+```
+
+
+```{r eval=F, echo=F}
+gt_thresh_comparison_lt1_removed <- df_iri_prob_thresholds_lt1_rm %>% 
+  select(adm0_es,seas_gen,contains("_abs")) %>% 
+  ungroup() %>% 
   gt() %>% 
   cols_label(
     adm0_es ="Country",
@@ -321,6 +614,50 @@ gt_thresh_comparison_lt1_removed
 We see from the plot below that generally when we include LT 1 the JJA (window 1) threshold is a bit higher. There is less of a clear effect on SON (window 3)
 
 ```{r plot-allLtsVsLt1Removed, fig.height=8}
+df_iri_prob_thresholds_combined_straight <- bind_rows(
+  df_iri_lt1_rm_thresholds_straight %>% 
+  select(
+    adm0_es, seas_gen,contains("q")
+  ) %>% 
+  mutate(
+    cat = "lt1 removed"
+  ),
+    df_iri_adm0_pre_all_windows_threshold_straight %>% 
+  select(
+    adm0_es, seas_gen,contains("q")
+  ) %>% 
+  mutate(
+    cat = "all lts"
+  )
+)
+
+df_iri_prob_thresholds_combined_straight %>% 
+  pivot_longer(cols= q_66_mean:q_jp_median) %>% 
+  ungroup() %>%
+  mutate(
+    cat_stat = case_when(
+      name=="q_66_mean" ~ "3 yr RP mean",
+      name=="q_66_median" ~ "3 yr RP median",
+      name=="q_jp_mean" ~ "5.5 yr RP mean",
+      name=="q_jp_median" ~ "5.5 yr RP median"
+    )
+  ) %>% 
+  ggplot(
+    aes(x=value,y=adm0_es, color=cat)
+  )+
+  geom_point()+
+  facet_grid(cols= vars(seas_gen), rows= vars(cat_stat))+
+  theme(
+    panel.border = element_rect(color="grey", fill=NA),
+    legend.title = element_blank()
+  )+
+  labs(
+    title= "Calculated thresholds using full leadtimes vs LT 1 removed",
+    caption= "Perentiles/Rps calculated directly on IRI probability values"
+  )
+```
+
+```{r plot-allLtsVsLt1RemovedZ, fig.height=8}
 df_iri_prob_thresholds_combined <- bind_rows(
   df_iri_prob_thresholds_lt1_rm %>% 
   select(
@@ -357,6 +694,10 @@ df_iri_prob_thresholds_combined %>%
   theme(
     panel.border = element_rect(color="grey", fill=NA),
     legend.title = element_blank()
+  )+
+  labs(
+    title= "Calculated thresholds using full leadtimes vs LT 1 removed",
+    caption= "Perentiles/Rps calculated directly on anomalys/Z-scores"
   )
 ```
 
@@ -401,7 +742,10 @@ df_vhi_35 <- df_cropland_lte_vhi_threshold %>%
   mutate(
     z_vhi_pct = (pct_crop_pixels_lte_thresh- mean(pct_crop_pixels_lte_thresh))/sd(pct_crop_pixels_lte_thresh)
   )
+```
 
+## % Cropland < 0.35 VHI
+```{r}
 df_vhi_35 %>% 
   filter(month(date)%in%c(6,7,8)) %>% 
   ggplot(
@@ -412,6 +756,7 @@ df_vhi_35 %>%
 
 ```
 
+## % Cropland < 0.35 VHI (Z-score)
 Same plot, but converted to Z-score
 ```{r}
 df_vhi_35 %>% 
@@ -484,13 +829,14 @@ df_vhi_mo_rps_combined%>%
   tab_header(
     title = "Approximate RPs Calculated From VHI/ASIS Thresholds Provided",
     subtitle = "Thresholds: ≥25 % of cropland area with VHI < 0.35"
-  )
-  
+  ) 
 
 
 ```
 
 It is not clear if we would want to adjust the VHI RPs so they are equivalent for all 4 countries, The average RP for the given thresholds is **`r round(avg_rp,1)`** years across all 4 countries. For simplicity let's look at what joint probability of a 10 year RP event would look like
+
+## VHI 10 year RP using  Z-score
 
 ```{r}
 
@@ -556,12 +902,108 @@ df_vhi_35_10yr_thresholds %>%
   tab_header(
     title = "10 Year RP - % Area thresholds w/ VHI ≤ 0.35"
   ) %>% 
+  tab_footnote(
+    footnote = "Percentile values calculated from VHI/ASIS anomalies (Z-scores)"
+  ) %>% 
   data_color(columns = where(is.numeric), 
              colors = scales::col_numeric(palette = "Reds", domain = NULL))
 
 
 ```
 
+## VHI 10 year RP using  % Area
+Let's do the exact same thing as above, but not use Z
+```{r}
+
+ eq_prob_10yr <- quad_eq(a = -1, b = 2, c = -0.1)
+ q_jp_vhi <-1-eq_prob_10yr[1]
+ rp_jp <- 1/eq_prob_10yr[1]
+
+ df_vhi_35_10yr_thresholds_pct <- df_vhi_35 %>% 
+  filter(mo %in% c(6,7)) %>% 
+  group_by(adm0_es, yr = year(date)) %>%
+   summarise(
+     max_pct = max(pct_crop_pixels_lte_thresh)
+   ) %>% 
+  summarise(
+    q_10 = quantile(max_pct,0.9),
+    q_10_jp = quantile(max_pct,q_jp_vhi),
+  )
+ 
+
+
+df_vhi_35_10yr_thresholds_pct %>% 
+  select(adm0_es,contains("q")) %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es="Country",
+    q_10 ="Individual calculated",
+    q_10_jp ="Jointly calculated",
+    
+  ) %>% 
+  fmt_percent(
+    columns = where(is.numeric),decimals =1
+    ) %>% 
+  tab_header(
+    title = "10 Year RP - % Area thresholds w/ VHI ≤ 0.35"
+  ) %>% 
+  data_color(columns = where(is.numeric), 
+             colors = scales::col_numeric(palette = "Reds", domain = NULL))
+
+
+```
+
+# Recommendation
+
+Recommendation 1: set threshold based on joint probability of IRI activation. 
+
+
+
+```{r}
+
+df_all_monitoring_thresh <- df_iri_adm0_pre_all_windows_threshold_straight %>% 
+  ungroup() %>% 
+  select(adm0_es, seas_gen,q_jp_mean)
+
+
+df_iri_adm0 %>% 
+  mutate(
+    seas_gen= str_extract(seas, "MJJ|JJA|SON")
+  ) %>% 
+  filter(!is.na(seas_gen),seas_gen!="MJJ") %>% 
+  left_join(
+    df_all_monitoring_thresh
+  ) %>% 
+  mutate(
+    lgl_flag =mean>=q_jp_mean
+  ) %>% 
+  group_by(
+    adm0_es,yr = floor_date(predict_start_mo,"year")
+  ) %>% 
+  summarise(
+    mean = max(mean),
+    lgl_flag = any(lgl_flag)
+  ) %>% 
+  ggplot(
+    aes(x= yr,y=mean)
+  )+
+  geom_line()+
+  geom_point(
+    aes(color=lgl_flag),
+    alpha=0.7, size=3
+  )+
+  scale_color_manual(
+    values = c(hdx_hex("mint-hdx"),hdx_hex("tomato-hdx"))
+  )+
+  facet_wrap(~adm0_es)+
+  labs(
+    title = "IRI Trigger Simulation based on Joint 3 year RP for Windows 2 & 3"
+  )+
+  theme(
+    legend.position = "none"
+  )
+
+```
 
 
 # Apendix
