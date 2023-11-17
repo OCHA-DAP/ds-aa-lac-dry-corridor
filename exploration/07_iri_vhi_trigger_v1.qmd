@@ -1,33 +1,780 @@
 ---
-title: "IRI_VHI_Trigger_Proposal_Revised V1"
-format: html
+title: "IRI & ASIS Triggers - V1"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
 editor: visual
+project:
+     execute-dir: project
 ---
 
-## Intro
+```{r}
+library(targets)
+library(tidyverse)
+library(janitor)
+library(here)
+library(gghdx)
+library(gt)
+gghdx()
+tar_source(here("R"))
+```
 
-This document will attempt to propose a v1 trigger for all 3 monitoring windows using just IRI seasonal forecast and VHI (FAO) data. In v2 of the proposal we may want to also consider ECMWF seasonal foreast data.
+# Intro
 
-From previous analysis it's fairly clear that we can aggregate VHI (by median value) for each country and set a reasonable threshold between 40 & 50. Due to lack of historical IRI data this threshold is not well informed.
+This document will attempt to propose a v1 trigger for all 3 monitoring windows using just IRI seasonal forecast and VHI (FAO) data. In v2 of the proposal we may want to also consider ECMWF seasonal forecast data.
 
-FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of ≥25 % of cropland with a VHI < 0.35. This is based on some global analysis they have peformed. However, all the details are not yet available. 
+**Target:** CERF + Partners have indicated that we target a 1 in 3 year RP.  However, the underlying disbursement framework would effect how this is calculated. therefore we will consider 2 options until this is decided.
 
-Therefore let's more critically examine the VHI indicator.
+**Option 1 (Weighted chunks)**
+
+Disbursement is made in weighted chunks with a small/minimal available for window 1 and larger amounts available for windows 2 & 3 independently. 
+
+Hypothetical example: 1M available in total, 200k for first window 1, 400k for window 2, 400k window 3. In this scenario, we can basically use historical data to set a threshold for each window independently. 
+
+**Option 2 (All-in)**
+
+Partners have proposed another type of disbursement where if either window 2 or 3 are triggered the full amount becomes available right away. This has implications on the trigger threshold design because then we have to consider the probability of trigger points jointly.
+
+The pro's and con's to each option are not considered here, but rather we see the effect each option might have on the trigger thresholds.
 
 
-## VHI
 
-Come up w/ 3 year RP joint prob. However, if using IRI data we don;t have long enough record to justify lowering it due to VHI, Therefore let's go with an extremem 5-10 year RP for VHI that will trigger it on it's own or allow for a just over bavg forecastr -- have to be pick in months
+```{r}
+tar_load(df_iri_adm0,
+         store = here("_targets")
+         )
 
-## IRI approx 42.5
+df_iri_adm0_pre <- df_iri_adm0 %>% 
+  mutate(
+    seas_gen = str_extract(seas, "JJA|MJJ|SON")
+  ) %>% 
+  filter(!is.na(seas_gen))
 
-Boom
+df_iri_adm0_z <- df_iri_adm0_pre %>% 
+  # summmarise across lts
+  group_by(adm0_es,predict_start_mo,seas_gen,seas) %>%
+  summarise(
+    mean = max(mean),
+    median = max(median),.groups="drop"
+  ) %>% 
+  # for each window calculate a mean, stdev and then produce z-score for each record
+  group_by(adm0_es, seas_gen) %>% 
+  mutate(
+    mean_mean = mean(mean),
+    stdev_mean = sd(mean),
+    mean_median = mean(median),
+    stdev_median = sd(median),
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+  z_score_mean = (mean - mean_mean)/stdev_mean,
+  z_score_median = (median - mean_median)/stdev_median  
+  )
+
+df_iri_adm0_summary_stats <- df_iri_adm0_pre %>% 
+  # summmarise across lts
+  group_by(adm0_es,predict_start_mo,seas_gen,seas) %>%
+  summarise(
+    mean = max(mean),
+    median = max(median),.groups="drop"
+  ) %>% 
+  # for each window calculate a mean, stdev and then produce z-score for each record
+  group_by(adm0_es, seas_gen) %>% 
+  summarise(
+    mean_mean = mean(mean),
+    stdev_mean = sd(mean),
+    mean_median = mean(median),
+    stdev_median = sd(median),
+  ) 
+  
+
+  
+ df_iri_adm0_max_z<- df_iri_adm0_z %>% 
+  # windows 2 & 3
+  filter(seas_gen %in% c("JJA","SON")) %>% 
+  group_by(adm0_es,
+           yr=year(predict_start_mo)) %>% 
+  summarise(
+    max_z_mean = max(z_score_mean),
+    max_z_median = max(z_score_median),
+    .groups="drop"
+  ) %>% 
+  ungroup() 
+ 
+ # jp = 2p - p^2
+ #-p^2 + 2p - jp = 0
+ eq_probs <- quad_eq(a = -1, b = 2, c = -0.33)
+ q_jp <- 1-eq_probs[1]
+ rp_jp <- 1/eq_probs[1]
+ 
+ df_iri_adm0_qunatiles <- df_iri_adm0_max_z%>% 
+  group_by(adm0_es) %>% 
+  summarise(
+    q_z_66_mean = quantile(max_z_mean,0.66),
+    q_z_66_median = quantile(max_z_median,0.66),
+    q_z_jp_mean = quantile(max_z_mean,q_jp),
+    q_z_jp_median = quantile(max_z_median,q_jp),
+  ) 
+ 
+df_iri_prob_thresholds <- df_iri_adm0_summary_stats %>% 
+   filter(seas_gen!="MJJ") %>% 
+   left_join(
+     df_iri_adm0_qunatiles
+   ) %>% 
+   mutate(
+     q_abs_66_mean = (q_z_66_mean*stdev_mean)+mean_mean,
+     q_abs_66_median = (q_z_66_median*stdev_median)+mean_median,
+     q_abs_jp_mean = (q_z_jp_mean*stdev_mean)+mean_mean,
+     q_abs_jp_median = (q_z_jp_median*stdev_median)+mean_median
+   )
+```
+
+# IRI 
+
+## Weighted Chunks vs All-in Comparison
+
+The weighted chunk disbursement option lends itself towards setting the trigger thresholds to the desired RP independently. Since the desired RP is 3 years, we can set the threshold for each based on the 3 year RP. The "All-in" approach aligns better with considering a joint probability for either event as triggering. When considering joint probability of 2 events, there are limitless combinations of probabilities that can add up conditionally to reach any joint probability. Here we set the condition that both events will have the same probability of triggering which gives each event a 1 in **`r round(rp_jp,1)`** year RP. The table below compares how this would effect the threshold. Additionally, it compares how the thersholds are affected if the IRI values are aggregated by mean vs median.
+
+
+```{r indepVsdep_table}
+gt_thresh_comparison <- df_iri_prob_thresholds %>% 
+  select(adm0_es,seas_gen,contains("_abs")) %>% 
+  ungroup() %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es ="Country",
+    q_abs_66_mean = "3 year RP (weighted chunks)",
+    q_abs_jp_mean = "5.5 year RP (all-in)",
+    q_abs_66_median = "3 year RP (weighted chunks)",
+    q_abs_jp_median = "5.5 year RP (allin)",
+    seas_gen = "Season"
+  ) %>% 
+  tab_spanner(
+    label = "Mean Aggregations",
+    columns = c(q_abs_66_mean,q_abs_jp_mean)
+  ) %>% 
+  tab_spanner(
+    label = "Median Aggregations",
+    columns = c(q_abs_66_median,q_abs_jp_median)
+  ) %>% 
+  fmt_number(
+    decimals = 1
+  ) %>% 
+  tab_header(title = "Threshold comparison, All LTs considered" ) %>% 
+  tab_footnote(
+    footnote= "When we increase each individual RP to 5.5 years which correspods to a joint probability of 1 in 3 years we see that the probabilities generally increase by 1-5"
+      )
+gt_thresh_comparison
+
+```
+
+
+## Adjusting Monitoring windows
+
+In analysis above we consider all leadtimes and monitoring windows:
+- For MJJ we monitor: JFMA
+- For JJA we monitor:FMAM
+- For SON we monitor: MJJA
+
+However, partners have expressed that 1 month lead time is not sufficient to deliver the critical activities for windows 2 & 3. Therefore, we want to see how the thresholds would change if May and August were removed from the monitoring windows for windows 2 & 3 respectively. Therefore below we have adjusted the monitoring as follows:
+
+- For MJJ we monitor: JFMA
+- For JJA we monitor:FMA
+- For SON we monitor: MJJ
+
+```{r}
+df_iri_adm0_pre <- df_iri_adm0 %>% 
+  mutate(
+    seas_gen = str_extract(seas, "JJA|MJJ|SON")
+  ) %>% 
+  filter(!is.na(seas_gen)) %>% 
+  filter(
+    # May too late for JJA
+    !(seas_gen == "JJA" & month(date)==5),
+    # August too late for SON
+    !(seas_gen == "SON" & month(date)==8)
+  )
+
+df_iri_adm0_z <- df_iri_adm0_pre %>% 
+  # summmarise across lts
+  group_by(adm0_es,predict_start_mo,seas_gen,seas) %>%
+  summarise(
+    mean = max(mean),
+    median = max(median),.groups="drop"
+  ) %>% 
+  # for each window calculate a mean, stdev and then produce z-score for each record
+  group_by(adm0_es, seas_gen) %>% 
+  mutate(
+    mean_mean = mean(mean),
+    stdev_mean = sd(mean),
+    mean_median = mean(median),
+    stdev_median = sd(median),
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+  z_score_mean = (mean - mean_mean)/stdev_mean,
+  z_score_median = (median - mean_median)/stdev_median  
+  )
+
+df_iri_adm0_summary_stats <- df_iri_adm0_pre %>% 
+  # summmarise across lts
+  group_by(adm0_es,predict_start_mo,seas_gen,seas) %>%
+  summarise(
+    mean = max(mean),
+    median = max(median),.groups="drop"
+  ) %>% 
+  # for each window calculate a mean, stdev and then produce z-score for each record
+  group_by(adm0_es, seas_gen) %>% 
+  summarise(
+    mean_mean = mean(mean),
+    stdev_mean = sd(mean),
+    mean_median = mean(median),
+    stdev_median = sd(median),
+  ) 
+  
+
+  
+ df_iri_adm0_max_z<- df_iri_adm0_z %>% 
+  # windows 2 & 3
+  filter(seas_gen %in% c("JJA","SON")) %>% 
+  group_by(adm0_es,
+           yr=year(predict_start_mo)) %>% 
+  summarise(
+    max_z_mean = max(z_score_mean),
+    max_z_median = max(z_score_median),
+    .groups="drop"
+  ) %>% 
+  ungroup() 
+ 
+ # jp = 2p - p^2
+ #-p^2 + 2p - jp = 0
+ eq_probs <- quad_eq(a = -1, b = 2, c = -0.33)
+ q_jp <- 1-eq_probs[1]
+ rp_jp <- 1/eq_probs[1]
+ 
+ df_iri_adm0_qunatiles <- df_iri_adm0_max_z%>% 
+  group_by(adm0_es) %>% 
+  summarise(
+    q_z_66_mean = quantile(max_z_mean,0.66),
+    q_z_66_median = quantile(max_z_median,0.66),
+    q_z_jp_mean = quantile(max_z_mean,q_jp),
+    q_z_jp_median = quantile(max_z_median,q_jp),
+  ) 
+ 
+df_iri_prob_thresholds_lt1_rm <- df_iri_adm0_summary_stats %>% 
+   filter(seas_gen!="MJJ") %>% 
+   left_join(
+     df_iri_adm0_qunatiles
+   ) %>% 
+   mutate(
+     q_abs_66_mean = (q_z_66_mean*stdev_mean)+mean_mean,
+     q_abs_66_median = (q_z_66_median*stdev_median)+mean_median,
+     q_abs_jp_mean = (q_z_jp_mean*stdev_mean)+mean_mean,
+     q_abs_jp_median = (q_z_jp_median*stdev_median)+mean_median
+   )
+```
+
+```{r}
+gt_thresh_comparison_lt1_removed <- df_iri_prob_thresholds_lt1_rm %>% 
+  select(adm0_es,seas_gen,contains("_abs")) %>% 
+  ungroup() %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es ="Country",
+    q_abs_66_mean = "3 year RP (weighted chunks)",
+    q_abs_jp_mean = "5.5 year RP (all-in)",
+    q_abs_66_median = "3 year RP (weighted chunks)",
+    q_abs_jp_median = "5.5 year RP (all-in)",
+    seas_gen = "Season"
+  ) %>% 
+  tab_spanner(
+    label = "Mean Aggregations",
+    columns = c(q_abs_66_mean,q_abs_jp_mean)
+  ) %>% 
+  tab_spanner(
+    label = "Median Aggregations",
+    columns = c(q_abs_66_median,q_abs_jp_median)
+  ) %>% 
+  fmt_number(
+    decimals = 1
+  ) %>% 
+  tab_header(title = "Threshold comparison, LT1 monitoring removed" ) %>% 
+  tab_footnote(
+    footnote= "When we increase each individual RP to 5.5 years which correspods to a joint probability of 1 in 3 years we see that the probabilities generally increase by 1-5"
+      )
+
+gt_thresh_comparison_lt1_removed
+```
+
+We see from the plot below that generally when we include LT 1 the JJA (window 1) threshold is a bit higher. There is less of a clear effect on SON (window 3)
+
+```{r plot-allLtsVsLt1Removed, fig.height=8}
+df_iri_prob_thresholds_combined <- bind_rows(
+  df_iri_prob_thresholds_lt1_rm %>% 
+  select(
+    adm0_es, seas_gen,contains("abs")
+  ) %>% 
+  mutate(
+    cat = "lt1 removed"
+  ),
+    df_iri_prob_thresholds %>% 
+  select(
+    adm0_es, seas_gen,contains("abs")
+  ) %>% 
+  mutate(
+    cat = "all lts"
+  )
+)
+
+df_iri_prob_thresholds_combined %>% 
+  pivot_longer(cols= q_abs_66_mean:q_abs_jp_median) %>% 
+  ungroup() %>%
+  mutate(
+    cat_stat = case_when(
+      name=="q_abs_66_mean" ~ "3 yr RP mean",
+      name=="q_abs_66_median" ~ "3 yr RP median",
+      name=="q_abs_jp_mean" ~ "5.5 yr RP mean",
+      name=="q_abs_jp_median" ~ "5.5 yr RP median"
+    )
+  ) %>% 
+  ggplot(
+    aes(x=value,y=adm0_es, color=cat)
+  )+
+  geom_point()+
+  facet_grid(cols= vars(seas_gen), rows= vars(cat_stat))+
+  theme(
+    panel.border = element_rect(color="grey", fill=NA),
+    legend.title = element_blank()
+  )
+```
+
+
+# VHI/ASIS
+
+FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of ≥25 % of cropland with a VHI < 0.35. This is based on global analysis they have performed. However, all the details have not been made available.  
+
+As of latest discussions we have decided it only makes sense to use this indicator for window 3. Below will evaluate the FAO threhsolds and others to see how we can incorporate this indicator into window 3
+
+# Apendix
+
+The work below shouldn't be considered right now. I was basically calculating RPs by iterating through different thresholds rather than using quantile method. I will probably delete it soon.
+
+```{r}
+  
+rp_target <- 3
+pct_rp_target <- 1/rp_target
+  
+df_iri_thresholded <- seq(33,50) %>% 
+  map(\(thresh_temp){
+    df_iri_adm0_pre %>% 
+      mutate(
+        lgl_mean_gte = mean >=thresh_temp,
+        lgl_median_gte = median >=thresh_temp
+      ) %>% 
+      group_by(adm0_es, seas_gen, seas) %>% 
+      summarise(
+        lgl_any_mean_gte = any(lgl_mean_gte),
+        lgl_any_median_gte = any(lgl_median_gte),
+        .groups="drop_last"
+      ) %>% 
+      summarise(
+        count_gte_mean = sum(lgl_any_mean_gte),
+        pct_gte_mean = count_gte_mean/n(),
+        count_gte_median = sum(lgl_any_median_gte),
+        pct_gte_median = count_gte_median/n(),
+        
+        .groups = "drop"
+      ) %>% 
+      mutate(
+        threshold = thresh_temp
+      )
+  }) %>% 
+  list_rbind() %>% 
+  mutate(
+    uid = row_number()
+  )
+
+## Scenario 2
+  df_iri_adm0_pre_scen2 <-  df_iri_adm0_pre %>% 
+      filter(
+        # May too late for JJA
+        !(seas_gen == "JJA" & month(date)==5),
+        # August too late for SON
+        !(seas_gen == "SON" & month(date)==8)
+      )
+df_iri_thresholded_scen2 <- seq(33,50) %>% 
+  map(\(thresh_temp){
+   df_iri_adm0_pre_scen2 %>% 
+      mutate(
+        lgl_mean_gte = mean >=thresh_temp,
+        lgl_median_gte = median >=thresh_temp
+      ) %>% 
+      group_by(adm0_es, seas_gen, seas) %>% 
+      summarise(
+        lgl_any_mean_gte = any(lgl_mean_gte),
+        lgl_any_median_gte = any(lgl_median_gte),
+        .groups="drop_last"
+      ) %>% 
+      summarise(
+        count_gte_mean = sum(lgl_any_mean_gte),
+        pct_gte_mean = count_gte_mean/n(),
+        count_gte_median = sum(lgl_any_median_gte),
+        pct_gte_median = count_gte_median/n(),
+        
+        .groups = "drop"
+      ) %>% 
+      mutate(
+        threshold = thresh_temp
+      )
+  }) %>% 
+  list_rbind() %>% 
+  mutate(
+    uid = row_number()
+  )
+```
+
+
+```{r optimalScen1}
+df_optimal_median_filt <- df_iri_thresholded %>% 
+  mutate(
+    diff_targ = abs(pct_gte_median - pct_rp_target)
+  ) %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>% 
+  slice_min(n=1,order_by=diff_targ)
+
+df_optimal_mean_filt <- df_iri_thresholded %>% 
+  mutate(
+    diff_targ = abs(pct_gte_mean - pct_rp_target)
+  ) %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>% 
+  slice_min(n=1,order_by=diff_targ)
+
+
+df_optimal_range_mean <- df_optimal_mean_filt %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>%
+  summarise(
+    min_thresh = min(threshold),
+    max_thresh = max(threshold),
+    pct_activation = unique(pct_gte_mean)
+  ) %>% 
+  pivot_wider(
+    names_from = seas_gen,
+    values_from = c(min_thresh, max_thresh, pct_activation)
+  ) %>% 
+  ungroup() %>% 
+  select(
+    adm0_es, 
+    ends_with("MJJ"),
+    ends_with("JJA"),
+    ends_with("SON")
+  )
+df_optimal_range_median <- df_optimal_median_filt %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>%
+  summarise(
+    min_thresh = min(threshold),
+    max_thresh = max(threshold),
+    pct_activation = unique(pct_gte_median)
+  ) %>% 
+  pivot_wider(
+    names_from = seas_gen,
+    values_from = c(min_thresh, max_thresh, pct_activation)
+  ) %>% 
+  ungroup() %>% 
+  select(
+    adm0_es, 
+    ends_with("MJJ"),
+    ends_with("JJA"),
+    ends_with("SON")
+  )
+
+```
+
+```{r optimalScen2}
+df_optimal_median_filt_scen2 <- df_iri_thresholded_scen2 %>% 
+  mutate(
+    diff_targ = abs(pct_gte_median - pct_rp_target)
+  ) %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>% 
+  slice_min(n=1,order_by=diff_targ)
+
+df_optimal_mean_filt_scen2 <- df_iri_thresholded_scen2 %>% 
+  mutate(
+    diff_targ = abs(pct_gte_mean - pct_rp_target)
+  ) %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>% 
+  slice_min(n=1,order_by=diff_targ)
+
+
+df_optimal_range_mean_scen2 <- df_optimal_mean_filt_scen2 %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>%
+  summarise(
+    min_thresh = min(threshold),
+    max_thresh = max(threshold),
+    pct_activation = unique(pct_gte_mean)
+  ) %>% 
+  pivot_wider(
+    names_from = seas_gen,
+    values_from = c(min_thresh, max_thresh, pct_activation)
+  ) %>% 
+  ungroup() %>% 
+  select(
+    adm0_es, 
+    ends_with("MJJ"),
+    ends_with("JJA"),
+    ends_with("SON")
+  )
+df_optimal_range_median_scen2 <- df_optimal_median_filt_scen2 %>% 
+  group_by(
+    adm0_es, seas_gen
+  ) %>%
+  summarise(
+    min_thresh = min(threshold),
+    max_thresh = max(threshold),
+    pct_activation = unique(pct_gte_median),
+    # diff_targ= unique(diff_targ)
+  ) %>% 
+  pivot_wider(
+    names_from = seas_gen,
+    values_from = c(min_thresh, max_thresh, pct_activation)
+  ) %>% 
+  ungroup() %>% 
+  select(
+    adm0_es, 
+    ends_with("MJJ"),
+    ends_with("JJA"),
+    ends_with("SON")
+  )
+
+```
+
+## Optimal IRI thresholds
+
+## by mean
+
+```{r}
+
+df_iri_thresholded %>% 
+  mutate(
+    lgl_optimal=uid %in% df_optimal_mean_filt$uid
+  ) %>% 
+  ggplot(
+    aes(
+      x= threshold, 
+      y= pct_gte_mean
+    )
+  )+
+  geom_point(
+    aes(color = lgl_optimal)
+  )+
+  scale_y_continuous(labels=scales::label_percent())+
+  scale_color_manual(values = c(hdx_hex("mint-hdx"), hdx_hex("tomato-light")) %>% rev())+
+  geom_line(color="lightgrey")+
+  scale_x_continuous(breaks= seq(35,50,by=1))+
+  facet_grid(cols =vars(seas_gen), 
+             rows= vars(adm0_es)
+  )+
+  labs(
+    y= "Activation rate",
+    title = "% Activation at different IRI probability thresholds",
+    subtitle = "Thresholds that achieve the closest ativation rate to target (33%) highlighted",
+    caption = "IRI probabilities aggregated to country level via zonal mean"
+  )+
+  theme(
+    axis.text.x = element_text(angle = 90),
+    legend.position="none"
+  )
+
+
+```
+
+
+```{r}
+
+df_optimal_range_mean%>% 
+  gt() %>% 
+  cols_label(
+    adm0_es = "Country",
+    min_thresh_MJJ= "MJJ",
+    min_thresh_JJA= "JJA",
+    min_thresh_SON= "SON",
+  ) %>% 
+  gt::cols_merge(
+    columns =ends_with("MJJ"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("JJA"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("SON"),
+    pattern= "{1}-{2}"
+  ) %>% 
+  tab_header(title = "Approximate IRI thresholds to reach a 1 in 3 year RP event") %>% 
+  tab_footnote(
+    footnote = "Based on probability below average forecast aggregated to country level by zonal mean",
+    
+  )
+```
+
+```{r}
+
+df_optimal_range_mean_scen2 %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es = "Country",
+    min_thresh_MJJ= "MJJ",
+    min_thresh_JJA= "JJA",
+    min_thresh_SON= "SON",
+  ) %>% 
+  gt::cols_merge(
+    columns =ends_with("MJJ"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("JJA"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("SON"),
+    pattern= "{1}-{2}"
+  ) %>% 
+  tab_header(title = "Approximate IRI thresholds to reach a 1 in 3 year RP event") %>% 
+  tab_footnote(
+    footnote = "Based on probability below average forecast aggregated to country level by zonal mean",
+    
+  )
+```
+
+
+## by median
+
+we see thresholds are a bit tighter.
+```{r}
+df_iri_thresholded %>% 
+  mutate(
+    lgl_optimal=uid %in% df_optimal_median_filt$uid
+  ) %>% 
+  ggplot(
+    aes(
+      x= threshold, 
+      y= pct_gte_median
+    )
+  )+
+  geom_point(
+    aes(color = lgl_optimal)
+  )+
+   scale_color_manual(values = c(hdx_hex("mint-hdx"), hdx_hex("tomato-light")) %>% rev())+
+  geom_line(color="lightgrey")+
+  scale_x_continuous(breaks= seq(35,50,by=1))+
+  scale_y_continuous(labels=scales::label_percent())+
+  facet_grid(cols =vars(seas_gen), 
+             rows= vars(adm0_es)
+  )+
+  labs(
+    y= "activation rate",
+    title = "% Activation at different IRI probability thresholds",
+    subtitle = "Thresholds that achieve the closest ativation rate to target (33%) highlighted",
+    caption = "IRI probabilities aggregated to country level via zonal median"
+  )+
+  theme(
+    axis.text.x = element_text(angle = 90),
+    legend.position="none"
+  )
+  
+```
+
+
+```{r}
+df_optimal_range_median%>% 
+  gt() %>% 
+  cols_label(
+    adm0_es = "Country",
+    min_thresh_MJJ= "MJJ",
+    min_thresh_JJA= "JJA",
+    min_thresh_SON= "SON",
+  ) %>% 
+  gt::cols_merge(
+    columns =ends_with("MJJ"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("JJA"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("SON"),
+    pattern= "{1}-{2}"
+  ) %>% 
+  tab_header(title = "Approximate IRI thresholds to reach a 1 in 3 year RP event") %>% 
+  tab_footnote(
+    footnote = "Based on probability below average forecast aggregated to country level by zonal median",
+    
+  )
+```
+
+scenario 2
+
+```{r}
+df_optimal_range_median_scen2 %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es = "Country",
+    min_thresh_MJJ= "MJJ",
+    min_thresh_JJA= "JJA",
+    min_thresh_SON= "SON",
+  ) %>% 
+  gt::cols_merge(
+    columns =ends_with("MJJ"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("JJA"),
+    pattern= "{1}-{2}"
+  ) %>%  
+  gt::cols_merge(
+    columns =ends_with("SON"),
+    pattern= "{1}-{2}"
+  ) %>% 
+  tab_header(title = "Approximate IRI thresholds to reach a 1 in 3 year RP event") %>% 
+  tab_footnote(
+    footnote = "Based on probability below average forecast aggregated to country level by zonal median",
+    
+  )
+```
+
 
 
 ## IRI 40 + VHI 5 year
 
 
-```{r}
+```{r eval=F}
 library(targets)
 library(janitor)
 library(tidyverse)
@@ -46,7 +793,7 @@ df_chirps <- read_csv(file.path(
 
 
 ## Driest years
-```{r}
+```{r eval=F}
 df_vhi_chirps <- bind_rows(
   df_vhi_median_over_crop %>% 
     mutate(
@@ -117,7 +864,7 @@ p_yearly
 ```
 
  Table
-```{r}
+```{r eval=F}
 gt_table_driest_years <-  df_chirps_yearly_historical %>% 
   group_by(adm0_es) %>% 
    arrange(
@@ -180,7 +927,7 @@ gt_table_driest_years
   
 ```
 
-```{r}
+```{r eval=F}
 df_chirps_yearly_historical %>% 
   ggplot(
     aes(x= mm_yearly)
@@ -577,57 +1324,12 @@ gt_chirps_windows$`El Salvador`
 
 ```
 
-```{r}
-
-select(
-    date,
-    starts_with("adm"),
-    starts_with("lgl"),
-    value
-  ) %>% 
-  ungroup() %>% 
-  filter(
-    if_any(starts_with("lgl"),~.x==T)
-  ) %>% 
-  pivot_longer(
-    cols = starts_with("lgl"),
-    # names_to = "window",
-    values_to = "value"
-  ) 
-    
-  )
-  pivot_longer(
-    cols = starts_with("lgl"),
-    names_to = "window",
-    values_to = "lgl"
-  ) %>% 
-  group_by(
-    adm0_es,yr, window
-  ) %>% 
-  summarise(
-    mm= sum(value)
-  ) 
-  
 
 
 
-summarise(
-    mm = mean(value)
-  ) %>% 
-  ggplot(
-    aes(x= month, y= mm)
-  )+
-  geom_bar(
-    aes(fill= drier_third), stat= "identity",position="dodge"
-  )+
-  facet_wrap(~adm0_es)
-
-  
-  
-```
 
 
-```{r}
+```{r eval=F}
 df_vhi_chirps_anom <- df_vhi_chirps %>% 
   mutate(
     mo = month(date,label=T)
@@ -687,7 +1389,7 @@ Since VHI is observed we can only look-back so what are the months we would be l
 - Third trigger window is SON
   + at end of August/early September we can look back at **August** & **July**
 
-```{r}
+```{r eval=F}
 # window 2
   
 df_vhi_relevant_windows <- df_vhi_chirps_anom %>% 
@@ -771,7 +1473,7 @@ df_vhi_relevant_windows %>%
 ```
 
 ## Joint 
-```{r}
+```{r eval=F}
 
 df_vhi_mean_sd <- df_vhi_relevant_windows %>% 
   group_by(
@@ -858,9 +1560,27 @@ seq(z_range[1], z_range[2], by =0.05) %>%
     
   )
 ```
-
-
+## Any lt bias?
 ```{r}
+
+# df_iri_adm0 %>% 
+#   filter(adm0_es=="Nicaragua") %>% 
+#   filter(str_detect(seas,"JJA")) %>% 
+#   arrange(seas) %>% 
+#   mutate(
+#     seas_gen = str_extract(seas, "JJA|MJJ|SON")
+#   ) %>% 
+#   group_by(
+#     adm0_es, seas_gen, leadtime
+#   ) %>% 
+#   summarise(
+#     mean= mean(mean),
+#     median = mean(median)
+#   )
+```
+
+
+```{r eval=F}
 
 thresh_combos <- expand_grid(
   thresh_1 = seq(0,1,0.01),
@@ -962,5 +1682,5 @@ df_conditional_thresh_optimal %>%
 
 ```{r}
 
-
+```
 
