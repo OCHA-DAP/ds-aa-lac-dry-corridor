@@ -363,9 +363,206 @@ df_iri_prob_thresholds_combined %>%
 
 # VHI/ASIS
 
-FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of ≥25 % of cropland with a VHI < 0.35. This is based on global analysis they have performed. However, all the details have not been made available.  
+FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of `≥25 %` of cropland area with a VHI < `0.35`. This is based on global analysis they have performed. However, all the details have not been made available.  
+
+I believe the 0.35 VHI threshold is commonly used as a drought classification so it probably makes sense to keep (find ref).
 
 As of latest discussions we have decided it only makes sense to use this indicator for window 3. Below will evaluate the FAO threhsolds and others to see how we can incorporate this indicator into window 3
+
+Here we look at %  cropland <0.35 for JJA months
+
+```{r}
+tar_load(df_vhi_median_over_crop,store = here("_targets"))
+#df_vhi_median_over_crop
+tar_load(df_cropland_lte_vhi_threshold,,store = here("_targets"))
+df_vhi_pt <- df_vhi_median_over_crop %>% 
+  mutate(
+    date= as_date(paste0(date,"-01"))
+  ) %>% 
+  group_by(
+    adm0_es, mo =month(date)
+  ) %>% 
+  mutate(
+    z_vhi = (value- mean(value))/sd(value)
+  )
+
+
+df_vhi_35 <- df_cropland_lte_vhi_threshold %>% 
+  ungroup() %>% 
+  mutate(
+    date= as_date(paste0(date,"-01"))
+  ) %>% 
+  filter(
+    abs(threshold- 0.35)<0.01
+  ) %>% 
+    group_by(
+    adm0_es, mo =month(date)
+  ) %>% 
+  mutate(
+    z_vhi_pct = (pct_crop_pixels_lte_thresh- mean(pct_crop_pixels_lte_thresh))/sd(pct_crop_pixels_lte_thresh)
+  )
+
+df_vhi_35 %>% 
+  filter(month(date)%in%c(6,7,8)) %>% 
+  ggplot(
+    aes(x= date, y= pct_crop_pixels_lte_thresh, color = adm0_es)
+  )+
+  geom_line()
+
+
+```
+
+Same plot, but converted to Z-score
+```{r}
+df_vhi_35 %>% 
+  filter(month(date)%in%c(6,7,8)) %>% 
+  ggplot(
+    aes(x= date, y= z_vhi_pct, color = adm0_es)
+  )+
+  geom_line()
+```
+
+
+If we look at the thresholds provided by FAO (>25% cropland area w/ VHI <0.35) we can approximate the RPs. We see that Nicaragua is has a much lower return period indicating it experience more frequent droughts as measured by this indicator during the Canicula season. This is in lin with the Canicula Study FAO has produced. 
+
+
+```{r}
+df_vhi_mo_6_7_rps<- df_vhi_35 %>% 
+  filter(mo%in%c(6,7)) %>% 
+  group_by(adm0_es,mo) %>% 
+  mutate(lgl_area_breach = pct_crop_pixels_lte_thresh>=0.25) %>% 
+  summarise(
+    count_breach = sum(lgl_area_breach),
+    pct_breach = count_breach/n()
+  ) %>% 
+  mutate(
+    rp_approx = 1/pct_breach
+  )
+
+df_vhi_mo_6_7_rps_combined <- df_vhi_35 %>% 
+  filter(mo%in%c(6,7)) %>% 
+  group_by(adm0_es) %>% 
+  mutate(lgl_area_breach = pct_crop_pixels_lte_thresh>=0.25) %>% 
+  summarise(
+    count_breach = sum(lgl_area_breach),
+    pct_breach = count_breach/n()
+  ) %>% 
+  mutate(
+    rp_approx = 1/pct_breach
+  )
+
+
+df_vhi_mo_rps_combined <- df_vhi_mo_6_7_rps %>% 
+  mutate(
+    mo =month(mo,label=T,abbr=F)
+  ) %>% 
+  select(
+    adm0_es, mo, rp_approx
+  ) %>% 
+  pivot_wider(
+    names_from = mo, values_from = rp_approx
+  ) %>% 
+  left_join(
+    df_vhi_mo_6_7_rps_combined %>% 
+      select(
+        adm0_es, june_july_rp_approx = rp_approx
+      )
+  ) %>% 
+  ungroup() 
+
+avg_rp <- mean(df_vhi_mo_rps_combined$june_july_rp_approx)
+
+df_vhi_mo_rps_combined%>% 
+  gt() %>% 
+  cols_label(
+    adm0_es = "Country",
+    june_july_rp_approx = "June-July Combined"
+  ) %>% 
+  fmt_number(
+    decimals =1
+  ) %>% 
+  tab_header(
+    title = "Approximate RPs Calculated From VHI/ASIS Thresholds Provided",
+    subtitle = "Thresholds: ≥25 % of cropland area with VHI < 0.35"
+  )
+  
+
+
+```
+
+It is not clear if we would want to adjust the VHI RPs so they are equivalent for all 4 countries, The average RP for the given thresholds is **`r round(avg_rp,1)`** years across all 4 countries. For simplicity let's look at what joint probability of a 10 year RP event would look like
+
+```{r}
+
+ eq_prob_10yr <- quad_eq(a = -1, b = 2, c = -0.1)
+ q_jp_vhi <-1-eq_prob_10yr[1]
+ rp_jp <- 1/eq_prob_10yr[1]
+
+ df_vhi_pct_quantiles <- df_vhi_35 %>% 
+  filter(mo %in% c(6,7)) %>% 
+  group_by(adm0_es, yr = year(date)) %>%
+   summarise(
+     max_z = max(z_vhi_pct)
+   ) %>% 
+  summarise(
+    q_10 = quantile(max_z,0.9),
+    q_10_jp = quantile(max_z,q_jp_vhi),
+  )
+ 
+ 
+ df_vhi_35_10yr_thresholds <- df_vhi_35 %>% 
+  filter(mo %in% c(6,7)) %>% 
+  group_by(adm0_es, mo) %>% 
+   summarise(
+     mean = mean(pct_crop_pixels_lte_thresh),
+     stdev = sd(pct_crop_pixels_lte_thresh),.groups="drop"
+   ) %>% 
+   left_join(
+     df_vhi_pct_quantiles
+   ) %>% 
+   mutate(
+     q10_abs = (mean + q_10)*stdev,
+     q10_jp_abs = (mean + q_10_jp)*stdev
+   )
+
+df_vhi_35_10yr_thresholds %>% 
+  mutate(
+    mo_chr = month(mo, label=T, abbr=F)
+  ) %>% 
+  select(adm0_es,mo_chr,contains("abs")) %>% 
+  pivot_wider(
+    names_from= mo_chr, values_from = c(q10_abs,q10_jp_abs)
+  ) %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es="Country",
+    q10_abs_June ="June",
+    q10_abs_July ="July",
+    q10_jp_abs_June ="June",
+    q10_jp_abs_July ="July",
+    
+  ) %>% 
+  tab_spanner(
+    label = "RP individual",
+    columns= c(q10_abs_June,q10_abs_July)
+  ) %>% 
+  tab_spanner(
+    label = "RP jointly",
+    columns= c(q10_jp_abs_June,q10_jp_abs_July)
+  ) %>% 
+  fmt_percent(
+    columns = where(is.numeric),decimals =1
+    ) %>% 
+  tab_header(
+    title = "10 Year RP - % Area thresholds w/ VHI ≤ 0.35"
+  ) %>% 
+  data_color(columns = where(is.numeric), 
+             colors = scales::col_numeric(palette = "Reds", domain = NULL))
+
+
+```
+
+
 
 # Apendix
 
