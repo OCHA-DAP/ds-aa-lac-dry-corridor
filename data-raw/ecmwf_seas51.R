@@ -8,16 +8,21 @@ library(sf)
 library(rnaturalearth)
 library(glue)
 
+download_historical_lte2022 <- T
+download_2023 <-  F
+download_leadtimes <-  1:6
 
-fp_outpath_ecmwf <- file.path(
-  Sys.getenv("AA_DATA_DIR"),
-  "private",
-  "raw",
-  "lac",
-  "ecmwf_seasonal",
-  "seas51"
-  
-)
+# fp_outpath_ecmwf <- file.path(
+#   Sys.getenv("AA_DATA_DIR"),
+#   "private",
+#   "raw",
+#   "lac",
+#   "ecmwf_seasonal",
+#   "seas51",
+#   "grib"
+#   
+# )
+fp_outpath_ecmwf <- "test"
 # think only need to do this 1x
 ecmwfr::wf_set_key(
   user=Sys.getenv("ECMWF_USER_UID"),
@@ -79,11 +84,11 @@ request_coords<- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/
 # it would be nice if API let you access the last month available programmatically - alas it does not
 # there is a confluence issue somewhere that if I can find will share,
 
-request_lte_2022 <- c(1:4) %>% 
-  walk(
+request_lte_2022 <- download_leadtimes %>% 
+  map(
     ~list(
       product_type = "monthly_mean",
-      format = "netcdf",
+      format = "grib",
       originating_centre = "ecmwf",
       system="51",
       variable = c("total_precipitation"),
@@ -92,27 +97,29 @@ request_lte_2022 <- c(1:4) %>%
       area = request_coords,
       leadtime_month = .x,
       dataset_short_name = "seasonal-monthly-single-levels",
-      target = glue("ecmwf_forecast_lte2022_lt{.x}.nc")
+      target = glue("ecmwf_forecast_lte2022_lt{.x}.grib")
     )
   )
 
-request_2023 <- c(1:4) %>% 
+
+request_2023 <- download_leadtimes %>% 
   walk(
     ~list(
       product_type = "monthly_mean",
-      format = "netcdf",
+      format = "grib",
       originating_centre = "ecmwf",
       system ="51",
       variable = c("total_precipitation"),
       year = as.character(c(2023)),
-      month = sprintf("%02d",c(1:9)),
+      month = sprintf("%02d",c(1:10)),
       area = request_coords,
       leadtime_month = .x,
       dataset_short_name = "seasonal-monthly-single-levels",
-      target = glue("ecmwf_forecast_2023_lt{.x}.nc")
+      target = glue("ecmwf_forecast_2023_lt{.x}.grib")
     )
   )
 
+if(download_2023){
 cat("Downloading 2023 data\n")
 request_2023 %>% 
   walk(\(rq){
@@ -122,8 +129,10 @@ request_2023 %>%
                path = fp_outpath_ecmwf)}
     )
 cat("2023 data Jan - September downloaded to AA_DATA_DIR")
+}
 
 cat("Downloading data 1981-2022\n")
+if(download_historical_lte2022){
 request_lte_2022 %>% 
   walk(\(rq){
     wf_request(user     = Sys.getenv("ECMWF_USER_UID"),  # user ID (for authentication)
@@ -131,5 +140,6 @@ request_lte_2022 %>%
                transfer = TRUE,   # download the file
                path = fp_outpath_ecmwf)}
   )
+}
 
 cat('1981-2022 data Jan - December downloaded to AA_DATA_DIR')

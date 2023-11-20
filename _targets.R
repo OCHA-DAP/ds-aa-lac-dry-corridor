@@ -1,30 +1,26 @@
-# Created by use_targets().
-# Follow the comments below to fill in this target script.
-# Then follow the manual to check and run the pipeline:
-#   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline
 
 # Load packages required to define the pipeline:
 library(targets)
-library(rnaturalearth)
-library(sf)
-library(tidyverse)
-library(rgee)
-library(janitor)
-library(rgee)
-library(tidyrgee)
-library(exactextractr)
-library(terra)
-library(tidync)
+tar_source()
 
-# library(tarchetypes) # Load other packages as needed.
-
-# Set target options:
+# packages that your targets need to run
 tar_option_set(
-  packages = c("tibble") # packages that your targets need to run
+  packages = c("tidyverse",
+               "exactextractr",
+               "terra",
+               "tidync",
+               "sf",
+               "tidyrgee",
+               "tidync",
+               "rnaturalearth",
+               "sf",
+               "rgee",
+               "janitor"
+               ) 
 )
 options(clustermq.scheduler = "multicore")
 
-tar_source()
+
 
 fp_iri_prob <- file.path(
   Sys.getenv("AA_DATA_DIR"),
@@ -34,7 +30,14 @@ fp_iri_prob <- file.path(
   "iri",
   "lac_iri_forecast_seasonal_precipitation_tercile_prob_Np18Sp10Em83Wm93.nc"
 )
-
+dir_ecmwf_tifs <- file.path(Sys.getenv("AA_DATA_DIR"),
+                     "private",
+                     "processed",
+                     "lac",
+                     "ecmwf_seasonal",
+                     "seas51",
+                     "tif"
+)
 
 
 list(
@@ -148,5 +151,12 @@ list(
       # All VHI thresholds to run
       threshold_seq = seq(0.05, 1, by = 0.05)
     )
+  ),
+  tar_target(
+    name = df_ecmwf_zonal,
+    command= aggregate_ecmwf_historical (dir_ecmwf = dir_ecmwf_tifs,
+                                         init_trimester_month=c(5,6,9),
+                                         zonal_boundary = gdf_aoi_adm$adm0
+  )
   )
 )

@@ -102,7 +102,6 @@ lr_iri_prob <- iri_nc_to_r(
 )
 ```
 
-
 ## Probability Below Average Distributions
 
 ### Historgrams by leadtime
@@ -382,7 +381,6 @@ df_prob_bavg_values_seas_combined %>%
 
 
 ```
-
 
 ## Preliminary Threshold Look:
 
