@@ -38,8 +38,6 @@ dir_ecmwf_tifs <- file.path(Sys.getenv("AA_DATA_DIR"),
                      "seas51",
                      "tif"
 )
-
-
 list(
   tar_target(
     name = gdf_aoi_adm,
@@ -156,7 +154,13 @@ list(
     name = df_ecmwf_zonal,
     command= aggregate_ecmwf_historical (dir_ecmwf = dir_ecmwf_tifs,
                                          init_trimester_month=c(5,6,9),
-                                         zonal_boundary = gdf_aoi_adm$adm0
-  )
+                                         zonal_boundary = gdf_aoi_adm$adm0)
+    ),
+  tar_target(
+    name = df_ecmwf_pixel,
+    command = aggregate_ecmwf_historical_pixel(dir_ecmwf = dir_ecmwf_tifs,
+                                               init_trimester_month=c(5,6,9)
+  ),
   )
 )
+
