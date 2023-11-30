@@ -25,16 +25,9 @@ library(blastula)
 library(sf)
 library(terra)
 library(rnaturalearth)
+library(ecmwfr)
 
-# 
-# # library(sf)
-# # library(googlesheets4)
-# library(janitor)
-# # library(tmap)
-# library(here)
-# library(ggtext) # colored title
-# library(glue)
-# library(rhdx)
+
 gghdx()
 
 ecmwf_leadimes <- c(1:6)
@@ -77,18 +70,18 @@ df_dl_log <- read_csv(fp_dl_log)
 
 ## Load Thresholds #####
 ## currently place holder - for df that should have country and threshold for season.
-drive_download(
-  as_id(
-    drive_dribble %>% 
-      filter(
-        str_detect(name, "_thresholds\\.csv$") 
-      )%>% 
-      pull(id)
-  ),
-  path = fp_thresholds_log <- tempfile(fileext = ".csv")
-)
-
-df_thresholds <- read_csv(dl_log_path)
+# drive_download(
+#   as_id(
+#     drive_dribble %>% 
+#       filter(
+#         str_detect(name, "_thresholds\\.csv$") 
+#       )%>% 
+#       pull(id)
+#   ),
+#   path = fp_thresholds_log <- tempfile(fileext = ".csv")
+# )
+# 
+# df_thresholds <- read_csv(dl_log_path)
 
 
 
@@ -133,7 +126,7 @@ prod_info <- wf_product_info(
 
 
 cat("defining bbox for extraction\n")
-aoi_countries <- ?ne_countries(country = c("Nicaragua","Honduras","Guatemala","El Salvador")) %>% 
+aoi_countries <- ne_countries(country = c("Nicaragua","Honduras","Guatemala","El Salvador")) %>% 
   st_as_sf() %>% 
   select(
     contains("admin"),
@@ -148,20 +141,61 @@ pub_mo_date <- format(floor_date(run_date,"month"),"%Y%m%d")
 cat("writing data requests to list\n")
 request_coords<- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/{aoi_bbox['xmax']}")
 
-ecmwf_data_request <- ecmwf_leadimes %>% 
-  map(
-    ~list(
-      product_type = "monthly_mean",
-      format = "grib",
-      originating_centre = "ecmwf",
-      system="51",
-      variable = c("total_precipitation"),
-      year = as.character(year(run_date)),
-      month = sprintf("%02d",month(run_date)),
-      area = request_coords,
-      leadtime_month = .x,
-      dataset_short_name = "seasonal-monthly-single-levels",
-      target = glue("ecmwf_seas51_monthly_{pub_mo_date}_lt{.x}.grib")
+lr <- ecmwf_leadimes %>% 
+  map(\(int_lt){
+    # valid_mo <- as_date(pub_mo_date,"%Y%m%d")+months(int_lt-1)
+    bname <- paste0("lt",int_lt)
+    fname_grib <- glue("ecmwf_seas51_monthly_{pub_mo_date}_lt{int_lt}.grib")
+    ecmwf_data_request <- list(
+          product_type = "monthly_mean",
+          format = "grib",
+          originating_centre = "ecmwf",
+          system="51",
+          variable = c("total_precipitation"),
+          year = as.character(year(run_date)),
+          month = sprintf("%02d",month(run_date)),
+          area = request_coords,
+          leadtime_month = int_lt,
+          dataset_short_name = "seasonal-monthly-single-levels",
+          target = fname_grib
+        )
+      
+    tmp_dir <- file.path(tempdir())
+    wf_request(user     = Sys.getenv("ECMWF_USER_UID"),  # user ID (for authentication)
+                request  = ecmwf_data_request,  # the request
+                transfer = TRUE,  # download the data
+               path= tmp_dir
+               
     )
+    r_tmp <- rast(
+      file.path(tmp_dir,fname_grib)
+      )
+    r_mean <- mean(r_tmp)
+    r_mean %>% 
+      set.names(bname)
+    return(r_mean)
+  }
   )
+
+# merge bands
+r <- rast(lr)
+
+
+# make temp file
+file_date_suffix <- format(floor_date(run_date,"month"))
+fp_raster_name <- paste0("ecmwf_forecast_",file_date_suffix,"_aoi.tif")
+tmp_path <- file.path(tempdir(),fp_raster_tmp)
+writeRaster(r,fp_raster_name,overwrite = TRUE)
+
+
+drive_upload(
+  media = fp_raster_name,
+  name = fp_raster_name,
+  path = as_id(
+    drive_dribble %>% 
+      filter(name =="ecmwf_seas51_monitoring_tifs") %>% 
+      pull(id))
+)
+
+
 
