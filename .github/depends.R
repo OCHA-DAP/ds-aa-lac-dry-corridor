@@ -5,7 +5,8 @@ install.packages(c("dplyr", #wrangling
                    "purrr", # mapping
                    "tidyr", # pivot_wider
                    "lubridate",
-                   "keyring",
+                   "sodium", # for keyring
+                   "keyring", # for ecmwfr
                    "stringr", # annoying dep just for str_trim to add a single "." to email.
                    "zoo", # rolling stats
                    "janitor", # data cleaning - maybe not used?
