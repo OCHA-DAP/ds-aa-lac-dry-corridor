@@ -185,11 +185,11 @@ r <- rast(lr)
 file_date_suffix <- format(floor_date(run_date,"month"))
 fp_raster_name <- paste0("ecmwf_forecast_",file_date_suffix,"_aoi.tif")
 tmp_path <- file.path(tempdir(),fp_raster_tmp)
-writeRaster(r,fp_raster_name,overwrite = TRUE)
+writeRaster(r,tmp_path,overwrite = TRUE)
 
 
 drive_upload(
-  media = fp_raster_name,
+  media = tmp_path,
   name = fp_raster_name,
   path = as_id(
     drive_dribble %>% 
@@ -197,5 +197,5 @@ drive_upload(
       pull(id))
 )
 
-
+unlink(tmp_path)
 
