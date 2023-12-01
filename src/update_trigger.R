@@ -102,11 +102,11 @@ df_dl_log <- read_csv(fp_dl_log)
 
 # think only need to do this 1x
 options(keyring_backend="file")
-ecmwfr::wf_set_key(
-  user = Sys.getenv("ECMWF_USER_UID"),
-  key = Sys.getenv("ECMWF_USER_KEY"),
-  service = "cds"
-)
+# ecmwfr::wf_set_key(
+#   user = Sys.getenv("ECMWF_USER_UID"),
+#   key = Sys.getenv("ECMWF_USER_KEY"),
+#   service = "cds"
+# )
 
 
 # Check Metadata/attributes for appropriate selection ---------------------
