@@ -100,13 +100,16 @@ df_dl_log <- read_csv(fp_dl_log)
 #' Registration instructions are available in teh above ecmwfr package link.
 
 
-# think only need to do this 1x
+cat("set keyring options for linux\n")
 options(keyring_backend="file")
-# ecmwfr::wf_set_key(
-#   user = Sys.getenv("ECMWF_USER_UID"),
-#   key = Sys.getenv("ECMWF_USER_KEY"),
-#   service = "cds"
-# )
+
+cat("setting key\n")
+ecmwfr::wf_set_key(
+  user = Sys.getenv("ECMWF_USER_UID"),
+  key = Sys.getenv("ECMWF_USER_KEY"),
+  service = "cds"
+)
+cat("KEY SET\n")
 
 
 # Check Metadata/attributes for appropriate selection ---------------------
