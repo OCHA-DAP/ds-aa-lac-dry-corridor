@@ -101,7 +101,13 @@ df_dl_log <- read_csv(fp_dl_log)
 
 
 cat("set keyring options for linux\n")
+# set options
 options(keyring_backend="file")
+
+# spoof keyring
+if(!("ecmwfr" %in% keyring::keyring_list()$keyring)){
+  keyring::keyring_create("ecmwfr", password = "test")
+}
 
 cat("setting key\n")
 ecmwfr::wf_set_key(
