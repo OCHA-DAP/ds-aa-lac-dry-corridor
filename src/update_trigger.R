@@ -125,20 +125,8 @@ ecmwfr::wf_set_key(
 cat("KEY SET\n")
 
 
-# Check Metadata/attributes for appropriate selection ---------------------
 
-## List data sets available
-df_cds_datasets <- wf_datasets(
-  user = Sys.getenv("ECMWF_USER_UID"),
-  service = "cds"
-)
 
-# get metdata of that specific data set ("seasonal-monthly-single-levels")
-prod_info <- wf_product_info(
-  dataset = "seasonal-monthly-single-levels",
-  user = Sys.getenv("ECMWF_USER_UID"),
-  service = "cds"
-)
 
 
 cat("defining bbox for extraction\n")
@@ -215,4 +203,4 @@ drive_upload(
 
 unlink(tmp_path)
 
-lts <- parse_number(names(r))
+# lts <- parse_number(names(r))
