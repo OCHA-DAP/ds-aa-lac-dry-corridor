@@ -41,10 +41,12 @@ run_date <- Sys.Date()
 
 # Google Drive ------------------------------------------------------------
 
+# authorize drive access
+cat("authorize drive access\n")
 drive_auth(
   path = Sys.getenv("CADC_MONITORING_JSON")
 )
-  
+cat("load drive dribble\n")
 drive_dribble <- drive_ls(
   corpus = "user"
 )
@@ -198,4 +200,6 @@ drive_upload(
 )
 
 unlink(tmp_path)
+
+lts <- parse_number(names(r))
 
