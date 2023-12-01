@@ -27,12 +27,18 @@ library(terra)
 library(rnaturalearth)
 library(ecmwfr)
 library(glue)
-
-
 gghdx()
 
+testing_phase <-  T
 ecmwf_leadimes <- c(1:6)
-run_date <- Sys.Date()
+
+if(!testing_phase){
+  run_date <- Sys.Date()
+}
+if(testing_phase){
+  run_date <- as_date("2023-11-30")  
+}
+
 # pub dates - 5th day of every month
 # https://www.ecmwf.int/en/newsletter/154/meteorology/ecmwfs-new-long-range-forecasting-system-seas5
 
