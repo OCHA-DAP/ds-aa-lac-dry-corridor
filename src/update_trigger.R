@@ -33,7 +33,7 @@ gghdx()
 ecmwf_leadimes <- c(1:6)
 run_date <- Sys.Date()
 # pub dates - 5th day of every month
-#https://www.ecmwf.int/en/newsletter/154/meteorology/ecmwfs-new-long-range-forecasting-system-seas5
+# https://www.ecmwf.int/en/newsletter/154/meteorology/ecmwfs-new-long-range-forecasting-system-seas5
 
 # source(file.path("R","email_funcs.R"))
 # source(file.path("src","email","email_utils.R"))
@@ -42,26 +42,25 @@ run_date <- Sys.Date()
 # Google Drive ------------------------------------------------------------
 
 # authorize drive access
-cat("authorize drive access\n")
 drive_auth(
   path = Sys.getenv("CADC_MONITORING_JSON")
 )
-cat("load drive dribble\n")
+
 drive_dribble <- drive_ls(
   corpus = "user"
 )
 
-cadc_gha_dribble <- drive_dribble %>% 
+cadc_gha_dribble <- drive_dribble %>%
   filter(name == "CADC_GHA")
 
 
 # Check drive -------------------------------------------------------------
 drive_download(
   as_id(
-    drive_dribble %>% 
+    drive_dribble %>%
       filter(
-        str_detect(name, "_log\\.csv$") 
-      )%>% 
+        str_detect(name, "_log\\.csv$")
+      ) %>%
       pull(id)
   ),
   path = fp_dl_log <- tempfile(fileext = ".csv")
@@ -74,15 +73,15 @@ df_dl_log <- read_csv(fp_dl_log)
 ## currently place holder - for df that should have country and threshold for season.
 # drive_download(
 #   as_id(
-#     drive_dribble %>% 
+#     drive_dribble %>%
 #       filter(
-#         str_detect(name, "_thresholds\\.csv$") 
-#       )%>% 
+#         str_detect(name, "_thresholds\\.csv$")
+#       )%>%
 #       pull(id)
 #   ),
 #   path = fp_thresholds_log <- tempfile(fileext = ".csv")
 # )
-# 
+#
 # df_thresholds <- read_csv(dl_log_path)
 
 
@@ -101,11 +100,9 @@ df_dl_log <- read_csv(fp_dl_log)
 #' Registration instructions are available in teh above ecmwfr package link.
 
 
-
-
 # think only need to do this 1x
 ecmwfr::wf_set_key(
-  user=Sys.getenv("ECMWF_USER_UID"),
+  user = Sys.getenv("ECMWF_USER_UID"),
   key = Sys.getenv("ECMWF_USER_KEY"),
   service = "cds"
 )
@@ -114,92 +111,91 @@ ecmwfr::wf_set_key(
 # Check Metadata/attributes for appropriate selection ---------------------
 
 ## List data sets available
-df_cds_datasets<- wf_datasets(
-  user=Sys.getenv("ECMWF_USER_UID"),
+df_cds_datasets <- wf_datasets(
+  user = Sys.getenv("ECMWF_USER_UID"),
   service = "cds"
 )
 
 # get metdata of that specific data set ("seasonal-monthly-single-levels")
 prod_info <- wf_product_info(
   dataset = "seasonal-monthly-single-levels",
-  user=Sys.getenv("ECMWF_USER_UID"),
+  user = Sys.getenv("ECMWF_USER_UID"),
   service = "cds"
 )
 
 
 cat("defining bbox for extraction\n")
-aoi_countries <- ne_countries(country = c("Nicaragua","Honduras","Guatemala","El Salvador")) %>% 
-  st_as_sf() %>% 
+aoi_countries <- ne_countries(country = c("Nicaragua", "Honduras", "Guatemala", "El Salvador")) %>%
+  st_as_sf() %>%
   select(
     contains("admin"),
     iso_a3
   )
-aoi_bbox <- st_bbox(aoi_countries) 
+aoi_bbox <- st_bbox(aoi_countries)
 
 
 # Create API requests ---------------------------------------------------------
-pub_mo_date <- format(floor_date(run_date,"month"),"%Y%m%d")
+pub_mo_date <- format(floor_date(run_date, "month"), "%Y%m%d")
 
 cat("writing data requests to list\n")
-request_coords<- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/{aoi_bbox['xmax']}")
+request_coords <- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/{aoi_bbox['xmax']}")
 
-lr <- ecmwf_leadimes %>% 
+lr <- ecmwf_leadimes %>%
   map(\(int_lt){
     # valid_mo <- as_date(pub_mo_date,"%Y%m%d")+months(int_lt-1)
-    bname <- paste0("lt",int_lt)
+    bname <- paste0("lt", int_lt)
     fname_grib <- glue("ecmwf_seas51_monthly_{pub_mo_date}_lt{int_lt}.grib")
     ecmwf_data_request <- list(
-          product_type = "monthly_mean",
-          format = "grib",
-          originating_centre = "ecmwf",
-          system="51",
-          variable = c("total_precipitation"),
-          year = as.character(year(run_date)),
-          month = sprintf("%02d",month(run_date)),
-          area = request_coords,
-          leadtime_month = int_lt,
-          dataset_short_name = "seasonal-monthly-single-levels",
-          target = fname_grib
-        )
-      
+      product_type = "monthly_mean",
+      format = "grib",
+      originating_centre = "ecmwf",
+      system = "51",
+      variable = c("total_precipitation"),
+      year = as.character(year(run_date)),
+      month = sprintf("%02d", month(run_date)),
+      area = request_coords,
+      leadtime_month = int_lt,
+      dataset_short_name = "seasonal-monthly-single-levels",
+      target = fname_grib
+    )
+
     tmp_dir <- file.path(tempdir())
-    wf_request(user     = Sys.getenv("ECMWF_USER_UID"),  # user ID (for authentication)
-                request  = ecmwf_data_request,  # the request
-                transfer = TRUE,  # download the data
-               path= tmp_dir
-               
+    wf_request(
+      user = Sys.getenv("ECMWF_USER_UID"), # user ID (for authentication)
+      request = ecmwf_data_request, # the request
+      transfer = TRUE, # download the data
+      path = tmp_dir
     )
     r_tmp <- rast(
-      file.path(tmp_dir,fname_grib)
-      )
+      file.path(tmp_dir, fname_grib)
+    )
     r_mean <- mean(r_tmp)
-    r_mean %>% 
+    r_mean %>%
       set.names(bname)
     return(r_mean)
-  }
-  )
+  })
 
 # merge bands
 r <- rast(lr)
 
 
 # make temp file
-file_date_suffix <- format(floor_date(run_date,"month"))
-fp_raster_name <- paste0("ecmwf_forecast_",file_date_suffix,"_aoi.tif")
-tmp_path <- file.path(tempdir(),fp_raster_tmp)
-writeRaster(r,tmp_path,overwrite = TRUE)
+file_date_suffix <- format(floor_date(run_date, "month"))
+fp_raster_name <- paste0("ecmwf_forecast_", file_date_suffix, "_aoi.tif")
+tmp_path <- file.path(tempdir(), fp_raster_tmp)
+writeRaster(r, tmp_path, overwrite = TRUE)
 
 
 drive_upload(
   media = tmp_path,
   name = fp_raster_name,
   path = as_id(
-    drive_dribble %>% 
-      filter(name =="ecmwf_seas51_monitoring_tifs") %>% 
-      pull(id))
+    drive_dribble %>%
+      filter(name == "ecmwf_seas51_monitoring_tifs") %>%
+      pull(id)
+  )
 )
 
 unlink(tmp_path)
 
 lts <- parse_number(names(r))
-
