@@ -29,7 +29,8 @@ jobs:
             libgdal-dev \
             libproj-dev \
             libgeos-dev \
-            libudunits2-dev
+            libudunits2-dev \
+            libsodium-dev
       - name: Create authorization JSON
         id: create-json
         uses: jsdaniell/create-json@v1.2.2
