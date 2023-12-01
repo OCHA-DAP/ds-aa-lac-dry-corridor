@@ -199,7 +199,7 @@ r <- rast(lr)
 # make temp file
 file_date_suffix <- format(floor_date(run_date, "month"))
 fp_raster_name <- paste0("ecmwf_forecast_", file_date_suffix, "_aoi.tif")
-tmp_path <- file.path(tempdir(), fp_raster_tmp)
+tmp_path <- file.path(tempdir(), fp_raster_name)
 writeRaster(r, tmp_path, overwrite = TRUE)
 
 
