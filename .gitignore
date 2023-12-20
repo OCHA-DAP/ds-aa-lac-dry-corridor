@@ -1,4 +1,7 @@
 .DS_Store
+/_targets/
+*.grib
+
 
 *.json
 # History files
