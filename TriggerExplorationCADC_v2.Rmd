@@ -16,21 +16,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, echo=FALSE, include=F}
 library(tidyverse)
-# library(targets)
 library(gghdx)
 library(gt)
 library(arrow)
-
 library(janitor)
 library(broom)
-
-# library(data.table)
 gghdx()
 
 df_cropland_lte_vhi_threshold_dc <- read_parquet("shinyAppData/df_cropland_lte_vhi_threshold_dc.parquet") 
 df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_zonal.parquet") 
 df_iri_adm0_pre <- read_parquet("shinyAppData/df_iri_adm0_pre.parquet") 
 targets::tar_load(df_ecmwf_zonal_all)
+
 df_ecmwf_zonal_all <- df_ecmwf_zonal_all %>% 
     mutate(
     valid_mo =month(valid_date),
@@ -40,19 +37,11 @@ df_ecmwf_zonal_all <- df_ecmwf_zonal_all %>%
 
 targets::tar_load(df_era5_mo)
 
-#. define useful funcs here
-available_leadtime_months <-  function(x){
-    valid_months <- as.numeric(x)
-    least_recent <- max(valid_months)
-    most_recent <- min(valid_months)
-    furthest_back<- least_recent -5
-    monitor_months <- furthest_back:most_recent
-    return(monitor_months)
-}
 
 adjustable_leadtimes <-  function(monitor_months, forecast_months){
+  # browser()
   mon_mo <-  as.numeric(monitor_months)
-  forecast_start <- as.numeric( min(forecast_months))
+  forecast_start <- min(as.numeric(forecast_months))
   return(forecast_start- mon_mo)
 }
 
@@ -75,6 +64,39 @@ delta<-function(a,b,c){
 }
 
 plt_color <- c(non_drought =hdx_hex("mint-hdx"),drought = hdx_hex("tomato-hdx"))
+
+load_pub_mo_list <- function(){
+  set_names(c(1:12),
+            month(c(1:12),label=T,abbr=T)
+  ) %>% 
+    map(\(mo_int){
+      start_mo_int <- mo_int-5
+      seq_mo_int <-  start_mo_int:mo_int
+      mo_seq<- ifelse(seq_mo_int<=0, seq_mo_int+12, seq_mo_int)
+      return(mo_seq)
+    }
+    )
+}
+  
+  
+
+  
+
+find_pub_mos <-  function(x=c(5,6,7,8)){
+  x <- as.numeric(unname(x))
+  avail_mo_list <- load_pub_mo_list()
+  month_diffs <- diff(c(x, x[1] + 12))
+  
+  # Find the index of the maximum difference
+  max_diff_index <- which.max(month_diffs)
+  
+  # The maximum month is the one following the index with the maximum difference
+  max_month <- x[max_diff_index]
+  max_month_lab <- month(max_month,label=T, abbr=T)
+  pub_mos <- avail_mo_list[[max_month_lab]]
+  ret <- pub_mos[!(pub_mos %in% x[2:length(x)])]
+  return(ret)
+}
 ```
 
 
@@ -119,13 +141,15 @@ inputPanel(
 
 
   checkboxGroupInput(inputId = "winA_forecast",
-                     choices = c(1:12) %>% set_names(month(1:12,label=T,abbr=T)),
+                     choices = c(1:12) %>%
+                       set_names(month(1:12,label=T,abbr=T)),
                      selected = c(5,6,7,8),
                      inline=F,
                      label = "Step 1: Select time period/window of concert")
   
   renderUI({
-    monitor_months <- available_leadtime_months(input$winA_forecast)
+    monitor_months <- find_pub_mos(x=input$winA_forecast)
+    cat(monitor_months,"\n")
     checkboxGroupInput(
       inputId= "winA_mon",
       label = "2. Here are the available months we can monitor:",
@@ -134,12 +158,11 @@ inputPanel(
     )
 
   })
-  
   renderUI({
   lts_tweak = adjustable_leadtimes(input$winA_mon, input$winA_forecast)
-  # inputPanel(
     # "Tweak Leadtimes",
-    lts_tweak %>% sort() %>%
+    lts_tweak %>%
+      sort() %>%
       map(\(lt){
         sliderInput(
           inputId = paste0("slider_", lt),
@@ -148,11 +171,9 @@ inputPanel(
         )
 
       })
-
-  # )
 })
-
-
+  actionButton("execute", "Generate data")
+  
 conditionalPanel(condition = "input.num_windows >= 2",
                  inputPanel(
                    
@@ -196,135 +217,8 @@ conditionalPanel(condition = "input.num_windows == 3",
 
 
 
-```{r echo=F,eval=F}
-input.winA_mon <-  c(3,4,5)
-input.winA_mon <-  c(6,7,8,9)
-input.winA_forecast <-  c(5,6,7,8)
-input.winA_forecast <-  c(9,10,11)
-input.winaA_mon <- available_leadtime_months(x = input.winA_forecast)
-
- df_ecmwf_win_filt <- df_ecmwf_zonal_all %>% 
-    # filter(adm0_es %in% input$sel_country) %>% 
-    group_by(adm0_es,pub_date) %>% 
-    filter(
-      month(pub_date) %in% input.winA_mon,
-      valid_mo %in% input.winA_forecast
-    ) 
- 
-   
-  df_ecmwf_win_filt <- df_ecmwf_win_filt %>% 
-    group_by(adm0_es, pub_date) %>% 
-    filter(
-      all(input.winA_forecast %in% valid_mo)
-    )
-  
-  df_win1 <- df_ecmwf_win_filt%>% 
-    summarise(
-      mm = sum(mm),
-      lt= min(lt)
-      
-    ) %>% 
-    mutate(
-      yr_date =floor_date(pub_date, "year")
-    )
 
 
-
-
-df_win1_int <- df_ecmwf_zonal_all %>% 
-  mutate(
-    lt= lt- 1
-  ) %>% 
-  filter(stat== "mean") %>% 
-  group_by(adm0_es,pub_date) %>% 
-  filter(
-    month(pub_date) %in% input.winA_mon,
-    valid_mo %in% input.winA_forecast
-  ) %>% 
-   group_by(adm0_es, pub_date) %>% 
-  filter(
-    all(input.winA_forecast %in% valid_mo)
-  ) %>% 
-  summarise(
-    mm = sum(mm),
-    lt= min(lt)
-  ) %>% 
-  mutate(
-    yr_date =floor_date(pub_date, "year")
-  )
-
-
-
-df_rp_q <- reactive({
-  q_rp <- 1/input.rp
-  
-  eq_probs <- quad_eq(a = -1, b = 2, c = -q_rp)
-  q_jrp <- eq_probs[1]
-  rp_jp <- 1/eq_probs[1]
-  
-df_ecmwf_zonal_filt_mins <- df_ecmwf_zonal %>% 
-      filter(
-      # (seas_gen == "MJJ" & month(date) %in% input$w1_monitor)|
-        # (seas_gen == "JJA" & month(date) %in% input$w2_monitor)|
-        # (seas_gen == "SON" & month(date) %in% input$w3_monitor)
-        (seas_gen == "SON" & month(date) %in% input.winA_mon)
-         )
-    ) %>%
-  group_by(
-    adm0_es,init_valid_date,init_year,seas_gen
-  ) %>% 
-  summarise(
-    mm=min(mm),.groups="drop"
-  )
-df_ecmwf_thresh <- df_win1_int %>% 
-  group_by(adm0_es,lt) %>% 
-   summarise(
-      q_ind = quantile(mm,q_rp),
-      # q_jp = quantile(mm,q_jrp),
-      .groups="drop"
-      
-    ) 
-
-  df_full <- df_win1_int %>% 
-    left_join(
-      df_ecmwf_thresh
-    ) %>% 
-    mutate(
-      lgl_flag = mm<q_ind
-    ) 
-  
-  
-  df_overall_activation_rate <- df_full %>% 
-    group_by(adm0_es,yr=year(pub_date)) %>% 
-    summarise(
-      lgl_flag = any(lgl_flag)
-    ) %>% 
-    summarise(
-      ar_overall= mean(lgl_flag),
-      rp_overall =1/ar_overall
-    )
-  
-  df_ecmwf_thresh %>% 
-    # select(-q_jp) %>% 
-    pivot_wider(
-      names_from= lt,
-      values_from = q_ind
-    ) %>% 
-    left_join(
-      df_overall_activation_rate
-    )
-    
-  
-  list(
-    df= df_ecmwf_filt_quantiles,
-    indiv_prob = input$ecmwf_rp,
-    joint_prob = round(rp_jp,1),
-    df_full = df_full
-  )
-    
-})
-
-```
 
 ```{r eval=TRUE,echo=F}
 df_win1 <- reactive({
@@ -344,49 +238,16 @@ df_win1 <- reactive({
       all(input$winA_forecast %in% valid_mo)
     )
   
-  print(df_ecmwf_win_filt2)
-  
   df_ecmwf_win_filt2 %>% 
     summarise(
       mm = sum(mm),
-      lt= min(lt)
+      lt= min(lt),
+      .groups = "drop"
       
     ) %>% 
     mutate(
       yr_date =floor_date(pub_date, "year")
     )})
-
-
-
-# df_era_wv2_wide<- df_era5_mo %>% 
-#   group_by(yr_date=floor_date(date, "year"), f_v2_win) %>% 
-#   summarise(
-#     mm= sum(value)*1000
-#   ) %>% 
-#   filter(!is.na(f_v2_win)) %>% 
-#   pivot_wider(
-#     names_from = f_v2_win,
-#     values_from = mm
-#   ) 
-  
-# df_seas51_wv2 %>% 
-#   left_join(df_era_wv2_wide) %>% 
-#   ggplot(
-#     aes(x= mm,y= win_A)
-#   )+
-#   geom_point()+
-#   facet_grid(rows= vars(lt), cols = vars(adm0_es))
-
-# df_seas51_wv2 %>% 
-#   ggplot(
-#     aes(x= as_factor(lt),y=mm)
-#   )+
-#   geom_boxplot()+
-#   facet_grid(
-#     # rows = vars(seas_gen),
-#     cols= vars(adm0_es),
-#     scales="free_y"
-#   )
 ```
 
 
@@ -397,7 +258,9 @@ library(glue)
 
 # dynamically grab the input values from the sliders
 gather_slider_values <- reactive({
-  lts_tweak = adjustable_leadtimes(input$winA_mon, input$winA_forecast) %>% 
+  lts_tweak = adjustable_leadtimes(
+    input$winA_mon, 
+    input$winA_forecast) %>% 
     sort()
   
   # go through each of the available leadtimes and take the slider value
@@ -407,56 +270,41 @@ gather_slider_values <- reactive({
     })
   
 })
-# input.winA_mon
-# input.winA_forecast
 
-# l_rps = c(`0` = 4,`1` =3,`2`=3)
-# l_rps = c(`1` = 3,`2` =4,`3`=4,`4`=4)
 dynamic_rps <- reactive({
+
   l_rps <- gather_slider_values()
-  df_win_wide <- df_win1() %>% 
-          select(-pub_date) %>% 
-          pivot_wider(names_from = lt,values_from = mm)
+
+  df_win_long <- df_win1() %>% 
+    select(-pub_date) 
   
-  cat("printing df_win_wide in dynamic_rps()\n")
-  print(df_win_wide)
-  
-  ldf_rps <- l_rps %>% 
+   ldf_rps <- l_rps %>% 
     imap(
       \(rp,nm){
         q_rp <- 1/as.numeric(rp)
-        df_ecmwf_thresh <- df_win_wide  %>% 
-          # select(-pub_date) %>% 
-          # pivot_wider(names_from = lt,values_from = mm) %>% 
-          group_by(adm0_es) %>%
-          reframe(
-            # !!sym(as.character(nm)) := quantile(!!sym(as.character(nm)),q_rp),
-            thresh = quantile(!!sym(as.character(nm)),q_rp),
-            .groups="drop"
+        df_win_long %>% 
+          filter(
+            lt==nm
           ) %>% 
-          mutate(
-            lt = nm
+          group_by(adm0_es) %>% 
+          reframe(
+            !!sym(as.character(nm))  := quantile(mm,q_rp)
           )
       }
     )
   
-  # shifted from purrr::reduce(left_join) as i was gettting error about .init & .x
-  ldf_rps %>% 
-    list_rbind() %>% 
-    pivot_wider(
-      names_from =lt,
-      values_from = thresh
-    )
-    # reduce(.x= ldf_rps,.f=left_join,by="adm0_es")
+  purrr::reduce(ldf_rps,left_join) 
+  
   })
 
 
-apply_dynamic_rps <- reactive({
+apply_dynamic_rps <- eventReactive(input$execute,{
+  browser()
   df_thresh_wide <- dynamic_rps()
   df_win <- df_win1()
   df_thresh_long<- df_thresh_wide %>%
     pivot_longer(
-      cols= any_of(c("0","1","2","3","4","5","6")),
+      cols= matches("\\b[0-6]\\b"),
       names_to ="lt",values_to = "q_ind"
     ) %>% 
     mutate(
@@ -479,7 +327,7 @@ apply_dynamic_rps <- reactive({
     ) %>% 
     summarise(
       ar_overall= mean(lgl_flag),
-      rp_overall =1/ar_overall
+      rp_overall =1/ar_overall,.groups="drop"
     )
   
     rp_by_lt_indiv <- df_thresh_wide %>% 
@@ -492,7 +340,6 @@ apply_dynamic_rps <- reactive({
         df = df_full
       )
     )
-
 })
 
 
@@ -601,6 +448,7 @@ renderPlot({
   ) %>% 
   summarise(
     flags_per_lt = sum(lgl_flag),
+    .groups="drop"
   ) %>% 
   # mutate(
   #   lt = as_factor(lt),
@@ -843,7 +691,8 @@ df_perf <- thresh_seq %>%
         FP= sum(FP,na.rm=T),
         TN = sum(TN,na.rm=T),
         FN= sum(FN,na.rm=T),
-        precision = TP/(TP+FP)
+        precision = TP/(TP+FP),
+        .groups = "drop"
       ) %>% 
       mutate(
         threshold_pctile = thresh_temp
@@ -1768,7 +1617,7 @@ apply_rps <- reactive({
   df_overall_activation_rate <- df_full %>% 
     group_by(adm0_es,yr=year(pub_date)) %>% 
     summarise(
-      lgl_flag = any(lgl_flag)
+      lgl_flag = any(lgl_flag),.groups="drop_last"
     ) %>% 
     summarise(
       ar_overall= mean(lgl_flag),
@@ -1850,7 +1699,8 @@ df_ecmwf_vhi_jja <- reactive({
       adm0_es,yr_date
     ) %>% 
     summarise(
-      pct = mean(pct_crop_pixels_lte_thresh),.groups="drop"
+      pct = mean(pct_crop_pixels_lte_thresh),
+      .groups="drop"
     )
   df_ecmwf_jja %>% 
     left_join(df_vhi_pct_avg)

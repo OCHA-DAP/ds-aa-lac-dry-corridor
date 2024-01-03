@@ -11,6 +11,7 @@ fp_out <- file.path(
   "lac",
   "era5_raw_monthly.csv"
 )
+
 # Daily raw has data past 2020 and goes back to 1950
 # daily only has 1974-2020
 era <- ee$ImageCollection("ECMWF/ERA5_LAND/DAILY_RAW")
