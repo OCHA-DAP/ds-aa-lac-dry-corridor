@@ -1,10 +1,14 @@
 .DS_Store
+/_targets/
 
-_targets/*
+# gis testing
 *.grib
-*.idx
-*.json
+*.grib2
 *.tif
+*.idx
+
+
+*.json
 # History files
 .Rhistory
 .Rapp.history
