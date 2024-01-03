@@ -13,7 +13,6 @@ editor: visual
 - The data set accessed is not currently published, but we have access to it.
 - The API request is based on the [ECMWF System 5 guide](https://www.ecmwf.int/sites/default/files/medialibrary/2017-10/System5_guide.pdf) request (p.34)
 -I could only get it to work with the python libraries although theoretically it should be possible with the `{ecmwfr}` R package.
--
 
 
 ```{python}
