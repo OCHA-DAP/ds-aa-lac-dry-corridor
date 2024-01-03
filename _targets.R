@@ -16,6 +16,7 @@
 
 # Load packages required to define the pipeline:
 library(targets)
+library(tarchetypes) # dynanic file branching?
 tar_source()
 
 # packages that your targets need to run
@@ -25,8 +26,10 @@ tar_option_set(
                "terra",
                "tidync",
                "sf",
+               "glue",
                "tidyrgee",
                "tidync",
+               "gt",
                "rnaturalearth",
                "sf",
                "rgee",
@@ -67,6 +70,25 @@ dir_ecmwf_tifs <- file.path(Sys.getenv("AA_DATA_DIR"),
                             "seas51",
                             "tif"
 )
+fp_era5_mo <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "public",
+  "processed",
+  "lac",
+  "era5_precip_monthly_historical.csv"
+)
+
+gdb_insuvimeh_gtm <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "raw",
+  "lac",
+  "INSUVIMEH",
+  "Pronósticos_Precip_NextGen_Guatemala"
+)
+
+  
+
 
 
 list(
@@ -168,16 +190,108 @@ list(
   # get total precip each month and aggregate to country boundary by mean and median.
   tar_target(
     name = df_ecmwf_zonal,
-    command= aggregate_ecmwf_historical (dir_ecmwf = dir_ecmwf_tifs,
+    command= aggregate_ecmwf_historical(dir_ecmwf = dir_ecmwf_tifs,
                                          init_trimester_month=c(5,6,9),
-                                         zonal_boundary = gdf_aoi_adm$adm0)
+                                        zonal_boundary = gdf_aoi_adm$adm0)
   ),
+  tar_target(
+    name = df_ecmwf_zonal_all,
+    command= all_historical_ecmwf_zonal(dir_ecmwf = dir_ecmwf_tifs,
+                                        zonal_boundary = gdf_aoi_adm$adm0)
+  ),
+  tar_target(
+    name = df_ecmwf_seasonal_summarised,
+    command = ecmwf_summarise_seasons(df= df_ecmwf_zonal_all,
+                                      window_list= list("primera"=c(5,6,7,8),
+                                                        "postera"=c(9,10,11))
+    )
+  ),
+  tar_target(
+    name = df_ecmwf_q_summary,
+    command = grouped_quantile_summary(df= df_ecmwf_seasonal_summarised,
+                                       x = "mm",
+                                       rps = c(1:10),
+                                       grp_vars=c("adm0_es","window", "lt")
+    )
+  ),
+  tar_target(
+    name = df_ecmwf_joint_flag_rates,
+    command = overall_activation_rates(df_ecmwf = df_ecmwf_seasonal_summarised,
+                                       df_q_summary = df_ecmwf_q_summary,
+                                       rp = c(3:7))
+    ),
+  tar_target(
+    name = lgt_ecmwf_activation_rates,
+    command = pretty_table_ecmwf_activation_rates(df=df_ecmwf_joint_flag_rates,
+                                       rp = c(3:7))
+    ),
+  
   ## ECMWF Pixel Values ####
   # tar_target(
   #   name = df_ecmwf_pixel,
   #   command = aggregate_ecmwf_historical_pixel(dir_ecmwf = dir_ecmwf_tifs,
   #                                              init_trimester_month=c(5,6,9))
   # ),
+  
+
+  # INSUVIMEH NEXTGEN -------------------------------------------------------
+  # i was trying to learn about target-branching, but i don't love it
+  tar_files(
+    name = gtm_nextgen_nc_fps,
+    command = list.files(gdb_insuvimeh_gtm,
+                         full.names =T, 
+                         recursive = T, 
+                         pattern = "\\d{4}.nc$")
+    
+    
+  ),
+  tar_target(
+    name = df_gtm_nextgen_catalogue,
+    command = catalogue_gtm_nextgen_files(gdb = gdb_insuvimeh_gtm)
+  ),
+  tar_target(
+    name = r_gtm_nextgen_tar,
+    command = write_gtm_nextgen(gdb = gdb_insuvimeh_gtm,
+                                output_file_path = file.path(
+                                  Sys.getenv("AA_DATA_DIR"),
+                                  "private",
+                                  "processed",
+                                  "lac",
+                                  "INSUVIMEH",
+                                  "insuvimeh_pronosticos_nextgen.tif"
+                                ) ) 
+    
+  ),
+  tar_target(
+    name = r_gtm_wrapped,
+    command= wrap(rast(file.path(
+      Sys.getenv("AA_DATA_DIR"),
+      "private",
+      "processed",
+      "lac",
+      "INSUVIMEH",
+      "insuvimeh_pronosticos_nextgen.tif"
+    )))
+  ),
+  tar_target(
+    name = df_gtm_nextgen_adm0,
+    command= zonal_gtm_nextgen(r = r_gtm_wrapped,
+                               gdf = gdf_aoi_adm,
+                               rm_dup_years = T)
+  ),
+  tar_target(
+    name = df_ecmwf_insuvimeh,
+    command = merge_ecmwf_insuvimeh(df_insuvimeh = df_gtm_nextgen_adm0,
+                                    df_ecmwf = df_ecmwf_zonal_all %>% 
+                                      filter(stat=="mean") %>% 
+                                      mutate(
+                                        lt = lt-1t
+                                      )
+                                    )
+  ),
+  
+  # tar_format(read = function(path) terra::rast(path),
+  #            write = function(object, path) terra::writeRaster(object, path, filetype = "GTiff"))
   
   # VHI ---------------------------------------------------------------------
   
@@ -296,6 +410,25 @@ list(
       ),
       simplify_poly = 0.01
     )
+  ),
+  tar_target(
+    name = df_era5_mo,
+    command = read_csv(fp_era5_mo) %>% 
+      filter(
+        parameter=="total_precipitation"
+      ) %>% 
+      mutate(
+        f_v2_win = 
+          case_when(
+            month(date) %in% c(5,6,7,8)~"win_A",
+            month(date) %in% c(9,10,11)~"win_B",
+            .default = NA
+          ),
+        f_v1_win_1 = month(date) %in% c(5,6,7),
+        f_v1_win_2 = month(date) %in% c(6,7,8),
+        f_v1_win_3 = month(date) %in% c(9,10,11)
+      )
+    
   )
 )
 
