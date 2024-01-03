@@ -1,0 +1,246 @@
+---
+title: "Guatemala - INSUVIMEH & ECMWF"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  echo: false
+  warning: false
+  message: false
+  eval: false
+  results: "asis"
+  out.width: "100%"
+editor: visual
+project:
+     execute-dir: project
+---
+
+```{r setup,eval=T, include=F}
+library(targets)
+library(tidyverse)
+library(janitor)
+library(here)
+library(gghdx)
+library(gt)
+library(terra)
+library(tidyterra) # not using directly for plotting but there is a fortify.spatRaster method
+gghdx()
+
+tar_source(here("R"))
+
+dir_ecmwf_tifs <- file.path(Sys.getenv("AA_DATA_DIR"),
+                            "private",
+                            "processed",
+                            "lac",
+                            "ecmwf_seasonal",
+                            "seas51",
+                            "tif"
+)
+
+fps_ecmwf_full <- list.files(dir_ecmwf_tifs,full.names = T,pattern = ".tif$")
+fp_ecmwf <- str_subset(fps_ecmwf_full,"2014-05-01_aoi.tif$")
+
+
+r_ecmwf <- rast(fp_ecmwf)
+tar_load(df_ecmwf_insuvimeh,store = here("_targets"))
+tar_load(r_gtm_wrapped,store = here("_targets"))
+tar_load(gdf_aoi_adm,store = here("_targets"))
+
+```
+
+## Intro
+
+Purpose of doc is to have a look at INSUVIEMH forecasts in contrast to ECMWF.
+
+## Map
+
+The map below show's the much higher resolution of the INSUVIMEH (~0.05 degrees) compared to the publich ECMWF (1 degree).
+
+```{r map-rasters, eval=T}
+r_insuv <-  unwrap(r_gtm_wrapped)
+
+r_ecmwf_sample <- r_ecmwf[[2]] *(60 * 60 * 24 * 30) * 1000
+r_insuv_sample <-  mask(r_insuv[["2014-05-01.lt_1"]],
+                        gdf_aoi_adm$adm0 %>% 
+                          filter(adm0_es=="Guatemala")
+                        )
+
+df_insuv_sample_r <-  fortify(r_insuv_sample)
+df_ecmwf_sample_r <- fortify(r_ecmwf_sample)
+
+
+ggplot()+
+  geom_raster(data= df_ecmwf_sample_r, aes(x= x, y=y, fill=lt2))+
+  geom_raster(data= df_insuv_sample_r, aes(x= x, y=y, fill=`2014-05-01.lt_1`))+
+  scale_fill_continuous(
+    na.value = NA,type="viridis",
+    breaks= seq(0,500, by =30)
+    )+
+  geom_sf(
+    data= gdf_aoi_adm$adm0,fill=NA, color="white"
+  )
+
+```
+
+
+
+## Time Series
+
+Below we plot both on a time series. 
+**Note-** the reason there is no INSUVIMEH data for LT 0 and no ECMWF data for LT 6 is because:
+
+- ECMWF (CD API) provides 6 forecasts where leadtime 0 is the same month as the publication month
+- INSUVIMEH (like IRI) provides 6 forecasts where the first prediction is the month after publication (LT 1).
+
+```{r plot-timeseries,eval=TRUE}
+df_ecmwf_insuvimeh %>% 
+  filter(year(pub_date) %in% c(1983:2015)) %>% 
+  mutate(
+    decade =year(pub_date) - year(pub_date) %% 10,
+    decade_abbr = paste0(decade,"'s")
+  ) %>% 
+  ggplot(
+    aes(x= valid_date,y= mm, color= source)
+  )+
+  geom_point(size=1, alpha=0.5)+
+  geom_line()+
+  scale_x_date(date_breaks= "1 year", date_labels  = "%y")+
+  facet_grid(rows =vars(lt) , cols = vars(decade_abbr),scales="free")+
+  theme(
+    axis.text.x = element_text(angle = 90)
+  )
+```
+
+And finally we produce a scatter plot to compare any bias
+
+```{r plot-scatter,eval=TRUE}
+df_ecmwf_insuvimeh %>% 
+  select(pub_date,valid_date, lt,source,mm) %>% 
+  pivot_wider(names_from=source, values_from=mm) %>% 
+  filter(!is.na(ecmwf),!is.na(insuvimeh)) %>% 
+  ggplot(
+    aes(x= ecmwf,y= insuvimeh)
+  )+
+  geom_point()+
+  geom_abline (slope=1, linetype = "dashed", color="Red")+
+  facet_wrap(~as.character(lt))+
+  labs(
+    title= "Guatemala: ECMWF vs INSUVIMEH",
+    subtitle= "Rainfall forecasts from INSUVIMEH tend to be higher than ECMWF"
+  )
+```
+
+```{r}
+df_ecmwf_insuvimeh %>%
+  mutate(
+    window = case_when(month(valid_date) %in% c(5,6,7,8)~"primera",
+                       month(valid_date) %in% c(9,10,11)~"postera",
+    .default =NA)
+  ) %>% 
+  filter(!is.na(window)) %>% 
+  group_by(source, window,pub_date) %>% 
+  summarise(
+    mm = sum(mm)
+  ) %>% 
+  summarise(
+    q= quantile(mm,0.25)
+  )
+
+tar_load(df_ecmwf_seasonal_summarised)
+
+# this is the above for insuvimeh
+insuvimeh_seasons <- ecmwf_summarise_seasons(df = df_ecmwf_insuvimeh %>% 
+                          filter(source=="insuvimeh") %>% 
+                            mutate(lt = lt+1),
+                        window_list = list(primera = c(5,6,7,8),
+                                           postera = c(9,10,11))
+                          ) %>% 
+  mutate(source="insuvimeh")
+ecmwf_seasons <- df_ecmwf_seasonal_summarised %>% 
+  mutate(
+    source = "ecmwf"
+  ) %>% 
+  filter(
+    adm0_es=="Guatemala"
+  )
+
+  
+df_insuvimeh_threshold_tbl <- insuvimeh_seasons %>% 
+  grouped_quantile_summary(
+    x = "mm",
+    grp_vars = c("adm0_es","window", "lt"),
+    rps=c(4)
+  ) %>% 
+  mutate(
+    source="insuvimeh"
+  )
+```
+
+## Summary/Recommendations
+
+- Increased resolution of INSUVIMEH forecast would offer a lot of benefits for analyses and prioritization.
+- Forecasts are similar, with INSUVIMEH tending to predict more rainfall.
+- Difficult to incorporate INSUVIMEH into upcoming trigger framework for the following reasons:
+  + Data not yet available past 2015
+  + 
+
+
+```{r}
+tar_load(df_ecmwf_q_summary)
+df_ecmwf_threshold_tbl <- df_ecmwf_q_summary %>% 
+  filter(
+    adm0_es=="Guatemala",rp==4
+  ) %>% 
+  mutate(
+    source="ecmwf"
+  )
+
+df_thresh_tbl <- df_insuvimeh_threshold_tbl %>% 
+  bind_rows(
+    df_ecmwf_threshold_tbl
+  ) 
+  
+
+gtm_forecasts_seasons <- bind_rows(insuvimeh_seasons,ecmwf_seasons)
+
+gtm_forecasts_seasons %>% 
+  left_join(
+    df_thresh_tbl
+  ) %>% 
+  ggplot(
+    aes(x= pub_date, y= mm, color=as_factor(lt))
+  )+
+  geom_point()+
+  facet_grid(rows= vars(window),cols =vars(source))
+
+
+# weirdly insuvimeh looks like higher activation rates overall...
+gtm_forecasts_seasons %>% 
+  left_join(
+    df_thresh_tbl
+  ) %>%
+  mutate(
+    flag = mm<=q_val,
+    pub_year = floor_date(pub_date,"year")
+  ) %>% 
+  filter(
+    pub_year>"1982-01-01", pub_year<="2015-01-01"
+  ) %>% 
+  group_by(pub_year,adm0_es,window, source) %>% 
+  summarise(
+    flag= any(flag),.groups="drop"
+  ) %>% 
+  group_by(window, source) %>% 
+  summarise(
+    mean(flag)
+  )
+
+```
+
+
+

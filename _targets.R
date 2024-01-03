@@ -285,7 +285,7 @@ list(
                                     df_ecmwf = df_ecmwf_zonal_all %>% 
                                       filter(stat=="mean") %>% 
                                       mutate(
-                                        lt = lt-1t
+                                        lt = lt-1
                                       )
                                     )
   ),
