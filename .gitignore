@@ -1,5 +1,10 @@
 .DS_Store
 
+_targets/*
+*.grib
+*.idx
+*.json
+*.tif
 # History files
 .Rhistory
 .Rapp.history
