@@ -95,10 +95,15 @@ list(
   ## Load admin boundaries ####
   tar_target(
     name = gdf_aoi_adm,
-    command = load_proj_admins() %>%
-      map(~ .x %>%
-            st_make_valid() %>%
-            select(matches("^adm\\d_[ep]")))
+    command = read_rds(
+      file.path(
+        Sys.getenv("AA_DATA_DIR"),
+        "public",
+        "processed",
+        "lac",
+        "lac_all_cod_adms.rds"
+      )
+    )
   ),
   ## Load CADC border ####
   tar_target(
