@@ -1,18 +1,38 @@
 ---
 title: "Explore ECMWF MARS vs CDs"
-format: html
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  echo: false
+  warning: false
+  message: false
+  eval: false
+  results: "asis"
+  out.width: "100%"
 editor: visual
+project:
+     execute-dir: project
 ---
+
+
+**Note to self** will need to merge data from download-process-mars branch before PR for this
 
 ## Key Takeaways
 
 - ECMWF Seasonal forecast data accessed from ECMWF MARS API & The Copernicus Data Store (CDs) API appear sufficiently comparable when aggregated to Admin 0 Boundaries in the Central American Dry Corridor (CADC)
 - Therefore, we do no foresee any significant hurdles/limitations to adopting the MARS data to set the return period based thresholds for the CADC trigger
+- **Doc Objective:**    
+  + Document comparison of MARS vs CDs for justification of final CADC AA trigger framework design
+  + provide documentation on the ECMWF Seasonal forecast products that may be useful for other projects and scientists.
 
 
 ## Overview/Intro
-
-**Note to self** will need to merge data from download-process-mars branch before PR for this
 
 During the initial design phase of the CADC trigger the public CD API was used to access ECMWF SEAS51 data for historical analysis/trigger design. Later, data was downloaded via the MARS API using our WMO access. Since the historical analysis is based on monthly rainfall sums (aggregated by season), this document explores the comparability of MARS ECMWF data vs CDs ECMWF data. A quick overview of ECMWF Seasonal forecast products used in this analysis
 
