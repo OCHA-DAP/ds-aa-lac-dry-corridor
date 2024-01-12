@@ -20,48 +20,44 @@ project:
      execute-dir: project
 ---
 
-
 **Note to self** will need to merge data from download-process-mars branch before PR for this
 
 ## Key Takeaways
 
-- ECMWF Seasonal forecast data accessed from ECMWF MARS API & The Copernicus Data Store (CDs) API appear sufficiently comparable when aggregated to Admin 0 Boundaries in the Central American Dry Corridor (CADC)
-- Therefore, we do no foresee any significant hurdles/limitations to adopting the MARS data to set the return period based thresholds for the CADC trigger
-- **Doc Objective:**    
-  + Document comparison of MARS vs CDs for justification of final CADC AA trigger framework design
-  + provide documentation on the ECMWF Seasonal forecast products that may be useful for other projects and scientists.
-
+-   ECMWF Seasonal forecast data accessed from ECMWF MARS API & The Copernicus Data Store (CDs) API appear sufficiently comparable when aggregated to Admin 0 Boundaries in the Central American Dry Corridor (CADC)
+-   Therefore, we do no foresee any significant hurdles/limitations to adopting the MARS data to set the return period based thresholds for the CADC trigger
+-   **Doc Objective:**
+    -   Document comparison of MARS vs CDs for justification of final CADC AA trigger framework design
+    -   provide documentation on the ECMWF Seasonal forecast products that may be useful for other projects and scientists.
 
 ## Overview/Intro
 
 During the initial design phase of the CADC trigger the public CD API was used to access ECMWF SEAS51 data for historical analysis/trigger design. Later, data was downloaded via the MARS API using our WMO access. Since the historical analysis is based on monthly rainfall sums (aggregated by season), this document explores the comparability of MARS ECMWF data vs CDs ECMWF data. A quick overview of ECMWF Seasonal forecast products used in this analysis
 
-- CDs - SEAS51
-  + resolution: 1 degree
-  + leadtimes: 6 available. Leadtime 1 = publication date
-  + access: public
-  + considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
-  + publication date:
-  + use: initial historical analysis/trigger design
-  + API call: [insert link]()
-- MARS - SEAS51
-  + Resolution: 0.4 degree
-  + Leadtimes: 7 available. Leadtime 1 = publication date
-  + Access: WMO
-  + Considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
-  + Publication date:
-  + Use: evaluation in this document
-  + API call: [insert link]()
-- AWS - SEAS51
-  + Resolution: 0.1 degree
-  + Leadtimes: 7 available. Leadtime 1 = publication date
-  + Access: Private
-  + Considered formats: 51 ensemble member monthly means, monthly mean of ensemble members 
-  + use: realtime monitoring for trigger
-  + publication date:
-  + API call: [insert link]
-  
-  
+-   CDs - SEAS51
+    -   resolution: 1 degree
+    -   leadtimes: 6 available. Leadtime 1 = publication date
+    -   access: public
+    -   considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
+    -   publication date:
+    -   use: initial historical analysis/trigger design
+    -   API call: [insert link]()
+-   MARS - SEAS51
+    -   Resolution: 0.4 degree
+    -   Leadtimes: 7 available. Leadtime 1 = publication date
+    -   Access: WMO
+    -   Considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
+    -   Publication date:
+    -   Use: evaluation in this document
+    -   API call: [insert link]()
+-   AWS - SEAS51
+    -   Resolution: 0.1 degree
+    -   Leadtimes: 7 available. Leadtime 1 = publication date
+    -   Access: Private
+    -   Considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
+    -   use: realtime monitoring for trigger
+    -   publication date:
+    -   API call: \[insert link\]
 
 ```{r}
 library(targets)
@@ -117,8 +113,6 @@ lps <- map(set_names(adm_iter,adm_iter),
 )
 ```
 
-
-
 ```{r}
 lps$Guatemala
 ```
@@ -136,6 +130,7 @@ lps$`Nicaragua`
 ```
 
 # Quick Correlation Experiment
+
 ```{r}
 df_ecmwf_wide <- df_ecmwf %>% 
   filter(lt!=6) %>% 
@@ -147,6 +142,83 @@ df_ecmwf_wide %>%
     aes(x= MARS, y= CDS)
   )+
   geom_point(alpha=0.009)
+
+```
+
+## Map
+
+- The higher resolution cold justify clipping to the dry corridor!
+- **another open question** should we just do it over the active area?
+```{r}
+library(tidyterra)
+library(sf)
+tar_load(gdf_aoi_adm)
+fp_cd_raster <- list.files(dir_ecmwf_tifs, full.names = T)[1]
+tar_load(r_ecmwf_mars)
+r_mars <-  unwrap(r_ecmwf_mars)
+r_cd <-  rast(fp_cd_raster)
+```
+
+#### Map CD (1 deg)
+
+```{r}
+adm0_simp <-  st_simplify(gdf_aoi_adm$adm0$geometry,dTolerance = 1000)
+plot(r_cd[[4]]*1000*60^2*30)
+plot(adm0_simp,add= TRUE)
+```
+
+#### Map MARS (0.4 deg)
+
+```{r}
+plot(r_ecmwf_mars[[4]])
+plot(adm0_simp,add= TRUE)
+```
+
+### Map AWS (0.1 deg)
+```{r}
+# insert code
+```
+
+
+```{r}
+# can play w/ trying to tidyterra to work - issue is that 
+# rasters need to be same resolution and extent to facet w/ ~lyr.
+# But then when the way spatRaster interpolates the resolution differences are not as clear as simple base plotting.
+
+# would be nice if we could just go w/ sprc... but no method....
+# therefore to convert to spatRaster w/ variuous extent/resolution requirements.
+ecmwf_sprc <- sprc(list(r_cd[[4]]*1000*60*60*24*30, r_mars[[4]]))
+cd_r_plot<- deepcopy(r_cd[[4 ]])
+mars_r_plot<- deepcopy(r_mars[[4 ]])
+cd_r_cropped<- crop(cd_r_plot, mars_r_plot)
+ext(cd_r_cropped) <- ext(mars_r_plot)
+cd_r_cropped <-  cd_r_cropped*1000*60*60*24*30
+cd_r_resampled <- resample(x = cd_r_cropped,mars_r_plot)
+
+r_ecmwf_merged <- rast(list(cd_r_resampled,mars_r_plot))
+
+ggplot()+ 
+  geom_spatraster(data=ecmwf_sprc)+
+  facet_wrap(~lyr)+
+  geom_sf(data=gdf_aoi_adm$adm0)
+
+ggplot()+ 
+  geom_spatraster(data=r_ecmwf_merged)+
+  scale_fill_viridis_b()+
+#     scale_fill_steps2(
+#     breaks = seq(30,55,by=5),
+#   low = "yellow",
+#   mid = "orange",
+#   high = "red",
+#   midpoint = 35,
+#   space = "Lab",
+#   na.value = NA,
+#   guide = "coloursteps",
+#   aesthetics = "fill",
+#   name= "probabilty below\naverage forecast"
+# )+
+  facet_wrap(~lyr)+
+  geom_sf(data=gdf_aoi_adm$adm0,fill=NA)
 
 ```
 
