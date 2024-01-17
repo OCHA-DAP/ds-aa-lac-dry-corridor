@@ -19,6 +19,7 @@ editor: visual
 project:
      execute-dir: project
 ---
+if we do this re-do this w/ mars 
 
 ```{r setup,eval=T, include=F}
 library(targets)
@@ -98,8 +99,9 @@ Below we plot both on a time series.
 - INSUVIMEH (like IRI) provides 6 forecasts where the first prediction is the month after publication (LT 1).
 
 ```{r plot-timeseries,eval=TRUE}
+df_ecmwf_insuvimeh$pub_date %>% range()
 df_ecmwf_insuvimeh %>% 
-  filter(year(pub_date) %in% c(1983:2015)) %>% 
+  filter(year(pub_date) %in% c(1983:2023)) %>% 
   mutate(
     decade =year(pub_date) - year(pub_date) %% 10,
     decade_abbr = paste0(decade,"'s")
@@ -126,7 +128,7 @@ df_ecmwf_insuvimeh %>%
   ggplot(
     aes(x= ecmwf,y= insuvimeh)
   )+
-  geom_point()+
+  geom_point(alpha=0.1)+
   geom_abline (slope=1, linetype = "dashed", color="Red")+
   facet_wrap(~as.character(lt))+
   labs(
@@ -206,9 +208,9 @@ df_thresh_tbl <- df_insuvimeh_threshold_tbl %>%
   ) 
   
 
-gtm_forecasts_seasons <- bind_rows(insuvimeh_seasons,ecmwf_seasons)
+both_forecasts <- bind_rows(insuvimeh_seasons,ecmwf_seasons)
 
-gtm_forecasts_seasons %>% 
+both_forecasts %>% 
   left_join(
     df_thresh_tbl
   ) %>% 
@@ -216,11 +218,14 @@ gtm_forecasts_seasons %>%
     aes(x= pub_date, y= mm, color=as_factor(lt))
   )+
   geom_point()+
+  scale_color_brewer(palette="Set2")+
   facet_grid(rows= vars(window),cols =vars(source))
+
+# hmm separation in postrera primera of LT 1 -- must be
 
 
 # weirdly insuvimeh looks like higher activation rates overall...
-gtm_forecasts_seasons %>% 
+both_forecasts %>% 
   left_join(
     df_thresh_tbl
   ) %>%

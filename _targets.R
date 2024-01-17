@@ -87,7 +87,14 @@ gdb_insuvimeh_gtm <- file.path(
   "Pronósticos_Precip_NextGen_Guatemala"
 )
 
-  
+fp_r_gtm_insuvimeh_output <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "processed",
+  "lac",
+  "INSUVIMEH",
+  "insuvimeh_pronosticos_nextgen.tif"
+)  
 
 
 
@@ -257,26 +264,17 @@ list(
   tar_target(
     name = r_gtm_nextgen_tar,
     command = write_gtm_nextgen(gdb = gdb_insuvimeh_gtm,
-                                output_file_path = file.path(
-                                  Sys.getenv("AA_DATA_DIR"),
-                                  "private",
-                                  "processed",
-                                  "lac",
-                                  "INSUVIMEH",
-                                  "insuvimeh_pronosticos_nextgen.tif"
-                                ) ) 
+                                output_file_path = fp_r_gtm_insuvimeh_output ) 
     
   ),
   tar_target(
+    name= fp_r_gtm,
+    command = fp_r_gtm_insuvimeh_output,
+    format = "file"
+  ),
+  tar_target(
     name = r_gtm_wrapped,
-    command= wrap(rast(file.path(
-      Sys.getenv("AA_DATA_DIR"),
-      "private",
-      "processed",
-      "lac",
-      "INSUVIMEH",
-      "insuvimeh_pronosticos_nextgen.tif"
-    )))
+    command= wrap(rast(fp_r_gtm))
   ),
   tar_target(
     name = df_gtm_nextgen_adm0,

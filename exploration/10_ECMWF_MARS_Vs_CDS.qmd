@@ -147,8 +147,9 @@ df_ecmwf_wide %>%
 
 ## Map
 
-- The higher resolution cold justify clipping to the dry corridor!
-- **another open question** should we just do it over the active area?
+-   The higher resolution cold justify clipping to the dry corridor!
+-   **another open question** should we just do it over the active area?
+
 ```{r}
 library(tidyterra)
 library(sf)
@@ -175,10 +176,10 @@ plot(adm0_simp,add= TRUE)
 ```
 
 ### Map AWS (0.1 deg)
+
 ```{r}
 # insert code
 ```
-
 
 ```{r}
 # can play w/ trying to tidyterra to work - issue is that 
@@ -221,4 +222,3 @@ ggplot()+
   geom_sf(data=gdf_aoi_adm$adm0,fill=NA)
 
 ```
-
