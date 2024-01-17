@@ -52,6 +52,20 @@ tar_load(df_ecmwf_insuvimeh,store = here("_targets"))
 tar_load(r_gtm_wrapped,store = here("_targets"))
 tar_load(gdf_aoi_adm,store = here("_targets"))
 
+tar_load(df_gtm_nextgen_adm0,store = here("_targets"))
+tar_load(df_ecmwf_mars,store = here("_targets"))
+
+df_mars_insuvimeh <- bind_rows(
+ df_ecmwf_mars %>% 
+   filter(adm0_es=="Guatemala") %>% 
+   mutate(
+     source ="ecmwf mars"
+   ),
+ df_gtm_nextgen_adm0 %>% 
+   mutate(
+     source= "insuvimeh"
+   )
+)
 ```
 
 ## Intro
@@ -99,15 +113,15 @@ Below we plot both on a time series.
 - INSUVIMEH (like IRI) provides 6 forecasts where the first prediction is the month after publication (LT 1).
 
 ```{r plot-timeseries,eval=TRUE}
-df_ecmwf_insuvimeh$pub_date %>% range()
-df_ecmwf_insuvimeh %>% 
-  filter(year(pub_date) %in% c(1983:2023)) %>% 
+df_mars_insuvimeh$pub_date %>% range()
+df_mars_insuvimeh %>% 
+  filter(year(pub_date) %in% c(1983:2022)) %>% 
   mutate(
     decade =year(pub_date) - year(pub_date) %% 10,
     decade_abbr = paste0(decade,"'s")
   ) %>% 
   ggplot(
-    aes(x= valid_date,y= mm, color= source)
+    aes(x= valid_date,y= value, color= source)
   )+
   geom_point(size=1, alpha=0.5)+
   geom_line()+
@@ -122,11 +136,20 @@ And finally we produce a scatter plot to compare any bias
 
 ```{r plot-scatter,eval=TRUE}
 df_ecmwf_insuvimeh %>% 
+    filter(year(pub_date) %in% c(1983:2022)) %>%  
   select(pub_date,valid_date, lt,source,mm) %>% 
+  pivot_wider(names_from=source, values_from=mm)
+df_ecmwf_insuvimeh %>% 
+  count(source)
+df_mars_insuvimeh %>% 
+  count(source)
+df_mars_insuvimeh %>% 
+  filter(year(pub_date) %in% c(1983:2022)) %>%  
+  select(pub_date,valid_date, lt,source,mm=value) %>% 
   pivot_wider(names_from=source, values_from=mm) %>% 
-  filter(!is.na(ecmwf),!is.na(insuvimeh)) %>% 
+  filter(!is.na(`ecmwf mars`),!is.na(insuvimeh)) %>% 
   ggplot(
-    aes(x= ecmwf,y= insuvimeh)
+    aes(x= `ecmwf mars`,y= insuvimeh)
   )+
   geom_point(alpha=0.1)+
   geom_abline (slope=1, linetype = "dashed", color="Red")+
