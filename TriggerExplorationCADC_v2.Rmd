@@ -2,8 +2,8 @@
 title: "CADC Trigger Technical Exploration App"
 output:
   flexdashboard::flex_dashboard:
-     # orientation: columns
-     # vertical_layout: fill
+     orientation: rows
+     vertical_layout: scroll
      # horitzonal_layout: fill
 date: "2023-11-22"
 runtime: shiny
@@ -21,25 +21,77 @@ library(gt)
 library(arrow)
 library(janitor)
 library(broom)
-gghdx()
+library(readxl) # just for activity table
+library(ggiraph) # just for activiity
+library(glue)
+# gghdx()
+
+forecast_source <-  "mars"
 
 df_cropland_lte_vhi_threshold_dc <- read_parquet("shinyAppData/df_cropland_lte_vhi_threshold_dc.parquet") 
-df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_zonal.parquet") 
+# df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_zonal.parquet") 
+df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_mars_zonal.parquet") 
 df_iri_adm0_pre <- read_parquet("shinyAppData/df_iri_adm0_pre.parquet") 
-targets::tar_load(df_ecmwf_zonal_all)
+# targets::tar_load(df_ecmwf_zonal_all) # this used to be input for next step
 
-df_ecmwf_zonal_all <- df_ecmwf_zonal_all %>% 
+df_ecmwf_zonal_all <- df_ecmwf_zonal %>% 
     mutate(
     valid_mo =month(valid_date),
-    lt= lt- 1
+    # lt= lt- 1
   ) %>% 
     filter(stat== "mean")
 
 targets::tar_load(df_era5_mo)
 
 
+adjustable_leadtimes2 <-  function(publication_mo=find_pub_mos(5),valid_mo=5){
+  publication_mo <- as.numeric(publication_mo)
+  valid_mo <- as.numeric(valid_mo)
+  multi_yr_pub <- publication_mo[1]>publication_mo[length(publication_mo)]
+  if(multi_yr_pub){
+    dec_idx <- which(!publication_mo>lag(publication_mo))-1
+    publication_mo[dec_idx] # issue if skip Dec?
+    prev_year_mos <- publication_mo[1:dec_idx]
+    prev_year_dates <- as_date(paste0("2020-", formatC(prev_year_mos,
+                                    digits = 2,
+                                    flag = "0",
+                                    width = 2),"-01"))
+    next_year_mos <-  publication_mo[(dec_idx+1):length(publication_mo)]
+    next_year_dates <- as_date(paste0("2021-", formatC(next_year_mos,
+                                    digits = 2,
+                                    flag = "0",
+                                    width = 2),"-01"))
+    all_dates <- c(prev_year_dates,next_year_dates)
+    min_pub_date <- min(all_dates)
+    # not designed yet for multi yr validation
+    min_valid_mo <- min(as.numeric(valid_mo))
+     min_valid_date <- as_date(paste0("2021-", formatC(min_valid_mo,
+                                    digits = 2,
+                                    flag = "0",
+                                    width = 2),"-01"))
+     # this should be improved -- go direct from days to months rather than arith
+    lts_days <- (min_valid_date- all_dates)+1
+    # for some reaso counting 30 days as 0 months -- 
+    # therefore add 1 to make it recognize as month = 1
+    # lts_mos <- as.period(lts_days)%/% months(1)
+    lts_mos <- round(lts_days/30)
+    # as.period(31,"days")%/% months(1)
+  }
+  if(!multi_yr_pub){
+    mon_mo <-  as.numeric(publication_mo)
+    valid_start <- min(as.numeric(valid_mo))
+    lts_mos <- return(valid_start- mon_mo)
+  }
+  return(lts_mos)
+}
+adjustable_leadtimes2_reactive <- reactive({
+  adjustable_leadtimes2(publication_mo = as.numeric(input$winA_mon),
+                        valid_mo = as.numeric(input$winA_forecast))
+})
+# adjustable_leadtimes2(publication_mo = find_pub_mos(5),valid_mo = 5)
 adjustable_leadtimes <-  function(monitor_months, forecast_months){
   # browser()
+   
   mon_mo <-  as.numeric(monitor_months)
   forecast_start <- min(as.numeric(forecast_months))
   return(forecast_start- mon_mo)
@@ -65,12 +117,18 @@ delta<-function(a,b,c){
 
 plt_color <- c(non_drought =hdx_hex("mint-hdx"),drought = hdx_hex("tomato-hdx"))
 
-load_pub_mo_list <- function(){
+load_pub_mo_list <- function(ecmwf_source){
+  if(ecmwf_source=="mars"){
+    lt <- 6
+  }
+  if(ecmwf_source=="cds"){
+    lt <- 5
+  }
   set_names(c(1:12),
             month(c(1:12),label=T,abbr=T)
   ) %>% 
     map(\(mo_int){
-      start_mo_int <- mo_int-5
+      start_mo_int <- mo_int-lt
       seq_mo_int <-  start_mo_int:mo_int
       mo_seq<- ifelse(seq_mo_int<=0, seq_mo_int+12, seq_mo_int)
       return(mo_seq)
@@ -78,13 +136,11 @@ load_pub_mo_list <- function(){
     )
 }
   
-  
-
-  
-
+# provide valid mo's and return possible publication months that could be used
+# to monitor status
 find_pub_mos <-  function(x=c(5,6,7,8)){
   x <- as.numeric(unname(x))
-  avail_mo_list <- load_pub_mo_list()
+  avail_mo_list <- load_pub_mo_list(ecmwf_source = forecast_source)
   month_diffs <- diff(c(x, x[1] + 12))
   
   # Find the index of the maximum difference
@@ -95,8 +151,25 @@ find_pub_mos <-  function(x=c(5,6,7,8)){
   max_month_lab <- month(max_month,label=T, abbr=T)
   pub_mos <- avail_mo_list[[max_month_lab]]
   ret <- pub_mos[!(pub_mos %in% x[2:length(x)])]
+  
+  # hacky solution to fix the fact that if (for example)
+  # we are monitoring:  5,6,7 we want to exclude May
+  # but if just monitoring 5 there is nothing to exclude
+  if(forecast_source=="mars"){
+    if(length(x)==1){
+      ret <- pub_mos
+    } else{
+      ret <- pub_mos[!(pub_mos %in% x[2:length(x)])]
+    }
+    
+  }
   return(ret)
 }
+
+find_pub_mos_reactive <-  reactive({
+  find_pub_mos(x = input$winA_forecast)
+})
+
 ```
 
 
@@ -147,8 +220,14 @@ inputPanel(
                      inline=F,
                      label = "Step 1: Select time period/window of concert")
   
+  
+  # issue that this is rendering lazily
+  # monitor_months <- reactive({find_pub_mos(x=input$winA_forecast)})
   renderUI({
-    monitor_months <- find_pub_mos(x=input$winA_forecast)
+    browser()
+    
+    # monitor_months <- find_pub_mos(x=input$winA_forecast)
+    monitor_months <- find_pub_mos_reactive()
     cat(monitor_months,"\n")
     checkboxGroupInput(
       inputId= "winA_mon",
@@ -156,10 +235,16 @@ inputPanel(
       choices = monitor_months %>% set_names(month(monitor_months,label=T,abbr=T)),
       selected = monitor_months
     )
-
   })
+
   renderUI({
-  lts_tweak = adjustable_leadtimes(input$winA_mon, input$winA_forecast)
+    if(forecast_source=="cds"){
+      lts_tweak = adjustable_leadtimes(input$winA_mon, input$winA_forecast)
+    }
+    if(forecast_source=="mars"){
+      # lts_tweak = adjustable_leadtimes2(as.numeric(input$winA_mon), as.numeric(input$winA_forecast) )
+      lts_tweak = adjustable_leadtimes2_reactive()
+      }
     # "Tweak Leadtimes",
     lts_tweak %>%
       sort() %>%
@@ -180,18 +265,21 @@ conditionalPanel(condition = "input.num_windows >= 2",
                    checkboxGroupInput(inputId="winB_forecast",
                                       choices = c(1:12) %>% set_names(month(1:12,label=T,abbr=T)),
                                       selected = c(9,10,11),
-                                      inline=T, 
+                                      inline=F, 
                                       label = "Window B Forecast Period"),
                    renderUI({
-                     monitor_months <- available_leadtime_months(input$winB_forecast)
+                     
+                     monitor_months <- find_pub_mos(x=input$winB_forecast)
+                     # cat(monitor_months,"\n")
                      checkboxGroupInput(
                        inputId= "winB_mon",
-                       label = "Select Monitoring Period",
+                       label = "2. Here are the available months we can monitor:",
                        choices = monitor_months %>% set_names(month(monitor_months,label=T,abbr=T)),
                        selected = monitor_months
-                     )}
                      )
+                   }
                    )
+                 )
 )
 conditionalPanel(condition = "input.num_windows == 3",
                  inputPanel(
@@ -217,11 +305,8 @@ conditionalPanel(condition = "input.num_windows == 3",
 
 
 
-
-
-
 ```{r eval=TRUE,echo=F}
-df_win1 <- reactive({
+df_win1 <- eventReactive(input$winA_mon,{
   cat(input$winA_forecast,"\n")
   df_ecmwf_win_filt1 <- df_ecmwf_zonal_all %>% 
     filter(adm0_es %in% input$sel_country) %>% 
@@ -231,13 +316,12 @@ df_win1 <- reactive({
       valid_mo %in% input$winA_forecast
     ) 
   
-  print(df_ecmwf_win_filt1)
   df_ecmwf_win_filt2 <- df_ecmwf_win_filt1 %>% 
     group_by(adm0_es, pub_date) %>% 
     filter(
       all(input$winA_forecast %in% valid_mo)
     )
-  
+  # browser()
   df_ecmwf_win_filt2 %>% 
     summarise(
       mm = sum(mm),
@@ -254,15 +338,22 @@ df_win1 <- reactive({
 
 
 ```{r, echo=F}
-library(glue)
+
 
 # dynamically grab the input values from the sliders
 gather_slider_values <- reactive({
+  if(forecast_source == "cds"){
   lts_tweak = adjustable_leadtimes(
     input$winA_mon, 
     input$winA_forecast) %>% 
-    sort()
-  
+    sort()  
+  }
+  if(forecast_source=="mars"){
+      lts_tweak = adjustable_leadtimes2(
+    input$winA_mon, 
+    input$winA_forecast) %>% 
+    sort()  
+  }
   # go through each of the available leadtimes and take the slider value
   set_names(lts_tweak,lts_tweak) %>% 
     map(\(lt){
@@ -298,39 +389,37 @@ dynamic_rps <- reactive({
   })
 
 
+# event based on `button`
 apply_dynamic_rps <- eventReactive(input$execute,{
-  browser()
   df_thresh_wide <- dynamic_rps()
   df_win <- df_win1()
   df_thresh_long<- df_thresh_wide %>%
     pivot_longer(
       cols= matches("\\b[0-6]\\b"),
       names_to ="lt",values_to = "q_ind"
-    ) %>% 
+    ) %>%
     mutate(
       lt= as.numeric(lt)
     )
-  
-   df_full <- df_win %>% 
+
+   df_full <- df_win %>%
     left_join(
       df_thresh_long
-    ) %>% 
+    ) %>%
     mutate(
       lgl_flag = mm<q_ind
-    ) 
-  
-  
-  df_overall_activation_rate <- df_full %>% 
-    group_by(adm0_es,yr=year(pub_date)) %>% 
+    )
+  df_overall_activation_rate <- df_full %>%
+    group_by(adm0_es,yr=year(pub_date)) %>%
     summarise(
       lgl_flag = any(lgl_flag)
-    ) %>% 
+    ) %>%
     summarise(
       ar_overall= mean(lgl_flag),
       rp_overall =1/ar_overall,.groups="drop"
     )
-  
-    rp_by_lt_indiv <- df_thresh_wide %>% 
+
+    rp_by_lt_indiv <- df_thresh_wide %>%
     left_join(
       df_overall_activation_rate
     )
@@ -341,6 +430,46 @@ apply_dynamic_rps <- eventReactive(input$execute,{
       )
     )
 })
+# apply_dynamic_rps <- reactive({
+#   df_thresh_wide <- dynamic_rps()
+#   df_win <- df_win1()
+#   df_thresh_long<- df_thresh_wide %>%
+#     pivot_longer(
+#       cols= matches("\\b[0-6]\\b"),
+#       names_to ="lt",values_to = "q_ind"
+#     ) %>% 
+#     mutate(
+#       lt= as.numeric(lt)
+#     )
+#   
+#    df_full <- df_win %>% 
+#     left_join(
+#       df_thresh_long
+#     ) %>% 
+#     mutate(
+#       lgl_flag = mm<q_ind
+#     ) 
+#   df_overall_activation_rate <- df_full %>% 
+#     group_by(adm0_es,yr=year(pub_date)) %>% 
+#     summarise(
+#       lgl_flag = any(lgl_flag)
+#     ) %>% 
+#     summarise(
+#       ar_overall= mean(lgl_flag),
+#       rp_overall =1/ar_overall,.groups="drop"
+#     )
+#   
+#     rp_by_lt_indiv <- df_thresh_wide %>% 
+#     left_join(
+#       df_overall_activation_rate
+#     )
+#     return(
+#       list(
+#         rp_by_lt_indiv= rp_by_lt_indiv,
+#         df = df_full
+#       )
+#     )
+# })
 
 
 
@@ -377,12 +506,9 @@ df_era_seas_win <-  reactive({
 
 ```
 
-Column {.tabset}
------------------------------------------------------------------------
 
-# Thresholds 1 
 
-### Threshold Table
+# Dynamic Thresholds 
 
 ```{r, echo=F}
 render_gt(
@@ -402,11 +528,9 @@ render_gt(
     fmt_percent(columns = c("ar_overall"),decimals =0) 
 )
 ```
-
 Column {.tabset}
--------------------------------------
-
-### Historical Analysis 
+-----------------------------------------------------------------------
+### Historical
 
 ```{r, echo=F}
 renderPlot({
@@ -483,20 +607,21 @@ renderPlot({
   
   title_valid_mo <- glue_collapse(month(as.numeric(input$winA_forecast),label=T, abbr=T),"-")
   
+  max_y <- max(df_era_seas_plot$mm_obs,na.rm=T)
   
   df_era_seas_plot %>% 
     ggplot(
       aes(x= mm, y= mm_obs)
     )+
-    geom_point()+
+    geom_point(alpha=0.5)+
     geom_abline (slope=1, linetype = "dashed", color="Red")+
-    geom_label(data= . %>% distinct(adm0_es,lt,estimate),
-               aes(label = paste0("r2=",round(estimate,2)))
-               ,x = 200,y=800)+
+    # geom_label(data= . %>% distinct(adm0_es,lt,estimate),
+    #            aes(label = paste0("r2=",round(estimate,2)))
+    #            ,x = 900,y=900)+
     geom_text(
       data= . %>%
         distinct(adm0_es, lt, estimate),
-      aes(label= paste0("R2: ",round(estimate,2))), x= 900,y=400
+      aes(label= paste0("R2: ",round(estimate,2))), x= 600,y=(max_y-200)
     )+
     facet_grid(
       rows= vars(adm0_es),
@@ -777,7 +902,70 @@ perf_counts_long %>%
 
 ```
 
+# Activity Timeline Plot
+```{r plot-timeline, echo=F, fig.height=20}
 
+fp <- file.path(Sys.getenv("AA_DATA_DIR"),
+          "private",
+          "processed",
+          "lac",
+          "cadc_partner_activity_matrix.xlsx")
+
+dfa <- read_excel(fp) %>% 
+    arrange(
+    window,agency,adm0_es
+  )
+
+p_activities <- dfa %>% 
+      pivot_longer(cols = latest_mo:implement_mo
+      ) %>% 
+  arrange(adm0_es) %>% 
+      mutate(
+        activity = trimws(activity),
+        month = month(value,label=T, abbr= T),
+        agency = case_when (
+          str_detect(agency,"PAHO|WHO")~"PAHO/WHO",
+          .default = agency),
+        agency = fct_relevel(agency,"FAO","WFP","PAHO/WHO","UNICEF"),
+        window = ifelse(window=="A","Window A (Primera)\nMJJJAS","Window B (Postrera)\nSON")
+      ) %>% 
+  mutate(
+    activity = as_factor(activity),
+    # activity = fct_reorder(activity,adm0_es)
+  ) %>% 
+      ggplot(
+        aes(x=  activity,y = month, color = adm0_es, group=activity)
+      )+
+      geom_line()+
+  scale_color_brewer(palette = "Spectral")+
+      geom_point_interactive(
+        aes(tooltip= str_wrap(activity,80))
+      )+
+      facet_grid(cols= vars(window),
+                 rows= vars(agency),
+                 scales = "free"
+                 )+
+      coord_flip()+
+     labs(title = "Proposed AA Activities",
+          subtitle = "Central American Dry Corridor")+
+      theme(
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle=90),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_rect(fill=NA,color="grey"),
+        
+      )
+
+
+
+renderGirafe({
+  girafe(ggobj= p_activities)
+})
+```
+
+# Scrap
 
 ```{r eval=F,echo=F}
 perf_counts_long <-  df_perf %>%
