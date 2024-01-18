@@ -2,7 +2,7 @@
 title: "CADC Trigger Technical Exploration App"
 output:
   flexdashboard::flex_dashboard:
-     orientation: columns
+     orientation: rows
      vertical_layout: scroll
      horitzonal_layout: scroll
 date: "2023-11-22"
@@ -24,7 +24,7 @@ library(broom)
 library(readxl) # just for activity table
 library(ggiraph) # just for activiity
 library(glue)
-gghdx()
+# gghdx()
 source("R/triggerApp_funcs.R")
 
 forecast_source <-  "mars"
@@ -105,6 +105,11 @@ adjustable_leadtimes2_reactive <- reactive({
   adjustable_leadtimes2(publication_mo = as.numeric(input$winA_mon),
                         valid_mo = as.numeric(input$winA_forecast))
 })
+adjustable_leadtimes2_reactive_b <- reactive({
+  # browser()
+  adjustable_leadtimes2(publication_mo = as.numeric(input$winB_mon),
+                        valid_mo = as.numeric(input$winB_forecast))
+})
 # adjustable_leadtimes2(publication_mo = find_pub_mos(5),valid_mo = 5)
 adjustable_leadtimes <-  function(monitor_months, forecast_months){
   # browser()
@@ -114,23 +119,7 @@ adjustable_leadtimes <-  function(monitor_months, forecast_months){
   return(forecast_start- mon_mo)
 }
 
-# Constructing Quadratic Formula
-quad_eq <- function(a,b,c){
-  if(delta(a,b,c) > 0){ # first case D>0
-    x_1 = (-b+sqrt(delta(a,b,c)))/(2*a)
-    x_2 = (-b-sqrt(delta(a,b,c)))/(2*a)
-    result = c(x_1,x_2)
-    return(result)
-  }
-  else if(delta(a,b,c) == 0){ # second case D=0
-    x = -b/(2*a)
-  }
-  else {"There are no real roots."} # third case D<0
-}
-# Constructing delta
-delta<-function(a,b,c){
-  b^2-4*a*c
-}
+
 
 plt_color <- c(non_drought =hdx_hex("mint-hdx"),drought = hdx_hex("tomato-hdx"))
 
@@ -285,15 +274,13 @@ inputPanel(
   # actionButton("execute", "Generate data")
   
 conditionalPanel(condition = "input.num_windows >= 2",
-                 inputPanel(
-                   
                    checkboxGroupInput(inputId="winB_forecast",
                                       choices = c(1:12) %>% set_names(month(1:12,label=T,abbr=T)),
                                       selected = c(9,10,11),
                                       inline=F, 
-                                      label = "Window B Forecast Period"),
+                                      label = "Window B Forecast Period"), # close checkbox
+                   
                    renderUI({
-                     
                      monitor_months <- find_pub_mos_reactive_b()
                      # cat(monitor_months,"\n")
                      checkboxGroupInput(
@@ -302,10 +289,22 @@ conditionalPanel(condition = "input.num_windows >= 2",
                        choices = monitor_months %>% set_names(month(monitor_months,label=T,abbr=T)),
                        selected = monitor_months
                      )
-                   }
-                   )
-                 )
-)
+                   }), #\ close renderUI
+                   
+                   renderUI({
+                    lts_tweakb = adjustable_leadtimes2_reactive_b()
+                     lts_tweakb %>%
+                       sort() %>%
+                       map(\(lt){
+                         sliderInput(
+                           inputId = paste0("sliderb_", lt),
+                           label = paste("Adjust Leadtime B: ", lt),
+                           min = 1, max = 30, value = 4  # Adjust min, max, and value as needed
+                         )
+                       }) #\close slider
+                   }) # close renderUI
+                 ) # close conditional
+
 conditionalPanel(condition = "input.num_windows == 3",
                  inputPanel(
                    
@@ -404,58 +403,56 @@ df_insuv <- reactive({
 
 
 
-if(!use_event_reactive){
-  df_win1 <- reactive({
-    # browser()
-    filter_forecast(df = df_ecmwf_zonal_all,
-                    country= input$sel_country,
-                    pub_mon = input$winA_mon,
-                    valid_mon = input$winA_forecast
-                    )
-  })
-  df_insuv <- reactive({
-    gtm_selected<- ("Guatemala" %in% input$sel_country)
-    if(!gtm_selected){
-      ret <- NULL
-    }
-    if(gtm_selected){
-      ret <- filter_forecast(df = insuv,
-                        country= input$sel_country,
-                        pub_mon = input$winA_mon,
-                        valid_mon = input$winA_forecast
-        )
-    }
-    ret
-  }
+
+df_win1 <- eventReactive(input$winA_mon,{
+  # browser()
+  filter_forecast(df = df_ecmwf_zonal_all,
+                  country= input$sel_country,
+                  pub_mon = input$winA_mon,
+                  valid_mon = input$winA_forecast
   )
-}  
-use_it_good <- F
-if(!use_it_good){
-  df_win1 <- eventReactive(input$winA_mon,{
-    # browser()
-    filter_forecast(df = df_ecmwf_zonal_all,
-                    country= input$sel_country,
-                    pub_mon = input$winA_mon,
-                    valid_mon = input$winA_forecast
-                    )
-  })
-  df_insuv <- eventReactive(input$winA_mon,{
-    gtm_selected<- ("Guatemala" %in% input$sel_country)
-    if(!gtm_selected){
-      ret <- NULL
-    }
-    if(gtm_selected){
-      ret <- filter_forecast(df = insuv,
-                        country= input$sel_country,
-                        pub_mon = input$winA_mon,
-                        valid_mon = input$winA_forecast
-        )
-    }
-    ret
+})
+df_insuv <- eventReactive(input$winA_mon,{
+  gtm_selected<- ("Guatemala" %in% input$sel_country)
+  if(!gtm_selected){
+    ret <- NULL
   }
+  if(gtm_selected){
+    ret <- filter_forecast(df = insuv,
+                           country= input$sel_country,
+                           pub_mon = input$winA_mon,
+                           valid_mon = input$winA_forecast
+    )
+  }
+  ret
+}
+)
+
+# for window 2
+df_win2 <- eventReactive(input$winB_mon,{
+  # browser()
+  filter_forecast(df = df_ecmwf_zonal_all,
+                  country= input$sel_country,
+                  pub_mon = input$winB_mon,
+                  valid_mon = input$winB_forecast
   )
-}      
-      
+})
+df_insuv2 <- eventReactive(input$winA_mon,{
+  gtm_selected<- ("Guatemala" %in% input$sel_country)
+  if(!gtm_selected){
+    ret <- NULL
+  }
+  if(gtm_selected){
+    ret <- filter_forecast(df = insuv,
+                           country= input$sel_country,
+                           pub_mon = input$winB_mon,
+                           valid_mon = input$winB_forecast
+    )
+  }
+  ret
+}
+)
+
   
 #   
 # df_win1 <- reactive({
@@ -560,31 +557,68 @@ gather_slider_values <- reactive({
   
 })
 
-# dynamic_rps <- reactive({
-# 
-#   l_rps <- gather_slider_values()
-# 
-#   df_win_long <- df_win1() %>%
-#     select(-pub_date)
-# 
-#    ldf_rps <- l_rps %>%
-#     imap(
-#       \(rp,nm){
-#         q_rp <- 1/as.numeric(rp)
-#         df_win_long %>%
-#           filter(
-#             lt==nm
-#           ) %>%
-#           group_by(adm0_es) %>%
-#           reframe(
-#             !!sym(as.character(nm))  := quantile(mm,q_rp)
-#           )
-#       }
-#     )
-# 
-#   purrr::reduce(ldf_rps,left_join)
-# 
-#   })
+
+gather_slider_values_w2 <- reactive({
+  
+  lts_tweak = adjustable_leadtimes2(
+    input$winB_mon, 
+    input$winB_forecast) %>% 
+    sort()  
+  # go through each of the available leadtimes and take the slider value
+  set_names(lts_tweak,lts_tweak) %>% 
+    map(\(lt){
+      input[[paste0("sliderb_", lt)]]
+    })
+  
+})
+
+# you cant have reactive inside a static function like i do below..... i don't think therefore...
+# gather_slider_values_static <-  function(pub_mo, valid_mo)
+
+# therefore should really bring this one back into play
+dynamic_rps_w1 <- eventReactive(input$winA_mon,{
+  l_rps <- gather_slider_values()
+  df_win_long <- df_win1() %>%
+    select(-pub_date)
+
+   ldf_rps <- l_rps %>%
+    imap(
+      \(rp,nm){
+        q_rp <- 1/as.numeric(rp)
+        df_win_long %>%
+          filter(
+            lt==nm
+          ) %>%
+          group_by(adm0_es) %>%
+          reframe(
+            !!sym(as.character(nm))  := quantile(mm,q_rp)
+          )
+      }
+    )
+  purrr::reduce(ldf_rps,left_join)
+  })
+
+dynamic_rps_w2 <- eventReactive(input$winB_mon,{
+  l_rps <- gather_slider_values_w2()
+  df_win_long <- df_win2() %>%
+    select(-pub_date)
+
+   ldf_rps <- l_rps %>%
+    imap(
+      \(rp,nm){
+        q_rp <- 1/as.numeric(rp)
+        df_win_long %>%
+          filter(
+            lt==nm
+          ) %>%
+          group_by(adm0_es) %>%
+          reframe(
+            !!sym(as.character(nm))  := quantile(mm,q_rp)
+          )
+      }
+    )
+  purrr::reduce(ldf_rps,left_join)
+  })
 
 
 dynamic_rps_static <-  function(df){
@@ -692,12 +726,114 @@ apply_dynamic_rps_static <- function(df){
     )
 }
 
+apply_dynamic_rps_rw1 <- reactive({
+  df_thresh_wide <- dynamic_rps_w1()
+  df_thresh_long<- df_thresh_wide %>%
+    pivot_longer(
+      cols= matches("\\b[0-6]\\b"),
+      names_to ="lt",values_to = "q_ind"
+    ) %>%
+    mutate(
+      lt= as.numeric(lt)
+    )
+    df_thresh_long<- df_thresh_wide %>%
+    pivot_longer(
+      cols= matches("\\b[0-6]\\b"),
+      names_to ="lt",values_to = "q_ind"
+    ) %>%
+    mutate(
+      lt= as.numeric(lt)
+    )
+
+   df_full <- df_win1() %>%
+    left_join(
+      df_thresh_long
+    ) %>%
+    mutate(
+      lgl_flag = mm<q_ind
+    )
+  df_overall_activation_rate <- df_full %>%
+    group_by(adm0_es,yr=year(pub_date)) %>%
+    summarise(
+      lgl_flag = any(lgl_flag)
+    ) %>%
+    summarise(
+      ar_overall= mean(lgl_flag),
+      rp_overall =1/ar_overall,.groups="drop"
+    )
+
+    rp_by_lt_indiv <- df_thresh_wide %>%
+    left_join(
+      df_overall_activation_rate
+    )
+    return(
+      list(
+        rp_by_lt_indiv= rp_by_lt_indiv,
+        df = df_full
+      )
+    )
+})
+
+apply_dynamic_rps_rw2 <- reactive({
+  df_thresh_wide <- dynamic_rps_w2()
+  df_thresh_long<- df_thresh_wide %>%
+    pivot_longer(
+      cols= matches("\\b[0-6]\\b"),
+      names_to ="lt",values_to = "q_ind"
+    ) %>%
+    mutate(
+      lt= as.numeric(lt)
+    )
+    df_thresh_long<- df_thresh_wide %>%
+    pivot_longer(
+      cols= matches("\\b[0-6]\\b"),
+      names_to ="lt",values_to = "q_ind"
+    ) %>%
+    mutate(
+      lt= as.numeric(lt)
+    )
+
+   df_full <- df_win2() %>%
+    left_join(
+      df_thresh_long
+    ) %>%
+    mutate(
+      lgl_flag = mm<q_ind
+    )
+  df_overall_activation_rate <- df_full %>%
+    group_by(adm0_es,yr=year(pub_date)) %>%
+    summarise(
+      lgl_flag = any(lgl_flag)
+    ) %>%
+    summarise(
+      ar_overall= mean(lgl_flag),
+      rp_overall =1/ar_overall,.groups="drop"
+    )
+
+    rp_by_lt_indiv <- df_thresh_wide %>%
+    left_join(
+      df_overall_activation_rate
+    )
+    return(
+      list(
+        rp_by_lt_indiv= rp_by_lt_indiv,
+        df = df_full
+      )
+    )
+})
+
 
 
 use_this_one <- T
 apply_dynamic_rps <-  reactive({
   # browser()
   apply_dynamic_rps_static(df = df_win1())
+}
+)
+
+apply_dynamic_rps_ec_w2 <-  reactive({
+  # browser()
+  apply_dynamic_rps_static(df = df_win2())
 }
 )
 apply_dynamic_rps_insuv <-  reactive({
@@ -879,7 +1015,8 @@ df_era_seas_win <-  reactive({
 
 ```{r, echo=F}
 render_gt({
-  ecmwf_thresh <- apply_dynamic_rps_static(df = df_win1())
+  # ecmwf_thresh <- apply_dynamic_rps_static(df = df_win1())
+  ecmwf_thresh <- apply_dynamic_rps_rw1()
   ecmwf_thresh_hist <- ecmwf_thresh$df
   ecmwf_summarised_tbl <- ecmwf_thresh$rp_by_lt_indiv
   
@@ -1007,7 +1144,7 @@ Column {.tabset}
 ```{r, echo=F}
   renderPlot({
   gtm_sel <- "Guatemala" %in% input$sel_country
-  browser()
+  # browser()
   # df_p <- apply_dynamic_rps()$df
   df_p <- apply_dynamic_rps_static(df = df_win1())$df
   
@@ -1236,6 +1373,35 @@ df_corrs %>%
 
 })
 
+```
+
+Column {.tabset}
+-----------------------------------------------------------------------
+
+### Another Set
+
+```{r, echo=F}
+# eventReactive(input$winB_mon,{
+#   
+#   # df_p <- apply_dynamic_rps_static(df = df_win1())$df
+#   # l_ec_win1 <- apply_dynamic_rps_static(df = df_win1())
+#   # df_ecmwf_thresh_hist <- l_ec_win1$df
+#   # df_ecmwf_summarised_tbl <- l_ec_win1$rp_by_lt_indiv
+#   # browser()
+#   # 
+#   l_ec_win2 <- apply_dynamic_rps_static(df = df_win2())
+#   browser()
+#   # df_ecmwf_thresh_hist2 <- l_ec_win2$df
+#   # df_ecmwf_summarised_tbl2 <- l_ec_win2$rp_by_lt_indiv
+#   
+# })
+
+renderTable({
+  l_ec_win1 <- apply_dynamic_rps_rw1()
+  browser()
+  l_ec_win2 <- apply_dynamic_rps_rw2()
+})
+  
 ```
 
 
@@ -1629,339 +1795,6 @@ df_ecmwf_zonal <- df_ecmwf_zonal %>%
     )
   )%>% 
   filter(!is.na(seas_gen))
-
-
-
-```
-
-- This App is meant to allow the user to explore trigger thresholds and better understand how adjusting parameters effects the framework.
-- **All default set values reflect the current state of recommendations.**
-  
-  # Select Seasonal Rainfall Parameters
-  
-  Choose the desired RP & monitoring windows. The values here effect the thresholds and historical timeseries plots below for both **ECMWF** & **IRI**. As IRI only includes 6 years of data any values returned for an RP ≥ 6 years are not properly calculated.
-
-The thresholds based on the desired return period are provided for each window. For `JJA` and `SON` the equivalent RP & thresholds for **either** window activating is also provided.
-
-**By default** the `RP` is set to 3 years.
-
-```{r ecmwf, echo=FALSE,out.width="100%"}
-inputPanel(
-  sliderInput(inputId = "ecmwf_rp", label = "Desired RP:",
-              min = 0, max = 20, value = 3, step = 1),
-  checkboxGroupInput(inputId = "w1_monitor",
-                     choices = c("Jan"=1,"Feb"=2,"Mar"=3,"Apr"=4),
-                     selected = c(1,2,3,4),
-                     label = "Window 1 monitoring",
-  ),
-  checkboxGroupInput(inputId = "w2_monitor",
-                     choices = c("Feb"=2,"Mar"=3,"Apr"=4,"May"=5),
-                     selected = c(2,3,4),
-                     label = "Window 2 monitoring",
-  ),
-  checkboxGroupInput(inputId = "w3_monitor",
-                     choices = c("May"=5,"June"=6,"July"=7,"Aug"=8),
-                     selected = c(5,6,7),
-                     label = "Window 3 monitoring",
-  )
-  
-)
-
-df_rp_q <- reactive({
-  q_rp <- 1/input$ecmwf_rp
-  
-  eq_probs <- quad_eq(a = -1, b = 2, c = -q_rp)
-  q_jrp <- eq_probs[1]
-  rp_jp <- 1/eq_probs[1]
-  
-  df_ecmwf_zonal_filt_mins <- df_ecmwf_zonal %>% 
-    filter(
-      (seas_gen == "MJJ" & month(date) %in% input$w1_monitor)|
-        (seas_gen == "JJA" & month(date) %in% input$w2_monitor)|
-        (seas_gen == "SON" & month(date) %in% input$w3_monitor)
-    ) %>%
-    group_by(
-      adm0_es,init_valid_date,init_year,seas_gen
-    ) %>% 
-    summarise(
-      mm=min(mm),.groups="drop"
-    )
-  
-  df_ecmwf_filt_quantiles <-  df_ecmwf_zonal_filt_mins %>% 
-    group_by(
-      adm0_es,seas_gen
-    ) %>% 
-    summarise(
-      q_ind = quantile(mm,q_rp),
-      q_jp = quantile(mm,q_jrp),
-      .groups="drop"
-      
-    ) 
-  
-  df_full <- df_ecmwf_zonal_filt_mins %>% 
-    left_join(
-      df_ecmwf_filt_quantiles
-    ) %>% 
-    mutate(
-      lgl_flag = mm<q_ind
-    )
-  list(
-    df= df_ecmwf_filt_quantiles,
-    indiv_prob = input$ecmwf_rp,
-    joint_prob = round(rp_jp,1),
-    df_full = df_full
-  )
-  
-})
-
-
-render_gt({
-  gt_ecmwf_filt_quantiles <- df_rp_q()$df %>%
-    ungroup() %>%
-    pivot_wider(
-      names_from=seas_gen,
-      values_from = q_ind:q_jp
-    ) %>%
-    select(
-      adm0_es, ends_with("MJJ"),
-      ends_with("JJA"),
-      ends_with("SON")
-    ) %>%
-    gt() %>%
-    cols_hide(columns = "q_jp_MJJ") %>%
-    cols_label(
-      adm0_es = "Country",
-      q_ind_MJJ = paste0(df_rp_q()$indiv_prob," year RP (weighted batches)"),
-      q_ind_JJA= paste0(df_rp_q()$indiv_prob," year RP (weighted batches)"),
-      q_jp_JJA= paste0(df_rp_q()$joint_prob," year RP (All-in)"),
-      q_ind_SON= paste0(df_rp_q()$indiv_prob," year RP (weighted batches)"),
-      q_jp_SON= paste0(df_rp_q()$joint_prob," year RP (All-in)")
-    ) %>%
-    tab_spanner(
-      label = "Window 1 (MJJ)",
-      columns = ends_with("MJJ")
-    ) %>%
-    tab_spanner(
-      label = "Window 2 (JJA)",
-      columns = ends_with("JJA")
-    ) %>%
-    tab_spanner(
-      label = "Window 3 (SON)",
-      columns = ends_with("SON")
-    ) %>%
-    fmt_number(
-      decimals= 0
-    ) %>%
-    data_color(columns = where(is.numeric),
-               direction = "column",
-               reverse = TRUE,
-               palette = "Reds"
-    ) %>%
-    tab_header(
-      title = "ECMWF Trimester Threshold Options Based on Selected Monitoring Window & Selected Return Period",
-    )%>%
-    cols_width(
-      # adm0_es ~ px(150),
-      everything() ~ px(100)
-    ) %>% 
-    tab_options(
-      data_row.padding = px(1),
-    )
-  # tab_footnote(
-  #   gt::html(
-  #     paste0(
-  #       "<b>MJJ</b> - based on ", paste0(month(input$w1_monitor %>% unname(),abbr=T,label=T),collapse = "-")," monitoring<br>
-  #       <b>JJA</b> - based on Feb-May monitoring<br>
-  #       <b>SON</b>- based on May-July Monitoring"
-  #   )
-  # )
-  # )
-})
-```
-
-```{r echo=F,eval=F}
-df_iri_ecmwf <- bind_rows(
-  df_full %>% 
-    select(
-      adm0_es, init_valid_date,seas_gen, value = mm , lgl_flag
-    ) %>% 
-    mutate(
-      source = "ECMWF"
-    ),
-  df_iri_full %>% 
-    select(
-      adm0_es, init_valid_date=predict_start_mo,seas_gen, value = mean , lgl_flag
-    ) %>% 
-    mutate(
-      source = "IRI"
-    )
-)
-df_iri_ecmwf %>% 
-  group_by(
-    adm0_es,init_valid_date,seas_gen
-  ) %>% 
-  filter(any(source=="IRI")) %>% 
-  arrange( adm0_es,init_valid_date)
-
-df_iri_ecmwf %>% 
-  mutate(
-    date_cat = dense_rank(init_valid_date)
-  ) %>% 
-  ggplot(aes(x=date_cat,y=source,fill=lgl_flag))+
-  geom_tile(color="black")+
-  facet_grid(rows=vars(adm0_es))
-
-df_vhi_p <- df_vhi_plot %>% 
-  select(
-    adm0_es,init_valid_date= date, mo_label,value= pct_crop_pixels_lte_thresh, lgl_flag= flag
-  ) %>% 
-  mutate(
-    source ="VHI",
-    seas_gen = "JJA"
-  ) %>% 
-  group_by(
-    adm0_es,yr_date = floor_date(init_valid_date,"year"),seas_gen
-  ) %>% 
-  summarise(
-    flag_label = paste0(unique(mo_label[lgl_flag]),collapse = " & "),
-    flag_label= if_else(flag_label=="",NA,flag_label),
-    .groups="drop"
-  ) %>% 
-  mutate(
-    init_valid_date = floor_date(yr_date,"year")+months(5)
-  ) %>% 
-  ungroup() %>% 
-  select(-yr_date) 
-
-df_iri_ecmwf_p <- df_iri_ecmwf %>% 
-  # count(source)
-  group_by(adm0_es, init_valid_date,seas_gen) %>%
-  summarise(
-    flag_label = paste0(unique(source[lgl_flag]),collapse = " & "),
-    flag_label= if_else(flag_label=="",NA,flag_label),
-    .groups="drop"
-  )%>%
-  arrange(init_valid_date, seas_gen) %>% 
-  mutate(
-    source ="forecast"
-  ) %>% 
-  bind_rows(
-    df_vhi_p %>% 
-      mutate(
-        source = "VHI"
-      )
-  ) %>%
-  # filter(year(init_valid_date)%in% 1990:1992) %>%
-  # count(flag_label) %>% 
-  mutate(
-    date_cat = dense_rank(init_valid_date),
-    xlabel = paste0(seas_gen,format(init_valid_date,"%y")),
-    yr_date = format(floor_date(init_valid_date,"year"),"%Y")
-  ) 
-
-df_p_split <- df_iri_ecmwf_p%>% 
-  split(.$source)
-
-df_p_split$forecast %>% 
-  ggplot(aes(x=date_cat,y=adm0_es))+
-  geom_tile( aes(fill=flag_label,color=flag_label),lwd=0.5) +
-  scale_x_continuous(
-    breaks = unique(df_p_split$forecast$date_cat)
-  )+
-  facet_grid(
-    cols=vars(yr_date),
-    scales="free"
-  )+
-  theme(
-    strip.text = element_text(size=8, color="white",angle=90),
-    strip.background = element_rect(fill="black"),
-    axis.text.x.bottom=element_blank(),
-    panel.background = element_rect(fill = "black"),
-    plot.background = element_rect(fill = "black"),
-    axis.text.x = element_text(angle = 90, hjust = 1,size=8),
-    legend.background = element_rect(fill="black"),
-    axis.title = element_blank(),
-    text=element_text(color="white")
-  )
-
-
-
-df_iri_ecmwf_p_relabel <- df_iri_ecmwf_p %>% 
-  group_by(
-    adm0_es,init_valid_date,seas_gen,date_cat,yr_date
-  ) %>% 
-  summarise(
-    flag_label2 = paste0(unique(flag_label[!is.na(flag_label)]),collapse = " & "),
-    .groups="drop"
-  ) %>% 
-  mutate(
-    flag_label3= case_when(
-      flag_label2=="IRI" ~ "Ag AA (IRI)",
-      flag_label2=="ECMWF" ~ "Ag AA (ECMWF)",
-      flag_label2=="IRI & ECMWF" ~ "Ag AA (ECMWF & IRI)",
-      flag_label2=="ECMWF & IRI" ~ "Ag AA (ECMWF & IRI)",
-      flag_label2=="ECMWF & Aug" ~ "Ag AA (ECMWF) + AA mitigation package (Aug)",
-      flag_label2=="ECMWF & Jul"  ~ "Ag AA (ECMWF) + AA mitigation package (Jul)",
-      flag_label2=="ECMWF & Jul & Aug" ~ "Ag AA (ECMWF) + AA mitigation package (Jul+Aug)",
-      flag_label2=="Aug" ~ "AA mitigation package (Aug)",
-      flag_label2=="Jul & Aug"  ~ "AA mitigation package (Jul+Aug)",
-      
-      TRUE ~ flag_label2
-    ),
-    flag_label3= ifelse(flag_label3=="",NA,flag_label3)
-  ) 
-
-df_fill_pal <- df_iri_ecmwf_p_relabel %>% 
-  ungroup() %>% 
-  filter(!is.na(flag_label3)) %>% 
-  distinct(flag_label3) %>% 
-  mutate(
-    fill_pal = case_when(
-      str_detect(flag_label3,"(ECMWF)")~hdx_hex("tomato-hdx"),
-      str_detect(flag_label3,"(IRI)")~hdx_hex("tomato-light"),
-      str_detect(flag_label3,"(ECMWF & IRI)")~hdx_hex("tomato-dark"),
-    ),
-    col_pal = case_when(
-      str_detect(flag_label3,"(Jul+Aug)")~"darkgreen",
-      str_detect(flag_label3,"(Jul)")~"lightgreen",
-      str_detect(flag_label3,"(Aug)")~"green",
-      .default=NA
-    )
-  )
-v_fill_pal <- set_names(df_fill_pal$fill_pal,df_fill_pal$flag_label3)
-v_col_pal <- set_names(df_fill_pal$col_pal,df_fill_pal$flag_label3)
-
-df_iri_ecmwf_p_relabel %>% 
-  ggplot(aes(x=date_cat,y=adm0_es))+
-  geom_tile( aes(fill=flag_label3,
-                 color=flag_label3
-  ),lwd=0.5)+
-  scale_fill_manual(
-    na.value = NA,
-    values = v_fill_pal)+
-  scale_color_manual(
-    na.value = NA,,
-    values = v_col_pal
-  )+
-  scale_x_continuous(
-    breaks =df_iri_ecmwf_p_relabel$date_cat
-  )+
-  facet_grid(
-    cols=vars(yr_date),
-    scales="free"
-  )+
-  theme(
-    strip.text = element_text(size=8, color="white",angle=90),
-    strip.background = element_rect(fill="black"),
-    axis.text.x.bottom=element_blank(),
-    panel.background = element_rect(fill = "black"),
-    plot.background = element_rect(fill = "black"),
-    axis.text.x = element_text(angle = 90, hjust = 1,size=8),
-    legend.background = element_rect(fill="black"),
-    axis.title = element_blank(),
-    text=element_text(color="white")
-  )
-
 
 
 
