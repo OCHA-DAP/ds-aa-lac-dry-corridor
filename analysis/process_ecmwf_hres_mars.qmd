@@ -6,10 +6,10 @@ editor: visual
 
 ## Intro
 
-- This code takes the grib files downloaded from the MARS API and processes them into easier to work with `.tif` files.
-- data is store as 1 file per pub_date/month with all 7 lead times.
-- outputs of this analysis are added to the _targets.R pipeline to extract zonal stats.
-    
+-   This code takes the grib files downloaded from the MARS API and processes them into easier to work with `.tif` files.
+-   data is store as 1 file per pub_date/month with all 7 lead times.
+-   outputs of this analysis are added to the \_targets.R pipeline to extract zonal stats.
+
 ```{python}
 import xarray as xr
 import rioxarray as rxr
@@ -30,8 +30,6 @@ MARS_DIR = DATA_DIR/"private"/"raw"/"lac"/"ecmwf_seasonal"/"mars"
 OUT_DIR = DATA_DIR/"private"/"processed"/"lac"/"ecmwf_seasonal"/"seas51"/"mars"
 ```
 
-
-
 ```{python}
 
 fp_glob = glob.glob(f"{MARS_DIR}/*.grib")
@@ -48,6 +46,7 @@ ds = xr.open_mfdataset(fp_glob,
 ```
 
 # Proccess GRIB
+
 ```{python}
 
 ds['longitude'] = (ds['longitude'] + 180) % 360 - 180
@@ -68,6 +67,7 @@ da_mean = da_mean.rio.set_crs("EPSG:4326",inplace=True)
 ```
 
 # set up grid for interpolation
+
 ```{python}
 
 
@@ -110,8 +110,6 @@ for pub_date in pub_dates:
       dst.write(grid_ecmwf, i+1)  # Write to the correct band    
 ```
 
-
-
 ```{r}
 library(terra)
 library(tidyverse)
@@ -131,15 +129,12 @@ plot(r[[1]])
 plot(gdf_aoi_adm$adm0$geometry,add=T)
 ```
 
-
 ## Appendix
 
-Still playing with code below to see if I can make the coordinate dimensions register better.
-I have set `eval=F` so that I can run the whole script above without initating any of the code below as it is essentiall scrap code
-
+Still playing with code below to see if I can make the coordinate dimensions register better. I have set `eval=F` so that I can run the whole script above without initialing any of the code below as it is essentially scrap code. Main issue is that when the grib files are not read in there is no `*` next to `longitude` , `latitude` this means they are not being recognized as dimensional coordinates. Would be nice if they were as in all other examples and data sets.
 
 ```{python, eval=F}
-MWI_DIR = DATA_DIR/"private"/"raw"/"mwi"/"ecmwf"/"seasonal-monthly-individual-members"/"prate"
+
 fp_glob = glob.glob(f"{MARS_DIR}/*.grib")
 fptest=fp_glob[1]
 # 
@@ -151,38 +146,24 @@ ds_single = xr.open_dataset(fptest,
                     )
                     
                     
+# trying to get longitude/latitude registered as dimensional coordinates                    
+# it seems latitdue/longitude are stored as value--- try changing to `lat-lon`
+ds_single.rename({"values":"lat-lon"}).values
 
-
-
-                    
-
-ds_single.rename({"values":"lat-lon"})
 
 ds_single.rename({"values":"lat,lon"}).swap_dims({"lat,lon":"longitude"})
-ds_single.rename({"values":"lat,lon"}).swap_dims({"lat,lon":"longitude"})
+ds_single.rename({"values":"lat,lon"}).swap_dims({"lat,lon":"latitude"})
 
-ds_single_coords_assigned =ds_single.assign_coords({"values": ds.longitude.values, "latitude": ds.latitude.values})
-ds_single_coords_assigned.swap_dims({"values":"longitude"})
-ds_single_coords_assigned.swap_dims({"values":"latitude"})
-
-
-
-ds_single_coords_assigned.rename({"longitude":"values"})
-
-ds_single_coords_assigned =ds_single.assign_coords({"values": ds.longitude.values, "latitude": ds.latitude.values})  
-
-
-rename_dims({"values":"longitude"})
-ds_single.expand_dims
-?xr.rename_dims
-
-
+# try without backend kwargs
 ds_single2 = xr.open_dataset(fptest,
                      engine="cfgrib",
                      drop_variables= ["surface","values"]
                      # backend_kwargs=dict(time_dims=('time','forecastMonth'))
                     )                    
+
+# thinking about comparing MWI `.nc` files -- perhaps later
+MWI_DIR = DATA_DIR/"private"/"raw"/"mwi"/"ecmwf"/"seasonal-monthly-individual-members"/"prate"
 fp_glob = glob.glob(f"{MWI_DIR}/*.nc")
 ```
-```
+
 
