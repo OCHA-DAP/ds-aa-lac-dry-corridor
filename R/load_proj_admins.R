@@ -4,9 +4,9 @@ library(janitor)
 load_proj_admins <- function() {
   # Nicaragua
   lyr_name_nic_adm <- c(
-    adm0 = "nic_admbnda_adm0_inide_itos_20210826",
-    adm1 = "nic_admbnda_adm1_inide_itos_20210826",
-    adm2 = "nic_admbnda_adm2_inide_20210826"
+    adm0 = "nic_admbnda_adm0_inide_itos_20231127",
+    adm1 = "nic_admbnda_adm1_inide_itos_20231127",
+    adm2 = "nic_admbnda_adm2_inide_20231127"
   )
 
   gdfl_nic_adm <- lyr_name_nic_adm %>%
