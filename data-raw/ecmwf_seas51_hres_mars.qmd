@@ -6,14 +6,12 @@ editor: visual
 
 ## Intro
 
-- This notebook downloads the ECMWF SEAS 51 data from the MARS archive using the ECMWFAPI.
-  + It downloads historical monthly ensemble data for the period 1981-2022. 
-  + Each year is downloaded as 1 grib file.
-- To run this notebook to download the data you will need to have your credential/authorization configured as in this [document](https://confluence.ecmwf.int/display/WEBAPI/Access+MARS)
-- The data set accessed is not currently published, but we have access to it.
-- The API request is based on the [ECMWF System 5 guide](https://www.ecmwf.int/sites/default/files/medialibrary/2017-10/System5_guide.pdf) request (p.34)
--I could only get it to work with the python libraries although theoretically it should be possible with the `{ecmwfr}` R package.
-
+-   This notebook downloads the ECMWF SEAS 51 data from the MARS archive using the ECMWFAPI.
+    -   It downloads historical monthly ensemble data for the period 1981-2022.
+    -   Each year is downloaded as 1 grib file.
+-   To run this notebook to download the data you will need to have your credential/authorization configured as in this [document](https://confluence.ecmwf.int/display/WEBAPI/Access+MARS)
+-   The data set accessed is not currently published, but we have access to it.
+-   The API request is based on the [ECMWF System 5 guide](https://www.ecmwf.int/sites/default/files/medialibrary/2017-10/System5_guide.pdf) request (p.34) -I could only get it to work with the python libraries although theoretically it should be possible with the `{ecmwfr}` R package.
 
 ```{python}
 from ecmwfapi import *
@@ -21,14 +19,15 @@ import xarray as xr
 import rioxarray
 import pandas as pd
 import numpy as np
+from pathlib import Path
+import os 
+
 DATA_DIR=Path(os.getenv("AA_DATA_DIR"))
 server = ECMWFService("mars")
+OUT_DIR = DATA_DIR/"private"/"raw"/"lac"/"ecmwf_seasonal"/"mars"
 ```
 
-
 ```{python}
-OUT_DIR = DATA_DIR/"private"/"raw"/"lac"/"ecmwf_seasonal"/"mars"
-
 # accoring to documentation 1981-2016 have 25 ens members, after 51
 start_year = 1981
 end_year = 2022
@@ -74,6 +73,4 @@ for year in range(start_year, end_year):
         },
         f"ecmwf_hres_seas5_{year}.grib"
     )
-
 ```
-
