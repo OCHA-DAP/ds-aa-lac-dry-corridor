@@ -60,6 +60,15 @@ fp_iri_prob <- file.path(
   "iri",
   "lac_iri_forecast_seasonal_precipitation_tercile_prob_Np18Sp10Em83Wm93.nc"
 )
+gdb_ecmwf_mars_tifs <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "processed",
+  "lac",
+  "ecmwf_seasonal",
+  "seas51",
+  "mars"
+)
 
 ## GDB - ECMWF ####
 dir_ecmwf_tifs <- file.path(Sys.getenv("AA_DATA_DIR"),
@@ -167,14 +176,14 @@ list(
   # this target used to visualize distribution of pixel values
   tar_target(
     name = df_aoi_pixel_values,
-    command =iri_nc_to_r(
+    command = iri_nc_to_r(
       tnc_object = tidync(fp_iri_prob),
       type = "prob"
-    ) %>% 
-      imap_dfr(\(rt,nm){
+    ) %>%
+      imap_dfr(\(rt, nm){
         # [[1]] first element is bavg (c1)
         rt_copy <- deepcopy(rt[[1]])
-        
+
         # clip to aoi (instead of just bbox)
         rt_clipped <- mask(
           rt_copy,
@@ -182,19 +191,19 @@ list(
           gdf_aoi_adm$adm0 %>%
             summarise()
         )
-        rt_clipped %>% 
-          terra::values() %>% 
-          data.frame() %>% 
-          pivot_longer(everything()) %>% 
+        rt_clipped %>%
+          terra::values() %>%
+          data.frame() %>%
+          pivot_longer(everything()) %>%
           mutate(
-            leadtime = str_replace(nm,"lt", "leadtime "),
+            leadtime = str_replace(nm, "lt", "leadtime "),
             prob_cat = case_when(
-              value <40~ "lt 40",
-              value <50 ~"lt 50",
-              value >=50 ~"gte 50")
+              value < 40 ~ "lt 40",
+              value < 50 ~ "lt 50",
+              value >= 50 ~ "gte 50"
+            )
           )
-      }
-      )
+      })
   ),
   # ECMWF -------------------------------------------------------------------
   ## ECMWF Zonal Stats ####
@@ -340,7 +349,6 @@ list(
       threshold_seq = seq(0.05, 1, by = 0.05)
     )
   ),
-  
   # same as above, but this time on the dry corridor boundary for each country.
   tar_target(
     name = df_cropland_lte_vhi_threshold_dc,
@@ -431,7 +439,14 @@ list(
         f_v1_win_2 = month(date) %in% c(6,7,8),
         f_v1_win_3 = month(date) %in% c(9,10,11)
       )
-    
+  ),
+  tar_target(
+    name = r_ecmwf_mars,
+    command = load_mars_raster(gdb = gdb_ecmwf_mars_tifs)
+  ),
+  tar_target(
+    name = df_ecmwf_mars,
+    command = zonal_ecmwf_mars(r_wrapped = r_ecmwf_mars, zone = gdf_aoi_adm$adm0, stat = "mean")
   )
 )
 
