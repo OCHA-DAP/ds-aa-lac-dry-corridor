@@ -161,7 +161,7 @@ df_mars_insuvimeh %>%
 ```
 
 ```{r}
-df_ecmwf_insuvimeh %>%
+df_mars_insuvimeh %>%
   mutate(
     window = case_when(month(valid_date) %in% c(5,6,7,8)~"primera",
                        month(valid_date) %in% c(9,10,11)~"postera",
@@ -170,22 +170,29 @@ df_ecmwf_insuvimeh %>%
   filter(!is.na(window)) %>% 
   group_by(source, window,pub_date) %>% 
   summarise(
-    mm = sum(mm)
+    value = sum(value)
   ) %>% 
   summarise(
-    q= quantile(mm,0.25)
+    q= quantile(value,0.25)
   )
 
 tar_load(df_ecmwf_seasonal_summarised)
 
+df_mars_insuvimeh %>%
+  filter(source == "insuvimeh") 
+
+debugonce(ecmwf_summarise_seasons)
 # this is the above for insuvimeh
-insuvimeh_seasons <- ecmwf_summarise_seasons(df = df_ecmwf_insuvimeh %>% 
+insuvimeh_seasons <- ecmwf_summarise_seasons(df = df_mars_insuvimeh %>% 
+                                               rename(mm=value) %>% 
                           filter(source=="insuvimeh") %>% 
                             mutate(lt = lt+1),
                         window_list = list(primera = c(5,6,7,8),
                                            postera = c(9,10,11))
                           ) %>% 
   mutate(source="insuvimeh")
+
+
 ecmwf_seasons <- df_ecmwf_seasonal_summarised %>% 
   mutate(
     source = "ecmwf"

@@ -37,13 +37,13 @@ tar_load(df_ecmwf_zonal,store = here("_targets"))
 
 This document will attempt to propose a v1 trigger for all 3 monitoring windows using seasonal forecasts and VHI (FAO) data.
 
-**Target:** CERF + Partners have indicated that we target a 1 in 3 year RP.  However, the underlying disbursement framework would effect how this is calculated. therefore we will consider 2 options until this is decided.
+**Target:** CERF + Partners have indicated that we target a 1 in 3 year RP. However, the underlying disbursement framework would effect how this is calculated. therefore we will consider 2 options until this is decided.
 
 **Option 1 (Weighted chunks)**
 
-Disbursement is made in weighted chunks with a small/minimal available for window 1 and larger amounts available for windows 2 & 3 independently. 
+Disbursement is made in weighted chunks with a small/minimal available for window 1 and larger amounts available for windows 2 & 3 independently.
 
-Hypothetical example: 1M available in total, 200k for first window 1, 400k for window 2, 400k window 3. In this scenario, we can basically use historical data to set a threshold for each window independently. 
+Hypothetical example: 1M available in total, 200k for first window 1, 400k for window 2, 400k window 3. In this scenario, we can basically use historical data to set a threshold for each window independently.
 
 **Option 2 (All-in)**
 
@@ -51,25 +51,20 @@ Partners have proposed another type of disbursement where if either window 2 or 
 
 The pro's and con's to each option are not considered here, but rather we see the effect each option might have on the trigger thresholds.
 
-
 # ECMWF vs IRI Seasonal Forecasts
 
 Both ECMWF & IRI provide seasonal forecasts. However, there are some key differences:
 
-- IRI provides probabilistic tercile trimester probabilities (i.e probability below average rainfall for the trimester) whereas ECMWF provides monthly forecasts in mm which can be aggregated to the trimesters of interest
-- IRI historical record only extends to 2017 whereas ECMWF extents to 1981
-- Both IRI & ECMWF offer public data sets with 1 degree resolution. However, ECMWF also provides a 0.4 degree resolution product
-- IRI is published mid-month whereas ECMWF is published around the 10th of the month.
+-   IRI provides probabilistic tercile trimester probabilities (i.e probability below average rainfall for the trimester) whereas ECMWF provides monthly forecasts in mm which can be aggregated to the trimesters of interest
+-   IRI historical record only extends to 2017 whereas ECMWF extents to 1981
+-   Both IRI & ECMWF offer public data sets with 1 degree resolution. However, ECMWF also provides a 0.4 degree resolution product
+-   IRI is published mid-month whereas ECMWF is published around the 10th of the month.
 
 The main benefits of ECMWF over IRI are:
 
-- historical record: critical for determining a more accurate rate of activation/return period of activation
-- improved resolution
-- earlier publication date
-
-
-
-
+-   historical record: critical for determining a more accurate rate of activation/return period of activation
+-   improved resolution
+-   earlier publication date
 
 ```{r , echo=T,eval=T}
 
@@ -230,13 +225,11 @@ gt_ecmwf_filt_quantiles <- df_ecmwf_filt_quantiles %>%
   
 ```
 
-
 # ECMWF
 
 ## Thresholds - Weighted Chunks vs All-in Comparison
 
 The weighted chunk disbursement option lends itself towards setting the trigger thresholds to the desired RP independently. Since the desired RP is 3 years, we can set the threshold for each based on the 3 year RP. The "All-in" approach aligns better with considering a joint probability for either event as triggering. When considering joint probability of 2 events, there are limitless combinations of probabilities that can add up conditionally to reach any joint probability. Here we set the condition that both events will have the same probability of triggering which gives each event a 1 in **`r round(rp_jp,1)`** year RP. The table below compares how this would effect the threshold. Additionally, it compares how the thersholds are affected if the IRI values are aggregated by mean vs median.
-
 
 Here we use all historical data and leadtimes to set thresholds based on different activation rates/return periods
 
@@ -250,11 +243,9 @@ Next we remove leadtimes that partners have said would not provide ample time to
 gt_ecmwf_filt_quantiles
 ```
 
-
-
 ### Historical activations simulated
 
-Below we see a time series of all years for which we have historical ECMWF data. The red points indicate years in which either window 2 or 3 would have been activated. The activation threshold is based on the a 1 in 3 year activation return period of either window 2 or 3 assuming the events are independents which corresponds to a 1 in 5.5 year RP for each window 
+Below we see a time series of all years for which we have historical ECMWF data. The red points indicate years in which either window 2 or 3 would have been activated. The activation threshold is based on the a 1 in 3 year activation return period of either window 2 or 3 assuming the events are independents which corresponds to a 1 in 5.5 year RP for each window
 
 ```{r echo=T,eval=T}
 df_ecmwf_mins_classified <- df_ecmwf_mins %>% 
@@ -296,7 +287,6 @@ df_ecmwf_mins_classified %>%
     axis.title.x = element_blank()
   )
 ```
-
 
 Below the same information is displayed as a table for each country. Years which would have activated are colored by scarcity of precipitation.
 
@@ -395,8 +385,7 @@ df_ecmwf_mins_classified %>%
   
 ```
 
-
-Once again we display the same information in the time series below, but this time show the season in which the activation would  have occured.
+Once again we display the same information in the time series below, but this time show the season in which the activation would have occured.
 
 ```{r}
 df_ecmwf_mins %>% 
@@ -434,7 +423,7 @@ df_ecmwf_mins %>%
   )
 ```
 
-Since JJA & SON rainfall are unlikely to be completely independent, below we've plotted the correlation between JJA percentile values and SON percentile values and a degree of correlation is evident. 
+Since JJA & SON rainfall are unlikely to be completely independent, below we've plotted the correlation between JJA percentile values and SON percentile values and a degree of correlation is evident.
 
 ```{r}
 
@@ -478,10 +467,9 @@ df_ecmwf_mins_wide %>%
 
 Therefore we have three possible options assumptions we could make to set appropriate thresholds:
 
-1. JJA & SON are independent - we can use a 1 in 5.5 year RP on both to achieve 1 in 3 year RP on either
-2. JJA & SON are dependent - we can use an 1 in 3 year RP on both
-3. Somewhat dependent - perhaps a 1 in 4 year RP on both
-
+1.  JJA & SON are independent - we can use a 1 in 5.5 year RP on both to achieve 1 in 3 year RP on either
+2.  JJA & SON are dependent - we can use an 1 in 3 year RP on both
+3.  Somewhat dependent - perhaps a 1 in 4 year RP on both
 
 ```{r eval=F, echo=F}
 df_ecmwf_mins_wide %>% 
@@ -531,8 +519,6 @@ df_ecmwf_mins_flagged_wide %>%
 
 ```
 
-
-
 ```{r, eval= F, echo=F}
 gt_thresh_comparison <- df_iri_prob_thresholds %>% 
   select(adm0_es,seas_gen,contains("_abs")) %>% 
@@ -565,19 +551,15 @@ gt_thresh_comparison
 
 ```
 
-
 ## Adjusting Monitoring windows
 
-In analysis above we consider all leadtimes and monitoring windows:
-- For MJJ we monitor: JFMA
-- For JJA we monitor:FMAM
-- For SON we monitor: MJJA
+In analysis above we consider all leadtimes and monitoring windows: - For MJJ we monitor: JFMA - For JJA we monitor:FMAM - For SON we monitor: MJJA
 
 However, partners have expressed that 1 month lead time is not sufficient to deliver the critical activities for windows 2 & 3. Therefore, we want to see how the thresholds would change if May and August were removed from the monitoring windows for windows 2 & 3 respectively. Therefore below we have adjusted the monitoring as follows:
 
-- For MJJ we monitor: JFMA
-- For JJA we monitor:FMA
-- For SON we monitor: MJJ
+-   For MJJ we monitor: JFMA
+-   For JJA we monitor:FMA
+-   For SON we monitor: MJJ
 
 ### Percentiles/RPs from direct values
 
@@ -665,6 +647,7 @@ gt_thresh_percentiles_straight_rm_lt1
 ```
 
 ### Percentiles/RPs from anomalies (Z-scores)
+
 ```{r}
 df_iri_adm0_pre <- df_iri_adm0 %>% 
   mutate(
@@ -813,7 +796,6 @@ gt_thresh_comparison_lt1_removed <- df_iri_prob_thresholds_lt1_rm %>%
 gt_thresh_comparison_lt1_removed
 ```
 
-
 ```{r ,eval=F, echo=F}
 gt_thresh_comparison_lt1_removed <- df_iri_prob_thresholds_lt1_rm %>% 
   select(adm0_es,seas_gen,contains("_abs")) %>% 
@@ -936,16 +918,15 @@ df_iri_prob_thresholds_combined %>%
   )
 ```
 
-
 # VHI/ASIS
 
-FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of `≥25 %` of cropland area with a VHI < `0.35`. This is based on global analysis they have performed. However, all the details have not been made available.  
+FAO has recommended also including VHI over cropland as an indicator and has recommended a threshold of `≥25 %` of cropland area with a VHI \< `0.35`. This is based on global analysis they have performed. However, all the details have not been made available.
 
 I believe the 0.35 VHI threshold is commonly used as a drought classification so it probably makes sense to keep (find ref).
 
 As of latest discussions we have decided it only makes sense to use this indicator for window 3. Below will evaluate the FAO threhsolds and others to see how we can incorporate this indicator into window 3
 
-Here we look at %  cropland <0.35 for JJA months
+Here we look at % cropland \<0.35 for JJA months
 
 ```{r repCanicualFigs}
 
@@ -974,7 +955,6 @@ df_cropland_lte_vhi_threshold %>%
   )
   )
 ```
-
 
 ```{r}
 tar_load(df_vhi_median_over_crop,store = here("_targets"))
@@ -1008,7 +988,8 @@ df_vhi_35 <- df_cropland_lte_vhi_threshold %>%
   )
 ```
 
-## % Cropland < 0.35 VHI
+## % Cropland \< 0.35 VHI
+
 ```{r}
 df_vhi_35 %>% 
   filter(month(date)%in%c(6,7,8)) %>% 
@@ -1020,8 +1001,10 @@ df_vhi_35 %>%
 
 ```
 
-## % Cropland < 0.35 VHI (Z-score)
+## % Cropland \< 0.35 VHI (Z-score)
+
 Same plot, but converted to Z-score
+
 ```{r}
 df_vhi_35 %>% 
   filter(month(date)%in%c(6,7,8)) %>% 
@@ -1031,9 +1014,7 @@ df_vhi_35 %>%
   geom_line()
 ```
 
-
-If we look at the thresholds provided by FAO (>25% cropland area w/ VHI <0.35) we can approximate the RPs. We see that Nicaragua is has a much lower return period indicating it experience more frequent droughts as measured by this indicator during the Canicula season. This is in lin with the Canicula Study FAO has produced. 
-
+If we look at the thresholds provided by FAO (\>25% cropland area w/ VHI \<0.35) we can approximate the RPs. We see that Nicaragua is has a much lower return period indicating it experience more frequent droughts as measured by this indicator during the Canicula season. This is in lin with the Canicula Study FAO has produced.
 
 ```{r}
 df_vhi_mo_6_7_rps<- df_vhi_35 %>% 
@@ -1098,12 +1079,11 @@ df_vhi_mo_rps_combined%>%
 
 ```
 
-It is not clear if we would want to adjust the VHI RPs so they are equivalent for all 4 countries, The average RP for the given thresholds is 
-
+It is not clear if we would want to adjust the VHI RPs so they are equivalent for all 4 countries, The average RP for the given thresholds is
 
 years across all 4 countries. For simplicity let's look at what joint probability of a 10 year RP event would look like
 
-## VHI 10 year RP using  Z-score
+## VHI 10 year RP using Z-score
 
 ```{r}
  eq_prob_10yr <- quad_eq(a = -1, b = 2, c = -0.1)
@@ -1177,8 +1157,10 @@ df_vhi_35_10yr_thresholds %>%
 
 ```
 
-## VHI 10 year RP using  % Area
+## VHI 10 year RP using % Area
+
 Let's do the exact same thing as above, but not use Z
+
 ```{r}
 
  eq_prob_10yr <- quad_eq(a = -1, b = 2, c = -0.1)
@@ -1221,9 +1203,7 @@ df_vhi_35_10yr_thresholds_pct %>%
 
 # Recommendation
 
-Recommendation 1: set threshold based on joint probability of IRI activation. 
-
-
+Recommendation 1: set threshold based on joint probability of IRI activation.
 
 ```{r}
 
@@ -1271,10 +1251,10 @@ df_iri_adm0 %>%
 
 ```
 
-
 # Apendix
 
 ## ECMWF Percentiles vs IRI
+
 ```{r, echo=F, eval=F}
 tar_load(df_ecmwf_zonal,
          store = here("_targets")
@@ -1462,6 +1442,7 @@ library(broom)
 ```
 
 Any Bias in Lt? not too bad
+
 ```{r, echo=T, eval=T}
 df_ecmwf_zonal <- df_ecmwf_zonal %>%
   mutate(
@@ -1558,7 +1539,6 @@ df_iri_thresholded_scen2 <- seq(33,50) %>%
     uid = row_number()
   )
 ```
-
 
 ```{r optimalScen1}
 df_optimal_median_filt <- df_iri_thresholded %>% 
@@ -1727,7 +1707,6 @@ df_iri_thresholded %>%
 
 ```
 
-
 ```{r}
 
 df_optimal_range_mean%>% 
@@ -1786,10 +1765,10 @@ df_optimal_range_mean_scen2 %>%
   )
 ```
 
-
 ## by median
 
 we see thresholds are a bit tighter.
+
 ```{r}
 df_iri_thresholded %>% 
   mutate(
@@ -1823,7 +1802,6 @@ df_iri_thresholded %>%
   )
   
 ```
-
 
 ```{r}
 df_optimal_range_median%>% 
@@ -1883,10 +1861,7 @@ df_optimal_range_median_scen2 %>%
   )
 ```
 
-
-
 ## IRI 40 + VHI 5 year
-
 
 ```{r eval=F}
 library(targets)
@@ -1905,8 +1880,8 @@ df_chirps <- read_csv(file.path(
 
 ```
 
-
 ## Driest years
+
 ```{r eval=F}
 df_vhi_chirps <- bind_rows(
   df_vhi_median_over_crop %>% 
@@ -1977,7 +1952,8 @@ p_yearly
 
 ```
 
- Table
+Table
+
 ```{r eval=F}
 gt_table_driest_years <-  df_chirps_yearly_historical %>% 
   group_by(adm0_es) %>% 
@@ -2438,11 +2414,6 @@ gt_chirps_windows$`El Salvador`
 
 ```
 
-
-
-
-
-
 ```{r eval=F}
 df_vhi_chirps_anom <- df_vhi_chirps %>% 
   mutate(
@@ -2496,12 +2467,12 @@ df_vhi_chirps_anom %>%
 
 Since VHI is observed we can only look-back so what are the months we would be looking back at?
 
-- First trigger window is MJJ
-  + VHI not included in monitoring framework
-- Second trigger window is JJA
-  + at end of May/early July we can look back at **May** & **April**
-- Third trigger window is SON
-  + at end of August/early September we can look back at **August** & **July**
+-   First trigger window is MJJ
+    -   VHI not included in monitoring framework
+-   Second trigger window is JJA
+    -   at end of May/early July we can look back at **May** & **April**
+-   Third trigger window is SON
+    -   at end of August/early September we can look back at **August** & **July**
 
 ```{r eval=F}
 # window 2
@@ -2586,7 +2557,8 @@ df_vhi_relevant_windows %>%
 
 ```
 
-## Joint 
+## Joint
+
 ```{r eval=F, echo=F}
 
 df_vhi_mean_sd <- df_vhi_relevant_windows %>% 
@@ -2674,7 +2646,9 @@ seq(z_range[1], z_range[2], by =0.05) %>%
     
   )
 ```
+
 ## Any lt bias?
+
 ```{r}
 
 # df_iri_adm0 %>% 
@@ -2692,7 +2666,6 @@ seq(z_range[1], z_range[2], by =0.05) %>%
 #     median = mean(median)
 #   )
 ```
-
 
 ```{r eval=F}
 
@@ -2792,7 +2765,6 @@ df_conditional_thresh_optimal %>%
 
 ```
 
-  
 ```{r eval=F}
 
 

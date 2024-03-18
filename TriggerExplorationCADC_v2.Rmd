@@ -29,8 +29,8 @@ library(glue)
 forecast_source <-  "mars"
 
 df_cropland_lte_vhi_threshold_dc <- read_parquet("shinyAppData/df_cropland_lte_vhi_threshold_dc.parquet") 
-# df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_zonal.parquet") 
-df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_mars_zonal.parquet") 
+df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_zonal.parquet")
+# df_ecmwf_zonal <- read_parquet("shinyAppData/df_ecmwf_mars_zonal.parquet") 
 df_iri_adm0_pre <- read_parquet("shinyAppData/df_iri_adm0_pre.parquet") 
 # targets::tar_load(df_ecmwf_zonal_all) # this used to be input for next step
 

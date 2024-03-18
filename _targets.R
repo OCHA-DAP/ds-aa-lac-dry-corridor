@@ -34,6 +34,7 @@ tar_option_set(
                "sf",
                "rgee",
                "janitor"
+               # "girafe"
   ) 
 )
 
@@ -95,6 +96,26 @@ gdb_insuvimeh_gtm <- file.path(
   "INSUVIMEH",
   "Pronósticos_Precip_NextGen_Guatemala"
 )
+gdb_insuvimeh_gtm_new <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "raw",
+  "lac",
+  "INSUVIMEH",
+  "new_format"
+)
+
+
+gdb_insuvimeh_nrt_manual <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "public",
+  "raw",
+  "lac",
+  "INSUVIMEH",
+  "download_manual",
+  "2024"
+)
+
 
 fp_r_gtm_insuvimeh_output <- file.path(
   Sys.getenv("AA_DATA_DIR"),
@@ -103,6 +124,14 @@ fp_r_gtm_insuvimeh_output <- file.path(
   "lac",
   "INSUVIMEH",
   "insuvimeh_pronosticos_nextgen.tif"
+)  
+fp_r_gtm_insuvimeh_output_new <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "processed",
+  "lac",
+  "INSUVIMEH",
+  "insuvimeh_pronosticos_nextgen_new.tif"
 )  
 
 
@@ -222,9 +251,12 @@ list(
   ),
   tar_target(
     name = df_ecmwf_seasonal_summarised,
-    command = ecmwf_summarise_seasons(df= df_ecmwf_zonal_all,
+    command = summarise_seasons(df= df_ecmwf_zonal_all %>% 
+                                        mutate(
+                                          lt = lt-1
+                                        ),
                                       window_list= list("primera"=c(5,6,7,8),
-                                                        "postera"=c(9,10,11))
+                                                        "postera"=c(9,10,11)),forecast_source = "cds"
     )
   ),
   tar_target(
@@ -246,6 +278,38 @@ list(
     command = pretty_table_ecmwf_activation_rates(df=df_ecmwf_joint_flag_rates,
                                        rp = c(3:7))
     ),
+  # ECMWF MARS --------------------------------------------------------------
+  
+  tar_target(
+    name = r_ecmwf_mars,
+    command = load_mars_raster(gdb = gdb_ecmwf_mars_tifs)
+  ),
+  tar_target(
+    name = df_ecmwf_mars,
+    command = zonal_ecmwf_mars(r_wrapped = r_ecmwf_mars, zone = gdf_aoi_adm$adm0, stat = "mean")
+  ),
+  tar_target(
+    name = df_mars_seasonal_summarised,
+    command = summarise_seasons(df= df_ecmwf_mars %>% 
+                                        rename(mm="value") , # get in same format as other
+                                      window_list= list("primera"=c(5,6,7,8),
+                                                        "postera"=c(9,10,11)),forecast_source = "mars"
+    )
+  ),
+  tar_target(
+    name = df_mars_q_summary,
+    command = grouped_quantile_summary(df= df_mars_seasonal_summarised ,
+                                       x = "mm",
+                                       rps = c(1:10),
+                                       grp_vars=c("adm0_es","window", "lt")
+    )
+  ),
+  # tar_target(
+  #   name = df_primera_thresholds,
+  #   command = thresholds_per_lt(df_ecmwf_mars,
+  #                               rp=4
+  #                               )
+  # )
   
   ## ECMWF Pixel Values ####
   # tar_target(
@@ -266,14 +330,22 @@ list(
   #   
   #   
   # ),
+  
   tar_target(
     name = df_gtm_nextgen_catalogue,
     command = catalogue_gtm_nextgen_files(gdb = gdb_insuvimeh_gtm)
   ),
+  # converts nc files to convenient tif format
   tar_target(
     name = r_gtm_nextgen_tar,
     command = write_gtm_nextgen(gdb = gdb_insuvimeh_gtm,
                                 output_file_path = fp_r_gtm_insuvimeh_output ) 
+    
+  ),
+  tar_target(
+    name = r_gtm_nextgen_tar_new,
+    command = write_gtm_nextgen(gdb = gdb_insuvimeh_gtm_new,
+                                output_file_path = fp_r_gtm_insuvimeh_output_new ) 
     
   ),
   tar_target(
@@ -282,15 +354,115 @@ list(
     format = "file"
   ),
   tar_target(
+    name= fp_r_gtm_new,
+    command = fp_r_gtm_insuvimeh_output_new,
+    format = "file"
+  ),
+  tar_target(
     name = r_gtm_wrapped,
     command= wrap(rast(fp_r_gtm))
+  ),
+  tar_target(
+    name = r_gtm_wrapped_new,
+    command= wrap(rast(fp_r_gtm_new))
   ),
   tar_target(
     name = df_gtm_nextgen_adm0,
     command= zonal_gtm_nextgen(r = r_gtm_wrapped,
                                gdf = gdf_aoi_adm,
-                               rm_dup_years = T)
+                               rm_dup_years = F)
   ),
+  tar_target(
+    name = df_gtm_nextgen_adm0_new,
+    command= zonal_gtm_nextgen(r = r_gtm_wrapped_new,
+                               gdf = gdf_aoi_adm,
+                               rm_dup_years = F)
+  ),
+  tar_target(
+    name = df_insuvimeh_seasonal_summarised,
+    command = summarise_seasons(df= df_gtm_nextgen_adm0 %>% 
+                                  rename(mm="value") , # get in same format as other
+                                window_list= list("primera"=c(5,6,7,8),
+                                                  "postera"=c(9,10,11)),forecast_source = "insuvimeh"
+    )
+  ),
+  
+  tar_target(
+    name = df_insuvimeh_seasonal_summarised_new,
+    command = summarise_seasons(df= df_gtm_nextgen_adm0_new %>% 
+                                  rename(mm="value") , # get in same format as other
+                                window_list= list("primera"=c(5,6,7,8),
+                                                  "postera"=c(9,10,11)),forecast_source = "insuvimeh"
+    )
+  ),
+  
+  tar_target(
+    name = df_insuvimeh_q_summary,
+    command = grouped_quantile_summary(df= df_insuvimeh_seasonal_summarised %>% 
+                                         filter(year(pub_date)<2023),
+                                       x = "mm",
+                                       rps = c(1:10),
+                                       grp_vars=c("adm0_es","window", "lt")
+    )
+  ),
+  
+  tar_target(
+    name = df_insuvimeh_q_summary_include2023,
+    command = grouped_quantile_summary(df= df_insuvimeh_seasonal_summarised ,
+                                         
+                                       x = "mm",
+                                       rps = c(1:10),
+                                       grp_vars=c("adm0_es","window", "lt")
+    )
+  ),
+  tar_target(
+    name = df_insuvimeh_trigger_status,
+    command = df_insuvimeh_seasonal_summarised %>% 
+      filter(year(pub_date)==2024) %>% 
+      left_join(df_insuvimeh_q_summary_include2023 %>% 
+                  filter(rp==4) %>% 
+                  rename(
+                    threshold_rp4_lte_2023 = q_val
+                  )) %>% 
+      left_join(
+        df_insuvimeh_q_summary %>% 
+          filter(rp==4)  # will use q_val
+          # rename(
+          #   threshold_rp4_lte_2022 = q_val
+          ) %>%
+      rename(
+        value = "mm"
+      ) %>% 
+      mutate(
+        status = if_else(value>q_val,"No Activation","Activated"),
+        status_lgl = if_else(value>q_val,FALSE,TRUE)
+      )
+  ),
+  
+  tar_target(
+    name = df_insuvimeh_trigger_status_new,
+    command = df_insuvimeh_seasonal_summarised_new %>% 
+      filter(year(pub_date)==2024) %>% 
+      left_join(df_insuvimeh_q_summary_include2023 %>% 
+                  filter(rp==4) %>% 
+                  rename(
+                    threshold_rp4_lte_2023 = q_val
+                  )) %>% 
+      left_join(
+        df_insuvimeh_q_summary %>% 
+          filter(rp==4)  # will use q_val
+          # rename(
+          #   threshold_rp4_lte_2022 = q_val
+          ) %>%
+      rename(
+        value = "mm"
+      ) %>% 
+      mutate(
+        status = if_else(value>q_val,"No Activation","Activated"),
+        status_lgl = if_else(value>q_val,FALSE,TRUE)
+      )
+  ),
+  
   tar_target(
     name = df_ecmwf_insuvimeh,
     command = merge_ecmwf_insuvimeh(df_insuvimeh = df_gtm_nextgen_adm0,
@@ -301,6 +473,26 @@ list(
                                       )
                                     )
   ),
+  tar_target(
+    name = df_insuvimeh_nrt_monthly,
+    command = zonal_insuvimeh_nrt(
+      r = rast(
+        list.files(file.path(gdb_insuvimeh_nrt_manual,"startFeb"),
+                   full.names = T)),
+      gdf= gdf_aoi_adm
+      
+  )
+  ),
+  tar_target(
+    name = df_insuvimeh_nrt_season,
+    command = df_insuvimeh_nrt_monthly %>% 
+      filter(!is.na(window)) %>% 
+      group_by(window) %>% 
+      summarise(
+        mm = sum(value)
+      )
+  ),
+
   
   # tar_format(read = function(path) terra::rast(path),
   #            write = function(object, path) terra::writeRaster(object, path, filetype = "GTiff"))
@@ -439,14 +631,6 @@ list(
         f_v1_win_2 = month(date) %in% c(6,7,8),
         f_v1_win_3 = month(date) %in% c(9,10,11)
       )
-  ),
-  tar_target(
-    name = r_ecmwf_mars,
-    command = load_mars_raster(gdb = gdb_ecmwf_mars_tifs)
-  ),
-  tar_target(
-    name = df_ecmwf_mars,
-    command = zonal_ecmwf_mars(r_wrapped = r_ecmwf_mars, zone = gdf_aoi_adm$adm0, stat = "mean")
   )
 )
 

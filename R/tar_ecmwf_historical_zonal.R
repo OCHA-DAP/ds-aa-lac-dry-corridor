@@ -145,24 +145,31 @@ all_historical_ecmwf_zonal <- function(dir_ecmwf,
 #' @param df data.frame with all ECMWF data aggregated to monthly precip values for each leadtime
 #' @param window_list list containing numeric vector representing months
 
-ecmwf_summarise_seasons <-  function(df=df_ecmwf_zonal_all,
+summarise_seasons <-  function(df=df_ecmwf_zonal_all,
                                     window_list= list("primera"=c(5,6,7,8),
-                                                      "postera"=c(9,10,11))
+                                                      "postera"=c(9,10,11)),
+                                    forecast_source ="mars"
                                                       ){
   df <- df %>% 
     mutate(
-      lt= lt-1,
       valid_mo = month(valid_date)
     ) %>% 
     filter(
       # ECMWF data was also reduced to admin boundaries w/ median stat, let's remove it for now.
       stat== "mean"
     )
+  if(forecast_source %in% c("mars","insuvimeh")){
+    max_lt <- 6  
+  }
+  if(forecast_source=="cds"){
+    max_lt <- 5
+  }
+  
 
   window_list %>% 
     imap(\(valid_mo_seq, window_name){
       # valid_mo_seq <- c(9,10,11)
-         monitoring_mo_seq <- (max(valid_mo_seq)-5 ): min(valid_mo_seq)
+         monitoring_mo_seq <- (max(valid_mo_seq)-max_lt ): min(valid_mo_seq)
          df %>% 
            filter(
              valid_mo %in% valid_mo_seq,
