@@ -158,14 +158,15 @@ summarise_seasons <-  function(df=df_ecmwf_zonal_all,
       # ECMWF data was also reduced to admin boundaries w/ median stat, let's remove it for now.
       stat== "mean"
     )
+  # MARS & INSUVIMEH last forecast is publication date + 6 months
   if(forecast_source %in% c("mars","insuvimeh")){
     max_lt <- 6  
   }
+  # CDs is publication date + 5 months
   if(forecast_source=="cds"){
     max_lt <- 5
   }
   
-
   window_list %>% 
     imap(\(valid_mo_seq, window_name){
       # valid_mo_seq <- c(9,10,11)
@@ -185,8 +186,12 @@ summarise_seasons <-  function(df=df_ecmwf_zonal_all,
            summarise(
              mm = sum(mm),
              # **min() - BECAUSE**  for MJJA (5,6,7,8) at each pub_date we have a set of leadtimes
-             # for example in March we have leadtimes 2 (March + 2 = May),3 (... June),4,5. 
-             # Therefore when we sum those leadtime values we take min() so we get the leadtime to first month being aggregated
+             # for EXAMPLE in March we have the following leadtimes 2 
+                # 2 : March + 2 = May,
+                # 3 : March + 3 = June,
+                # 4 : March + 4 = July
+                # 5:  March + 5 = Aug
+             # Therefore when we sum those leadtime precip values we take min() of lt integer so we get the leadtime to first month being aggregated
              lt= min(lt),
              .groups = "drop"
            ) %>% 
