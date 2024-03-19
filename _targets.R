@@ -143,7 +143,9 @@ list(
     description = "INSUVIMEH seasonal summaries with May removed from Primera monitoring",
     name = df_insuvimeh_seasonal_summarised_filtered,
     command =  df_insuvimeh_seasonal_summarised %>% 
-      # these filters are only necessary in INSUVIMEH data 
+      # these filters are only necessary in INSUVIMEH data  since 
+      # can't include first month of valid month as publication month before running quantiles
+      # or it will be too low (i.e quantiles for primera will include only month 6,7,8)
       filter(
         !(month(pub_date)==5 & window=="primera"),
         !(month(pub_date)==9 & window=="postera"),
