@@ -138,14 +138,16 @@ list(
   ),
   
   # final decision is to use ECMWF for final month of monitoring to
-  # include May forecast in May publication
+  # include May forecast in May publication and to not include Sep monitoring of Postrera
   tar_target(
     description = "INSUVIMEH seasonal summaries with May removed from Primera monitoring",
     name = df_insuvimeh_seasonal_summarised_filtered,
     command =  df_insuvimeh_seasonal_summarised %>% 
+      # these filters are only necessary in INSUVIMEH data 
       filter(
-        !(month(pub_date)==5 & window=="primera")
-      ) %>% 
+        !(month(pub_date)==5 & window=="primera"),
+        !(month(pub_date)==9 & window=="postera"),
+      ) %>%
       # used through 2022 for ECMWF - so let's keep it standardized
       filter(year(pub_date)<2023)
   ),

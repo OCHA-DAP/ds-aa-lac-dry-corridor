@@ -33,20 +33,20 @@ summarise_seasons <-  function(df=df_ecmwf_zonal_all,
   
   window_list %>% 
     imap(\(valid_mo_seq, window_name){
-      # valid_mo_seq <- c(9,10,11)
-         monitoring_mo_seq <- (max(valid_mo_seq)-max_lt ): min(valid_mo_seq)
-         df %>% 
-           filter(
-             valid_mo %in% valid_mo_seq,
-             month(pub_date) %in% monitoring_mo_seq
-           ) %>%
-           arrange(
-             adm0_es, pub_date, lt
-           ) %>% 
-           group_by(pub_date,adm0_es) %>% 
-           mutate(
-             count =length(unique(lt))
-           ) %>% 
+      
+      monitoring_mo_seq <- (max(valid_mo_seq)-max_lt ): min(valid_mo_seq)
+      df %>% 
+        filter(
+          valid_mo %in% valid_mo_seq,
+          month(pub_date) %in% monitoring_mo_seq
+        ) %>%
+        arrange(
+          adm0_es, pub_date, lt
+        ) %>% 
+        group_by(pub_date,adm0_es) %>% 
+        mutate(
+          count =length(unique(lt))
+        ) %>% 
            summarise(
              mm = sum(mm),
              # **min() - BECAUSE**  for MJJA (5,6,7,8) at each pub_date we have a set of leadtimes
