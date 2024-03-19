@@ -108,8 +108,8 @@ list(
     name = df_gtm_nextgen_catalogue,
     command = catalogue_insuvimeh_files(gdb = gdb_insuvimeh_gtm),
   ),
-  # converts nc files to convenient tif format
-  # lets see if we can do a away with writing to tif and having pointer with simple `terra::wrap()`
+  
+  # load raster
   tar_target(
     description = "PackedSpatRaster object containing INSUVIMEH forecast with each publication month leadtime combination as and individual band." ,
     name = r_wrap_gtm_nextgen,
@@ -117,7 +117,7 @@ list(
     
   ),
   
-  # this seems to be working w/ wrap instead of creating the pointer
+  # run zonal stats on insuvimeh
   tar_target(
     description = "INSUVIMEH monthly zonal means by leadtime",
     name = df_gtm_nextgen_adm0,
@@ -125,6 +125,7 @@ list(
                                gdf = gdf_aoi_adm,
                                rm_dup_years = F)
   ),
+  # summarise by window, leadtime & pub date
   tar_target(
     description = "INSUVIMEH seasonal forecast sums by leadtime/window",
     name = df_insuvimeh_seasonal_summarised,
