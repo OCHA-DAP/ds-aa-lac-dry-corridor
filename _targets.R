@@ -89,8 +89,8 @@ list(
     command = summarise_seasons(df= df_ecmwf_mars %>% 
                                   rename(mm="value") , # get in same format as other
                                 window_list= list("primera"=c(5,6,7,8),
-                                                  "postera"=c(9,10,11)),
-                                forecast_source = "mars"
+                                                  "postera"=c(9,10,11))
+                                
     )
   ),
   tar_target(
@@ -132,8 +132,8 @@ list(
     command = summarise_seasons(df= df_gtm_nextgen_adm0 %>% 
                                   rename(mm="value") , # get in same format as other
                                 window_list= list("primera"=c(5,6,7,8),
-                                                  "postera"=c(9,10,11)),
-                                forecast_source = "insuvimeh"
+                                                  "postera"=c(9,10,11))
+                                
     )
   ),
   

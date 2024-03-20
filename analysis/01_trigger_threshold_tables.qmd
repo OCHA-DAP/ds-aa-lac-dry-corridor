@@ -131,8 +131,8 @@ gt_legend <- data.frame(
   tab_options(
     column_labels.hidden = T
   ) %>% 
-  
   as_raw_html()
+
 gt_primera <- df_primera_thresholds %>% 
   gt() %>% 
   # tab_spanner(
