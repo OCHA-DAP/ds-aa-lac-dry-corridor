@@ -233,6 +233,15 @@ df_ecmwf_insuv_joint_either <- df_ecmwf_insuv_classified %>%
 # for nice formatting we can put by season and combined together into one table like this:
 
 df_ecmwf_insuv_joint_by_season_wide <- df_ecmwf_insuv_joint_by_season %>% 
+  mutate(
+    # fix spelling for table publication
+    window = str_to_title(
+      case_when(
+        window=="postera"~"Postrera",
+        .default= window
+      )
+    )
+  ) %>% 
   pivot_wider(
     names_from= adm0_es,
     values_from = rp:mean_flag
@@ -244,7 +253,7 @@ df_ecmwf_insuv_joint_either_wide <- df_ecmwf_insuv_joint_either %>%
     values_from = rp:mean_flag
   ) %>% 
   mutate(
-    window = "combined",.before = everything()
+    window = "Combined",.before = everything()
   )
 
 df_joint_activations_combined_wide <- bind_rows(
@@ -255,7 +264,7 @@ df_joint_activations_combined_wide <- bind_rows(
 
 df_joint_activations_combined_wide  %>% 
   mutate(
-    window = fct_relevel(window, "primera","postera","combined")
+    window = fct_relevel(window, "Primera","Postrera","Combined")
   ) %>% 
   arrange(window) %>% 
   gt() %>% 
