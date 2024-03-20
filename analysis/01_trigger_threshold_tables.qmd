@@ -8,9 +8,6 @@ format:
     self-contained: true
     embed-resoures: true
     smooth-scroll: true
-params:
-  aoi: "country_wide"
-  update_data: "false"
 execute:
   include: true
   echo: true
@@ -22,7 +19,7 @@ execute:
   code-fold: true
 editor: visual
 project:
-     execute-dir: project
+  execute-dir: project
 ---
 
 ## Intro
