@@ -1,11 +1,25 @@
-catalogue_insuvimeh_files <-  function(gdb){
+#' catalogue_insuvimeh_files
+#' @description
+#' Provide the folder directory path to the insuvimeh files and return data.frame containing meta
+#' data to each file based on `n` file attributes and file/folder name structure
+#' 
+#' **note** non-generic function specific to this pipeline and the way we are currently receiving files from INSIVUMEH
+#'
+#' @param gdb `character` file path to parent folder containing all INSIVUMEH forecasts of interest.
+#' @param file_name_pattern `character` regex to correctly identify all files to be considered (default ='\\d{4}.nc$'))
+#' @return data.frame with containing metadata on all files based on `nc` file attributes
+#' @examples \dontrun{
+#' }
+catalogue_insuvimeh_files <-  function(gdb,file_name_pattern =  "\\d{4}.nc$"){
+  
   fps <- list.files(gdb,
                     full.names =T,
                     recursive = T,
-                    pattern = "\\d{4}.nc$")
+                    pattern = file_name_pattern)
+  
   fps_w_parents <- list.files(gdb,
                               recursive = T,
-                              pattern = "\\d{4}.nc$")
+                              pattern =file_name_pattern)
   lr <- fps %>% 
     map2(fps_w_parents,\(fp_nc,fp_par){
       

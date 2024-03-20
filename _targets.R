@@ -106,7 +106,8 @@ list(
   tar_target(
     description= "Catalogue of all data received from INSUVIMEH. Useful for troubleshooting at earlier stages when gaps.Gaps have been filled, but still might be useful in future",
     name = df_gtm_nextgen_catalogue,
-    command = catalogue_insuvimeh_files(gdb = gdb_insuvimeh_gtm),
+    command = catalogue_insuvimeh_files(gdb = gdb_insuvimeh_gtm,
+                                        file_name_pattern =  "\\d{4}.nc$"),
   ),
   
   # load raster
