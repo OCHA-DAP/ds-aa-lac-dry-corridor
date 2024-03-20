@@ -22,14 +22,6 @@ summarise_seasons <-  function(df=df_ecmwf_zonal_all,
       # ECMWF data was also reduced to admin boundaries w/ median stat, let's remove it for now.
       stat== "mean"
     )
-  # MARS & INSUVIMEH last forecast is publication date + 6 months
-  if(forecast_source %in% c("mars","insuvimeh")){
-    max_lt <- 6  
-  }
-  # CDs is publication date + 5 months
-  if(forecast_source=="cds"){
-    max_lt <- 5
-  }
   
   window_list %>% 
     imap(\(valid_mo_seq, window_name){

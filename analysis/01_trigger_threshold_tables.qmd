@@ -53,8 +53,8 @@ ldf_ecmwf <-  df_all_thresholds_rp4 %>%
 
 ```
 
-
 ## Primera
+
 ```{r}
 ecmwf_primera_thresholds <- ldf_ecmwf$primera %>% 
   mutate(
@@ -163,6 +163,7 @@ gt_primera
 ```
 
 ## Postera
+
 ```{r}
 ecmwf_postrera_thresholds <- ldf_ecmwf$postera %>% 
   mutate(
@@ -253,6 +254,3 @@ gt_postrera <- df_postrera_thresholds %>%
 
 gt_postrera
 ```
-
-
-
