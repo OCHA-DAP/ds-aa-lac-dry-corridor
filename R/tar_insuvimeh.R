@@ -6,7 +6,7 @@
 #' **note** non-generic function specific to this pipeline and the way we are currently receiving files from INSIVUMEH
 #'
 #' @param gdb `character` file path to parent folder containing all INSIVUMEH forecasts of interest.
-#' @param file_name_pattern `character` regex to correctly identify all files to be considered (default ='\\d{4}.nc$'))
+#' @param file_name_pattern `character` regex to correctly identify all files to be considered (default ='\\d{4}.nc$')
 #' @return data.frame with containing metadata on all files based on `nc` file attributes
 #' @examples \dontrun{
 #' }
@@ -108,7 +108,7 @@ load_insuvimeh_raster <-  function(gdb){
 #' @param rm_dup_years `logical` just parameter used in beginning when catalogue had issues
 #'
 #' @return `data.frame` in long format w/ zonal means by publication date and leadtime
-zonal_gtm_insuvimeh <-  function(r, gdf,rm_dup_years=T){
+zonal_gtm_insuvimeh <-  function(r, gdf,rm_dup_years=F){
   r_gtm <- unwrap(r)
   if(rm_dup_years){
     r_nm_yr_gtm <- as_date(str_extract(names(r_gtm),"\\d{4}-\\d{2}-\\d{2}") )
