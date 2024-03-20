@@ -1,7 +1,28 @@
 ---
 title: "Thresholds by LT table"
-format: html
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+params:
+  aoi: "country_wide"
+  update_data: "false"
+execute:
+  include: true
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
+  code-fold: true
 editor: visual
+project:
+     execute-dir: project
 ---
 
 ## Intro
@@ -13,9 +34,10 @@ library(targets)
 library(tidyverse)
 library(gghdx)
 library(gt)
+library(here)
 gghdx()
 
-tar_load(df_all_thresholds_rp4)
+tar_load(df_all_thresholds_rp4,store = here("_targets"))
 
 ldf_insuv <-  df_all_thresholds_rp4 %>% 
   filter(forecast_source=="INSUVIMEH") %>% 
@@ -143,7 +165,7 @@ gt_primera <- df_primera_thresholds %>%
 gt_primera
 ```
 
-## Postrera
+## Postera
 ```{r}
 ecmwf_postrera_thresholds <- ldf_ecmwf$postera %>% 
   mutate(
@@ -235,9 +257,5 @@ gt_postrera <- df_postrera_thresholds %>%
 gt_postrera
 ```
 
-```{r}
-gt_primera
-gt_postrera
-```
 
 
