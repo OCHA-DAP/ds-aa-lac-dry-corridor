@@ -206,7 +206,7 @@ df_postrera_thresholds <- bind_rows(
 ) %>% 
   arrange(adm0_es) %>% 
   filter(
-    !str_detect(pub_month_lt, "^Sep")
+    !str_detect(pub_month_lt, "^Sep|^May")
   ) %>% 
   pivot_wider(names_from = adm0_es,
               values_from =threshold

@@ -1,3 +1,8 @@
+library(tidyverse)
+library(terra)
+library(sf)
+library(exactextractr)
+
 #' zonal_ecmwf_mars
 #'
 #' @param r_wrapped
@@ -25,7 +30,7 @@
 #' zonal_ecmwf_mars(r_wrapped = r, zone = gdf_aoi_adm$adm0, stat = "mean")
 #' }
 zonal_ecmwf_mars <- function(r_wrapped = r_ecmwf_mars, zone = gdf_aoi_adm$adm0, stat = "mean") {
-  r <- unwrap(r_wrapped)
+  r <- terra::unwrap(r_wrapped)
   exact_extract(
     x = r,
     y = zone,
@@ -75,5 +80,5 @@ load_mars_raster <- function(gdb = gdb_ecmwf_mars_tifs) {
   )
   r <- rast(fps)
   names(r) <- str_remove(names(r), rm_name)
-  return(wrap(r))
+  return(terra::wrap(r))
 }

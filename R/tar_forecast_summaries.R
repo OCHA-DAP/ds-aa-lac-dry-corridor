@@ -1,3 +1,4 @@
+library(tidyverse)
 
 #' summarise_seasons
 #' @details

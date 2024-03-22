@@ -18,17 +18,7 @@ tar_option_set(
   packages = c("tidyverse",
                "exactextractr",
                "terra",
-               "tidync",
-               "sf",
-               "glue",
-               "tidyrgee",
-               "tidync",
-               "gt",
-               "rnaturalearth",
-               "sf",
-               "rgee",
-               "janitor"
-               # "girafe"
+               "sf"
   ) 
 )
 
