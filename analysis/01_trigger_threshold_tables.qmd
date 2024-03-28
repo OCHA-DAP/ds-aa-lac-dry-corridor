@@ -1,0 +1,266 @@
+---
+title: "Thresholds by LT table"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  include: true
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
+  code-fold: true
+editor: visual
+project:
+  execute-dir: project
+---
+
+## Intro
+
+Code takes output from `_targets.R` pipeline to create nicely formatted tables with thresholds for sharing.
+
+```{r}
+library(targets)
+library(tidyverse)
+library(gghdx)
+library(gt)
+library(here)
+gghdx()
+
+tar_load(df_all_thresholds_rp4,store = here("_targets"))
+df_all_thresholds_rp4 <- df_all_thresholds_rp4 %>% 
+  mutate(
+    # quick little spelling fix for plotting
+    window = str_to_title(
+      case_when(
+        window=="postera"~"postrera",
+        .default =window
+        )
+    )
+  )
+
+ldf_insuv <-  df_all_thresholds_rp4 %>% 
+  filter(forecast_source=="INSUVIMEH") %>% 
+  split(.$window)
+
+ldf_ecmwf <-  df_all_thresholds_rp4 %>% 
+  filter(forecast_source=="ECMWF MARS") %>% 
+  # we keep ECMWF forecast for Guatemala only when LT == 0 (i.e in Primera)
+  filter(
+    !(adm0_es == "Guatemala" & 
+      lt %in% c(1:3))
+  ) %>% 
+  split(.$window)
+
+
+
+```
+
+## Primera
+
+```{r}
+ecmwf_primera_thresholds <- ldf_ecmwf$Primera %>% 
+  mutate(
+    pub_month_int = 5- lt,
+    pub_month_chr = month(pub_month_int, label =T, abb=T),
+    pub_month_lt = paste0(pub_month_chr," (", lt,")")
+  ) %>% 
+  select(
+    adm0_es, 
+    pub_month_lt,
+    threshold = q_val
+  )
+
+
+insuv_primera_thresholds <- ldf_insuv$Primera %>% 
+  mutate(
+        pub_month_int = 5- lt,
+        pub_month_chr = month(pub_month_int, label =T, abb=T),
+        pub_month_lt = paste0(pub_month_chr," (", lt,")")
+  ) %>% 
+  select(
+    adm0_es, pub_month_lt, 
+    threshold= q_val
+  )
+
+df_primera_thresholds <- bind_rows(
+  ecmwf_primera_thresholds,
+  insuv_primera_thresholds
+) %>% 
+  arrange(adm0_es) %>% 
+  filter(
+    !str_detect(pub_month_lt, "^Feb")
+  ) %>% 
+  pivot_wider(names_from = adm0_es,
+              values_from =threshold
+  ) %>% 
+  select(
+    pub_month_lt, 
+    `El Salvador`,
+    Honduras,
+    Nicaragua,
+    Guatemala
+  ) %>% 
+  arrange(
+    desc(parse_number(pub_month_lt))
+  )
+
+ ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
+ 
+
+
+ecmwf_color <- hdx_hex("mint-light")
+insuv_color <- hdx_hex("sapphire-light")
+
+gt_legend <- data.frame(
+  `Forecast Data Source` = "Forecast Data Source",
+  ecmwf = "ECMWF" ,
+    insuv= "INSUVIMEH"
+
+) %>% 
+  gt(rowname_col = "Forecast Data Source") %>%  
+  data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
+  data_color(columns = "insuv", direction = "column",color=insuv_color) %>% 
+  tab_options(
+    column_labels.hidden = T
+  ) %>% 
+  as_raw_html()
+
+gt_primera <- df_primera_thresholds %>% 
+  gt() %>% 
+  # tab_spanner(
+  #   columns = ecmwf_cols,label = html("Only ECMWF<br>")
+  # ) %>% 
+  # tab_spanner(
+  #   columns = c("Guatemala"),label = html("National Forecast<br>Until May")
+  # ) %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+   tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+   tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  # tab_footnote(
+  #   footnote= gt_legend
+  # ) %>% 
+  tab_footnote(footnote = html("Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSUVIMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries")) %>% 
+  tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+             )
+
+
+
+
+gt_primera
+```
+
+## Postera
+
+```{r}
+ecmwf_postrera_thresholds <- ldf_ecmwf$Postrera %>% 
+  mutate(
+    pub_month_int = 9- lt,
+    pub_month_chr = month(pub_month_int, label =T, abb=T),
+    pub_month_lt = paste0(pub_month_chr," (", lt,")")
+  ) %>% 
+  select(
+    adm0_es, 
+    pub_month_lt,
+    threshold = q_val
+  )
+
+
+insuv_postrera_thresholds <- ldf_insuv$Postrera %>% 
+  mutate(
+        pub_month_int = 9- lt,
+        pub_month_chr = month(pub_month_int, label =T, abb=T),
+        pub_month_lt = paste0(pub_month_chr," (", lt,")")
+  ) %>% 
+  select(
+    adm0_es, pub_month_lt, 
+    threshold= q_val
+  )
+
+df_postrera_thresholds <- bind_rows(
+  ecmwf_postrera_thresholds %>% 
+    filter(adm0_es!="Guatemala"),
+  insuv_postrera_thresholds
+) %>% 
+  arrange(adm0_es) %>% 
+  filter(
+    !str_detect(pub_month_lt, "^Sep|^May")
+  ) %>% 
+  pivot_wider(names_from = adm0_es,
+              values_from =threshold
+  ) %>% 
+  select(
+    pub_month_lt, 
+    `El Salvador`,
+    Honduras,
+    Nicaragua,
+    Guatemala
+  ) %>% 
+  arrange(
+    desc(parse_number(pub_month_lt))
+  )
+
+ ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
+ 
+
+
+ecmwf_color <- hdx_hex("mint-light")
+insuv_color <- hdx_hex("sapphire-light")
+
+gt_legend <- data.frame(
+  `Forecast Data Source` = "Forecast Data Source",
+  ecmwf = "ECMWF" ,
+    insuv= "INSUVIMEH"
+
+) %>% 
+  gt(rowname_col = "Forecast Data Source") %>%  
+  data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
+  data_color(columns = "insuv", direction = "column",color=insuv_color) %>% 
+  tab_options(
+    column_labels.hidden = T
+  ) %>% 
+  as_raw_html()
+
+gt_postrera <- df_postrera_thresholds %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  data_color(columns = "Guatemala", direction = "column",color=insuv_color) %>% 
+  # tab_footnote(
+  #   footnote= gt_legend
+  # ) %>% 
+  tab_footnote(footnote = html("Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used.")) %>% 
+  tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+             )
+
+
+
+
+gt_postrera
+```
