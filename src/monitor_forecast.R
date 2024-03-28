@@ -355,9 +355,6 @@ render_email(
 ) %>%
   smtp_send(
     to = df_email_receps$Email,
-    # to = "zachary.arno@un.org",
-    # cc = "leonardo.milano@un.org",
-    # bcc = filter(df_recipients, !to)$email,
     from = "data.science@humdata.org",
     subject = email_txt$subj,
     credentials = email_creds
