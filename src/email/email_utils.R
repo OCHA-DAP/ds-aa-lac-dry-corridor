@@ -1,0 +1,320 @@
+
+# blastula/html wrappers --------------------------------------------------
+
+
+# utility functions for the emails
+
+# creates a custom add image by using code that makes the image responsive
+# even in Windows Outlook
+# based on here: https://stackoverflow.com/questions/2426072/is-there-an-equivalent-of-css-max-width-that-works-in-html-emails
+add_image_custom <- function(
+    file,
+    alt = "",
+    width = 520,
+    align = c("center", "left", "right", "inline"),
+    float = c("none", "left", "right")
+) {
+  # get default blastula image HTML
+  html <- blastula::add_image(
+    file = file,
+    alt = alt,
+    width = width,
+    align = align,
+    float = float
+  )
+  
+  custom_html(
+    html = html,
+    width = width
+  )
+}
+
+# use add_image to save out plots and add them back to the file
+# use custom width
+add_ggplot_custom <- function(
+    plot_object,
+    width = 5,
+    height = 5,
+    html_width = 1000,
+    alt = NULL,
+    align = c("center", "left", "right", "inline"),
+    float = c("none", "left", "right")
+) {
+  html <- blastula::add_ggplot(
+    plot_object = plot_object,
+    width = width,
+    height = height,
+    alt = alt,
+    align = align,
+    float = float
+  )
+  
+  custom_html(
+    html = html,
+    width = html_width
+  )
+}
+
+# add_gt_custom <- function(
+    #     plot_object,
+#     width = 5,
+#     height = 5,
+#     html_width = 1000,
+#     alt = NULL,
+#     align = c("center", "left", "right", "inline"),
+#     float = c("none", "left", "right")
+# ) {
+#   html <- blastula::add_ggplot(
+#     plot_object = plot_object,
+#     width = width,
+#     height = height,
+#     alt = alt,
+#     align = align,
+#     float = float
+#   )
+#
+#   custom_html(
+#     html = html,
+#     width = html_width
+#   )
+# }
+
+custom_html <- function(html, width) {
+  img_html <- stringr::str_extract(
+    html,
+    "(<img src.*px;\"/>)",
+    group = 1
+  )
+  img_html_styled <- stringr::str_replace(
+    img_html,
+    "(?<=style=\")(.*)(?=\"/>)",
+    "display:block;width:100%"
+  )
+  
+  # create the new custom table for the HTML
+  cat(
+    paste0(
+      '<table border="0" cellspacing="0" width="100%"><tr><td></td><td width="',
+      width,
+      '">',
+      img_html_styled,
+      "</td><td></td></tr></table>"
+    )
+  )
+}
+
+add_tmap <- function (plot_object,
+                      width = 5,
+                      height = 5,
+                      alt = NULL,
+                      align = c("center",
+                                "left",
+                                "right",
+                                "inline"),
+                      float = c("none", "left", "right")
+)
+{
+  tmpfile <- tempfile("tmap", fileext = ".png")
+  if (requireNamespace("tmap", quietly = TRUE)) {
+    tmap::tmap_save(tm = plot_object,
+                    # device = "png",
+                    filename = tmpfile,
+                    dpi = 200,
+                    width = width,
+                    height = height)
+  }
+  else {
+    stop("Please ensure that the `tmap` package is installed before using `add_tmap()`.",
+         call. = FALSE)
+  }
+  on.exit(file.remove(tmpfile), add = TRUE)
+  alt_text <- alt
+  image_html <- add_image(file = tmpfile,
+                          alt = alt_text,
+                          width = width * 100,
+                          align = align,
+                          float = float)
+  image_html
+}
+
+
+add_tmap_custom <-  function(
+    plot_object,
+    width = 5,
+    height = 5,
+    html_width = 1000,
+    alt = NULL,
+    align = c("center", "left", "right", "inline"),
+    float = c("none", "left", "right")
+){
+  html <- add_tmap(
+    plot_object = plot_object,
+    width = width,
+    height = height,
+    alt = alt,
+    align = align,
+    float = float
+  )
+  # return(html)
+  custom_html(
+    html = html,
+    width = html_width
+  )
+}
+
+
+# google drive helpers ----------------------------------------------------
+
+
+#' Title
+#'
+#' @param dribble 
+#' @param file_name 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+load_drive_file <-  function(
+    dribble,
+    file_name){
+  file_id <-  get_drive_id(dribble = dribble,
+                           file_name = file_name)
+  tmp_file_path <-  file.path(
+    tempdir(),file_name
+  )
+  
+  cat("downloading ", file_name," to temp path\n")
+  googledrive::drive_download(
+    file = googledrive::as_id(file_id),
+    path = tmp_file_path
+  )
+  cat("reading ", file_name," to memory\n")
+  ret <- read_fun(tmp_file_path)
+  unlink(tmp_file_path)
+  return(ret)
+}
+
+#' Title
+#'
+#' @param dribble 
+#' @param file_name 
+#'
+#' @return
+#' @export
+#'
+#' @examples \dontrun{
+#' get_drive_id(
+#'   dribble = drive_dribble,
+#'   file_name = "central_america_aoi_adm0.rds" 
+#' )
+#' }
+get_drive_id <- function(dribble, file_name){
+  dribble %>% 
+    dplyr::filter(
+      name == file_name
+    ) %>% 
+    dplyr::pull(id) %>% 
+    googledrive::as_id()
+}
+
+
+
+
+
+#' Title
+#'
+#' @param x 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+read_fun <- function(x="central_america_aoi_adm0.rds"){
+  file_ext<- fs::path_ext(x)
+  switch(file_ext,
+         "rds"=readr::read_rds(x),
+         "csv"= readr::read_csv(x)
+  )
+}
+
+
+
+
+
+# Email Text --------------------------------------------------------------
+
+
+#' Title
+#'
+#' @param df 
+#' @param season 
+#' @param run_date 
+#'
+#' @return
+#' @export
+#'
+#' @examples \dontrun{
+#' email_text_list(
+#'   season= "Primera",
+#'   run_date = Sys.Date()
+#'   )}
+
+email_text_list <- function(df=df_activation_status,
+                        season = "Primera",
+                        run_date= run_date,
+                        prelim
+                        ){
+  
+  
+  df_filt_activations <- df %>% 
+    filter(
+      status_lgl
+    )
+  
+
+  description_ending <-  ifelse(prelim,
+                                "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently. <br><br><i>As indicated in the Dry Corridor AA framework, for Guatemala, the final trigger status is determined using the forecast of the national meteorological service INSIVUMEH. Therefore, the results for Guatemala are  preliminary until the INSUVIMEH forecast is received which is estimated to be between the 5th and 10th of the month.</i>",
+                                "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for Nicarauga, El Salvador, and Honduras independently. For Guatemala the thresholds and trigger as based on the official national forecast and historical forecasts obtained from INSUVIMEH.")
+  
+  table_footnote <- ifelse(
+    prelim ,
+    glue("Guatemala results are preliminary as latest official forecast from INSUVIMEH have not yet been recieved. Therefore, thresholds for all countries have been calculated from historical ECMWF (1981-2022) to approximate 4 year return period drought level"),
+    "Thresholds calculated to approximate a 4 year return period drought level. For Guatemala these calculations were based on the official national historical forecasts from INSUVIMEH (1981-2022), For the remaining 3 countries the calculations were performed on Historical Seasonal ECMWF Forecasts (1981-2022)"
+  )
+  
+  subj_ending <-  ifelse(prelim,"(preliminary for Guatemala)","")
+  month_chr <- month(run_date,
+                     abbr=F,
+                     label = T)
+  date_header <- glue("{format(run_date,'%d %B %Y')} - Trigger status:")
+  if(nrow(df_filt_activations)==0){
+    
+    description_contents_txt= glue("The AA framework has has not been triggered in any country. The total rainfall forecast over the 2024 {season} season (May-August) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
+    # date_header_txt = glue("{date_header_prefix}:")
+    subj_status <-  "No Activations"
+    trigger_status_txt= "<span style='color: #55b284ff;'>Not Activated</span>"
+  }
+  
+  if(nrow(df_filt_activations)>0){ 
+    subj_status <- "Activated"
+    countries_activated_txt <- glue_collapse(df_filt_activations$adm0_es,sep = ",",last = " & ")
+    description_contents_txt= glue("The AA framework has been triggered in {countries_activated_txt} where the combined rainfall forecast over the 2024 {season} season (May-August) is predicted to below the 1 in 4 year drought levels. {description_ending}")
+    trigger_status_txt = "<span style='color: #F2645A;'>Activated</span>"
+  }
+  list(
+    month_chr = month_chr,
+    subj = glue("AA Central America Dry Corridor - Drought Monitoring - {month_chr} update - {subj_status} {subj_ending}"),
+    title = "Anticipatory Action- Central American Dry Corridor",
+    subtitle = glue("2024 {season} Drought Monitoring - {month_chr} Update"),
+    date_header = date_header,
+    status=trigger_status_txt,
+    description_title = "Trigger Description",
+    description_content = description_contents_txt,
+    contact_info= "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
+    tbl_footnote = table_footnote,
+    ref_github = "Full documentation and source code is available on [GitHub](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor)"
+    )
+}
+
+
