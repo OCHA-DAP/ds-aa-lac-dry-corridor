@@ -15,8 +15,20 @@ trigger_status_choropleth <- function(
     gdf_adm0,
     gdf_adm1,
     gdf_adm0_surrounding= gdf_adm0_surrounding_simp,
+    insivumeh_data_available,
     aoi_txt_label_size = 5
     ){
+  
+  if(!insivumeh_data_available){
+    gdf_adm0 <- gdf_adm0 %>% 
+      mutate(
+        status = if_else(
+          adm0_es == "Guatemala",
+          as_factor("Not Available"),
+          status)
+      )
+    
+  }
   centroid_adm0 <- st_centroid(gdf_adm0)
   df_bbox <- st_bbox(gdf_adm0)
   pt_labels <- surrounding_country_labels()
@@ -28,7 +40,8 @@ trigger_status_choropleth <- function(
     )+
     scale_fill_manual(
       values = c("Activation"=hdx_hex("tomato-light"),
-                 "No Activation"=hdx_hex("mint-ultra-light")),
+                 "No Activation"=hdx_hex("mint-ultra-light"),
+                 "Not Available" = hdx_hex("gray-medium")),
       drop=FALSE
     )+
     

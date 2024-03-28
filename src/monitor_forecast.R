@@ -10,6 +10,7 @@ library(glue)
 library(gghdx)
 library(blastula)
 library(here)
+library(targets) # should remove for GHA eventually
 gghdx()
 
 source(
@@ -20,6 +21,9 @@ source(
 )
 source(
   file.path("R","tar_forecast_summaries.R")
+)
+source(
+  file.path("R","tar_insuvimeh.R")
 )
 
 # Run date is critical as it sets the publiation month
@@ -33,7 +37,6 @@ targets::tar_load(gdf_aoi_adm)
 # load thresholds -- includes all framework thresholds
 tar_load(df_all_thresholds_rp4,store='_targets')
 
-# targets::tar_load(df_mars_q_summary) # should be replaced by thresolds
 
 primera_params <- list(
   pub_months = c(3,4,5),
@@ -75,7 +78,8 @@ insiv_gdb <- file.path(
   "new_format")
 
 # if new insivimeh forecast provided gab and process it
-insiv_received <- insivumeh_received(gdb_base = insiv_gdb,run_date = run_date)
+insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
+                                     run_date = run_date)
 if(insiv_received){
   r_insiv <-  load_insuvimeh_raster(
     gdb =build_insiv_path(gdb_base =insiv_gdb,run_date = run_date ),
@@ -110,81 +114,10 @@ if(insiv_received){
     ) %>% 
     mutate(
       status_lgl= value<q_val,
-      status = ifelse(status_lgl,"Activated","Not Activated")
+      status = ifelse(status_lgl,"Activation","No Activation")
     )
   
 }
-
-
-
-
-
-
-# Until INSUVMEH - CHD data pipeline is clarified it remains somewhat unstable so cannot be built into pipeline/GH Actions
-# Unclear if it will be single tifs, nc files, or something else. Therefore, for now we will run it in the _targets pipeline
-# and run some manual checks -- then send the analyzed summarised data.frame to the GH Action folder 
-preliminary_results <- c(T,F)[2]
-new_format_gtm_data <- c(T,F)[1]
-if(!preliminary_results){
-  
-  
-  
-  if(new_format_gtm_data){
-    targets::tar_load(df_insuvimeh_trigger_status_new)
-    insuv_update <- df_insuvimeh_trigger_status_new
-  }
-  if(!new_format_gtm_data){
-    targets::tar_load(df_insuvimeh_trigger_status)
-    insuv_update <- df_insuvimeh_trigger_status
-  }
-  
-  new_insuvimeh_integrated <- insuv_update$pub_date == floor_date(run_date,"month")
-  if(new_insuvimeh_integrated){
-    df_insuv_simp <- insuv_update %>% 
-      
-      mutate(
-        window="primera",
-        source= 'INSUVIMEH',
-      ) %>% 
-      select(adm0_es, value, lt, window, rp, q, q_val,  status,status_lgl,source)
-    
-    
-    # df_insuvimeh_trigger_status really needs to read from gdrive instead of targets
-    
-    # df_activation_status %>% 
-    #   colnames()
-    # gha_dir <- fs::path(
-    #   Sys.getenv("AA_DATA_DIR"), 
-    #   "..",
-    #   "..",
-    #   "ROLAC",
-    #   "Dry Corridor",
-    #   "CADC_GHA" 
-    # )
-    
-  }
-}
-
-
-
-
-# May is LT 0
-# April is LT 1
-# March is LT 2
-# Fe would be LT 3
-
-
-df_threshold <- df_mars_q_summary %>% 
-  filter(
-    rp==4,
-    window =="primera",
-    lt==lt_primera
-    )
-
-
-
-
-
 
 # get drive files ---------------------------------------------------------
 drive_auth(path="sa_auth.json")
@@ -290,34 +223,41 @@ df_ecmwf_postrera_sums <- df_ecmwf_monthly %>%
     value = sum(value)
   )
 
-if(nrow(df_primera_sums)>0){
-  df_activation_status <- left_join(
+if(nrow(df_ecmwf_primera_sums)>0){
+  df_ecmwf_activation_status <- left_join(
     df_ecmwf_primera_sums,
     df_threshold
     ) %>% 
     mutate(
       status_lgl= value<q_val,
       status= if_else(value<q_val,"Activation","No Activation"),
-      status= fct_expand(status,"Activation","No Activation")
+      status= fct_expand(status,"Activation","No Activation"),
+      source= "ECMWF"
     )
     if(insiv_received){
-      df_activation_status <- bind_rows(df_activation_status,
-                                        insiv_update) 
+      df_all_forecasts_status <- bind_rows(df_ecmwf_activation_status,
+                                        insiv_update %>% mutate(source = "INSIVUMEH")) 
+      activation_rows <- filter(df_all_forecasts_status,status_lgl)
+      if(nrow(activation_rows)==0){
+        cat("no activations any rows")
+      }
       
-      %>% 
+      df_activation_status <- df_all_forecasts_status %>% 
         mutate(
-          include = ifelse(source=="ECMWF"&adm0_es =="Guatemala",F,T),
+          include = ifelse(source=="ECMWF" & adm0_es =="Guatemala",F,T),
           status= fct_expand(status,"Activation","No Activation")
         ) %>% 
-        filter(include)
+        filter(include) %>% 
+        ungroup()
     }
   
   email_txt <- email_text_list(
     df = df_activation_status,
     season = "Primera",
     run_date = run_date,
-    prelim=preliminary_results
+    prelim= !insiv_received
   )
+  
   
   gt_threshold_table <- df_activation_status %>% 
     gt() %>% 
@@ -328,7 +268,7 @@ if(nrow(df_primera_sums)>0){
     q_val = "Threshold"
     ) %>% 
     gt::cols_hide(
-      columns = any_of(c('window',"lt","rp","q","status_lgl","source","include"))
+      columns = any_of(c('window',"lt","rp","q","status_lgl","source","include","forecast_source"))
     ) %>% 
     gt::fmt_number(columns= c("value","q_val"),decimals=0) %>% 
     gt::tab_header(
@@ -341,14 +281,26 @@ if(nrow(df_primera_sums)>0){
     left_join(
       df_activation_status
     )
+  
+
     
   m_choro <- trigger_status_choropleth(gdf_adm0 = gdf_adm0_status,
                             gdf_adm1 = adm1_simp,
+                            insivumeh_data_available = insiv_received,
                             aoi_txt_label_size = 8,
                             gdf_adm0_surrounding = adm0_surrounding_simp
                             )
   
-  p_rainfall <- df_activation_status %>% 
+  if(insiv_received){
+    df_plot <- df_activation_status
+  }  
+  if(!insiv_received){
+    df_plot <-  df_activation_status %>% 
+      filter(adm0_es!="Guatemala")
+    
+  }
+  
+  p_rainfall <- df_plot %>% 
     ggplot(
       aes(x= adm0_es, y= value), 
       width =0.2
@@ -390,8 +342,6 @@ if(nrow(df_primera_sums)>0){
       axis.title.x = element_blank(),
       title = element_text(size=16),
       plot.subtitle = element_text(size=16),
-      
-      
       legend.title = element_blank(),
       axis.text.y = element_text(angle=90,size=14),
       strip.text = element_text(size= 16),
@@ -411,13 +361,14 @@ email_creds <- creds_envvar(
 )
 email_rmd_fp <- "email_cadc_drought_monitoring.Rmd"
 
-render_email(
-  input = email_rmd_fp,
-  envir = parent.frame()
-) %>%
-  smtp_send(
-    to = df_email_receps$Email,
-    from = "data.science@humdata.org",
-    subject = email_txt$subj,
-    credentials = email_creds
-  )  
+# so dont render by accident
+# render_email(
+#   input = email_rmd_fp,
+#   envir = parent.frame()
+# ) %>%
+#   smtp_send(
+#     to = df_email_receps$Email,
+#     from = "data.science@humdata.org",
+#     subject = email_txt$subj,
+#     credentials = email_creds
+#   )  
