@@ -11,30 +11,114 @@ library(gghdx)
 library(blastula)
 library(here)
 gghdx()
+
 source(
-  file.path(
-    "src",
-    "email",
-    "email_utils.R"
-  )
+  file.path("src","email","email_utils.R")
 )
 source(
-  file.path(
-    "R",
-    "monitoring_viz.R"
-  )
+  file.path("R","monitoring_viz.R")
+)
+source(
+  file.path("R","tar_forecast_summaries.R")
 )
 
+# Run date is critical as it sets the publiation month
 run_date <-  Sys.Date()
 run_date_chr <-  format(floor_date(run_date, "month"),"%Y%m")
-
 run_mo <-  month(run_date)
 
+# load shape files for zonal extractoin
+targets::tar_load(gdf_aoi_adm)
+
+# load thresholds -- includes all framework thresholds
+tar_load(df_all_thresholds_rp4,store='_targets')
+
+# targets::tar_load(df_mars_q_summary) # should be replaced by thresolds
+
+primera_params <- list(
+  pub_months = c(3,4,5),
+  valid_months = c(5,6,7,8)
+)
+postrera_params <- list(
+  pub_months = c(6,7,8),
+  valid_months = c(9,10,11)
+)
+
+# quick calculations to get the right lead time -- to filter to correct threshold - 
+# need lead time & season
+
+# lead time
+start_mo_primera <-  min(primera_params$valid_months)
+lt_primera <-  start_mo_primera-month(run_date)
+
+# season
 trigger_season <-  case_when(
   run_mo %in% c(3,4,5)~"primera",
   run_mo %in% c(6,7,8)~"postera",
   .default = NA
+)
+
+# filter to correct threshold
+df_threshold <- df_all_thresholds_rp4 %>% 
+  filter(
+    window == trigger_season,
+    lt == lt_primera
   )
+
+
+insiv_gdb <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "raw",
+  "lac",
+  "INSUVIMEH",
+  "new_format")
+
+# if new insivimeh forecast provided gab and process it
+insiv_received <- insivumeh_received(gdb_base = insiv_gdb,run_date = run_date)
+if(insiv_received){
+  r_insiv <-  load_insuvimeh_raster(
+    gdb =build_insiv_path(gdb_base =insiv_gdb,run_date = run_date ),
+    wrap = F
+  )
+  gdf_gtm <- gdf_aoi_adm$adm0 %>% 
+    filter(adm0_pcode=="GT")
+  df_monthly_gtm <- zonal_gtm_insuvimeh(
+    r = r_insiv,
+    gdf = gdf_aoi_adm,
+    rm_dup_years = F
+  )
+  
+  df_insiv_primera_sums <- df_monthly_gtm %>% 
+    filter(
+      month(pub_date) %in% primera_params$pub_months,
+      month(valid_date) %in% primera_params$valid_months
+    ) %>% 
+    group_by(adm0_es,pub_date) %>% 
+    summarise(
+      value = sum(value)
+    ) %>% 
+    mutate(
+      forecast_source = "INSUVIMEH"
+      )
+ 
+  
+  
+  insiv_update <- left_join(
+    df_insiv_primera_sums,
+    df_threshold
+    ) %>% 
+    mutate(
+      status_lgl= value<q_val,
+      status = ifelse(status_lgl,"Activated","Not Activated")
+    )
+  
+}
+
+
+
+
+
 
 # Until INSUVMEH - CHD data pipeline is clarified it remains somewhat unstable so cannot be built into pipeline/GH Actions
 # Unclear if it will be single tifs, nc files, or something else. Therefore, for now we will run it in the _targets pipeline
@@ -81,31 +165,9 @@ if(!preliminary_results){
   }
 }
 
-tar_load(df_all_thresholds_rp4,store='_targets')
-
-targets::tar_load(df_mars_q_summary)
-
-primera_params <- list(
-  pub_months = c(3,4,5),
-  valid_months = c(5,6,7,8)
-)
-postrera_params <- list(
-  pub_months = c(6,7,8),
-  valid_months = c(9,10,11)
-)
 
 
 
-
-start_mo_primera <-  min(primera_params$valid_months)
-lt_primera <-  start_mo_primera-month(run_date)
-
-
-df_all_thresholds_rp4 %>% 
-  filter(
-    window == "primera",
-    lt == lt_primera
-  )
 # May is LT 0
 # April is LT 1
 # March is LT 2
@@ -121,7 +183,7 @@ df_threshold <- df_mars_q_summary %>%
 
 
 
-targets::tar_load(gdf_aoi_adm)
+
 
 
 # get drive files ---------------------------------------------------------
@@ -135,7 +197,7 @@ df_email_receps <- load_drive_file(
   file_name = "email_recepients_cadc_trigger.csv"
 )
 
-
+# this file is for mapping
 gdf_aoi <- load_drive_file(
   dribble = drive_dribble,
   file_name = "central_america_aoi_adm0.rds"
@@ -207,42 +269,42 @@ df_ecmwf_monthly <- exact_extract(x = r_ecmwf,
     valid_date = pub_date + months(lt)
   )
 
-df_primera_sums <- df_ecmwf_monthly %>% 
+df_ecmwf_primera_sums <- df_ecmwf_monthly %>% 
   filter(
     month(pub_date) %in% primera_params$pub_months,
     month(valid_date) %in% primera_params$valid_months
   ) %>% 
-  group_by(adm0_es) %>% 
+  group_by(adm0_es,pub_date) %>% 
   summarise(
     value = sum(value)
-  )
-df_postrera_sums <- df_ecmwf_monthly %>% 
+  ) %>% 
+  mutate(forecast_source="ECMWF MARS")
+
+df_ecmwf_postrera_sums <- df_ecmwf_monthly %>% 
   filter(
     month(pub_date) %in% postrera_params$pub_months,
     month(valid_date) %in% postrera_params$valid_months
   ) %>% 
-  group_by(adm0_es) %>% 
+  group_by(adm0_es,pub_date) %>% 
   summarise(
     value = sum(value)
   )
 
 if(nrow(df_primera_sums)>0){
   df_activation_status <- left_join(
-    df_primera_sums,
+    df_ecmwf_primera_sums,
     df_threshold
     ) %>% 
-    # mutate(
-    #   q_val = 940
-    # ) %>% 
     mutate(
       status_lgl= value<q_val,
       status= if_else(value<q_val,"Activation","No Activation"),
-      status= fct_expand(status,"Activation","No Activation"),
-      source= "ECMWF"
+      status= fct_expand(status,"Activation","No Activation")
     )
-    if(!preliminary_results){
+    if(insiv_received){
       df_activation_status <- bind_rows(df_activation_status,
-                df_insuv_simp) %>% 
+                                        insiv_update) 
+      
+      %>% 
         mutate(
           include = ifelse(source=="ECMWF"&adm0_es =="Guatemala",F,T),
           status= fct_expand(status,"Activation","No Activation")

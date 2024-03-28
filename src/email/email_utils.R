@@ -318,3 +318,64 @@ email_text_list <- function(df=df_activation_status,
 }
 
 
+#' insivumeh_received
+#' @details
+#' helper function to check if the INSIVUMEH forecast has been received and put in the correct
+#' location for the pipeline.
+#' 
+#' @param gdb_base `character` file path to base directory the sub-directories are based on how INSIVUMEH has shared the 
+#'   data an follow the syntax of file.path(gdb_base, YYYY, start{month(pub_date, abbr=T, label=T)})
+#' @param run_date `date` date of run -- will get converted/floored to month downstream
+#'
+#' @return
+#' @export
+#'
+#' @examples \dontrun{
+#' run_date <- Sys.Date()
+#' insiv_gdb <- file.path(
+#'     Sys.getenv("AA_DATA_DIR"),
+#'     "private",
+#'     "raw",
+#'     "lac",
+#'     "INSUVIMEH",
+#'     "new_format")
+#'            
+#'insivumeh_received(gdb_base = insiv_gdb,
+#'                   run_date = run_date)
+#'}
+insivumeh_received <-  function(gdb_base,run_date= run_date){
+  
+  # create path to hypothetical folder using naming convention based on run_date/pub_date
+  DIR_INSIV <- build_insiv_path(gdb_base = gdb_base, run_date = run_date)
+  cat("checking ",basename(DIR_INSIV), " for 6 new forecast files\n")
+  
+  # let user know if 6 unique forecast files files exist or not.
+  FILENAMES_INSIV <- list.files(DIR_INSUV)
+  filenames_unique <-  unique(FILENAMES_INSIV)
+  num_unique_files <- length(FILENAMES_INSIV)
+  assertthat::assert_that(num_unique_files==6,
+                          msg = glue("There needs to be 6 unique forecast files, there are only {num_files}"))
+  
+}
+
+#' build_insiv_path
+#' helper function to create path to hypothetical folder containing latest INSIVUMEH  naming convention based on run_date/pub_date
+#' can deprecate as we move from gdrive
+#' @param gdb_base 
+#' @param run_date 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+build_insiv_path <-  function(gdb_base,run_date){
+  DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
+  cat("checking ",DIR_CURRENT_INSIV, " for 6 new forecast files\n")
+  
+  file.path(
+    gdb_base,
+    year(run_date),
+    DIR_CURRENT_INSIV
+  )
+}
+
