@@ -17,14 +17,14 @@ library(sf)
 #' }
 catalogue_insuvimeh_files <- function(gdb, file_name_pattern = "\\d{4}.nc$") {
   fps <- list.files(gdb,
-    full.names = T,
-    recursive = T,
-    pattern = file_name_pattern
+                    full.names = T,
+                    recursive = T,
+                    pattern = file_name_pattern
   )
-
+  
   fps_w_parents <- list.files(gdb,
-    recursive = T,
-    pattern = file_name_pattern
+                              recursive = T,
+                              pattern = file_name_pattern
   )
   lr <- fps %>%
     map2(fps_w_parents, \(fp_nc, fp_par){
@@ -48,14 +48,13 @@ catalogue_insuvimeh_files <- function(gdb, file_name_pattern = "\\d{4}.nc$") {
   return(lr)
 }
 
-
-load_insuvimeh_raster <- function(gdb) {
+load_insuvimeh_raster <- function(gdb,wrap=T) {
   fps <- list.files(gdb,
-    full.names = T,
-    recursive = T,
-    pattern = "\\d{4}.nc$"
+                    full.names = T,
+                    recursive = T,
+                    pattern = "\\d{4}.nc$"
   )
-
+  
   lr <- fps %>%
     map(\(fp_nc){
       # meta data collection  - to write band_name as "{pub_date}.lt_{leadtime}"
@@ -66,7 +65,7 @@ load_insuvimeh_raster <- function(gdb) {
       lead_time_diff <- interval(start_date, valid_date)
       lt <- lead_time_diff %/% months(1)
       bname <- paste0(start_date, ".lt_", lt)
-
+      
       # Now we open the each file and turn it into a terra::rast()
       cat(bname, "\n")
       dat <- ncdf4::nc_open(fp_nc)
@@ -74,7 +73,7 @@ load_insuvimeh_raster <- function(gdb) {
       lat <- ncdf4::ncvar_get(dat, "Y")
       value_array <- ncdf4::ncvar_get(dat, "deterministic")
       value_array_fixed <- aperm(value_array, c(2, 1))
-
+      
       rtmp <- terra::rast(
         x = value_array_fixed,
         extent = ext(
@@ -92,15 +91,13 @@ load_insuvimeh_raster <- function(gdb) {
     })
   # merge multi-band
   r <- rast(lr)
-
-  # wrap so it can be saved as a target.
-  r_wrap <- wrap(r)
-  return(r_wrap)
+  
+  # wrap so it can be saved as a target - in monitoring we won't want it wrapped
+  if(wrap){
+    r <- wrap(r)  
+  }
+  return(r)
 }
-
-
-
-
 
 #' zonal_gtm_insuvimeh
 #' @description
@@ -117,7 +114,7 @@ zonal_gtm_insuvimeh <- function(r, gdf, rm_dup_years = F) {
     r_nm_yr_gtm <- as_date(str_extract(names(r_gtm), "\\d{4}-\\d{2}-\\d{2}"))
     r_gtm <- r_gtm[[year(r_nm_yr_gtm) > 1982]] # these years have duplicate folders
   }
-
+  
   gdf_gtm_adm <- gdf %>%
     map(
       ~ .x %>%
