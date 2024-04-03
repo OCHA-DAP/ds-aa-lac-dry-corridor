@@ -47,7 +47,7 @@ df_all_thresholds_rp4 <- df_all_thresholds_rp4 %>%
   )
 
 ldf_insuv <-  df_all_thresholds_rp4 %>% 
-  filter(forecast_source=="INSUVIMEH") %>% 
+  filter(forecast_source=="INSIVUMEH") %>% 
   split(.$window)
 
 ldf_ecmwf <-  df_all_thresholds_rp4 %>% 
@@ -122,7 +122,7 @@ insuv_color <- hdx_hex("sapphire-light")
 gt_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF" ,
-    insuv= "INSUVIMEH"
+    insuv= "INSIVUMEH"
 
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
@@ -161,7 +161,7 @@ gt_primera <- df_primera_thresholds %>%
   # tab_footnote(
   #   footnote= gt_legend
   # ) %>% 
-  tab_footnote(footnote = html("Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSUVIMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries")) %>% 
+  tab_footnote(footnote = html("Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries")) %>% 
   tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_legend
              )
@@ -232,7 +232,7 @@ insuv_color <- hdx_hex("sapphire-light")
 gt_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF" ,
-    insuv= "INSUVIMEH"
+    insuv= "INSIVUMEH"
 
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  

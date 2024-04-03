@@ -89,10 +89,10 @@ df_joint_by_season_ecmwf <- df_ecmwf_classified %>%
     !(month(pub_date)==2 & window=="primera"),
     !(month(pub_date)==5 & window=="postera"),
     # just adding here for clarity, but already Sep is already filtered
-    # INSUVIMEH only gives pub_mo + 1, no  pub_mo = valid_mo forecast
+    # INSIVUMEH only gives pub_mo + 1, no  pub_mo = valid_mo forecast
     !(month(pub_date)==9 & window=="postera") 
     ) %>% 
-  left_join(ldf_thresholds$INSUVIMEH) %>% 
+  left_join(ldf_thresholds$INSIVUMEH) %>% 
   
   mutate(
     flag = mm<= q_val,
@@ -148,7 +148,7 @@ df_ecmwf_either_window %>%
 
 ## INSUV only
 
-Joint activation across all lead times per season for just INSUVIMEH data
+Joint activation across all lead times per season for just INSIVUMEH data
 
 ```{r}
 df_join_by_season_insuv %>% 
@@ -293,7 +293,7 @@ df_joint_activations_combined_wide  %>%
     "rp_Honduras" = "Honduras",
   ) %>% 
     tab_footnote(
-      footnote = html("By continuously monitoring each publication date/leadtime with the same threshold (1 in 4 year return period level) the chance of an activation occuring across any leadtime increases. Furthermore, when more than 1 window is monitored in this manner, the chance of activating across either window also increases. Above we present this joint activation rates/RP levels using historical analysis of forecast data from ECMWF and INSUVIMEH data.")) %>% 
+      footnote = html("By continuously monitoring each publication date/leadtime with the same threshold (1 in 4 year return period level) the chance of an activation occuring across any leadtime increases. Furthermore, when more than 1 window is monitored in this manner, the chance of activating across either window also increases. Above we present this joint activation rates/RP levels using historical analysis of forecast data from ECMWF and INSIVUMEH data.")) %>% 
   tab_header(title = "Joint  Return Periods/Activation Rates",
              subtitle = "Across all monitored leadtimes and seasons"
              )
