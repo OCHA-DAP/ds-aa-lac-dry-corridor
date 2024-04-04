@@ -89,7 +89,7 @@ gt_threshold_table %>%
   )
 ```
 
-**Forecast data source:** ECMWF SEAS51 & INSUVIMEH.
+**Forecast data source:** `r email_txt$data_source`
 
 Data was accessed on `r trimws(format(as_date(Sys.Date()), "%e %B %Y"))`. 
 
