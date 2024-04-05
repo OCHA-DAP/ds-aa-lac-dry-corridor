@@ -30,7 +30,7 @@ run_mo <- format(run_date, "%Y-%m")
 
 
 if(download_from_aws){
-  bucket_df <- get_formatted_bucket_df()
+  bucket_df <- get_formatted_bucket_df(bucket = Sys.getenv("BUCKET_NAME"))
   bucket_df_filt <- bucket_df %>% 
     filter(size_mb>12) %>% 
     filter(str_detect(date,run_mo))

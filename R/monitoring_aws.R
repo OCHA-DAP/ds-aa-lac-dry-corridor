@@ -5,7 +5,7 @@
 #' get data.frame cataloguing bucket objects
 
 get_formatted_bucket_df <-  function(bucket=Sys.getenv("BUCKET_NAME")){
-  aws.s3::get_bucket_df(Sys.getenv("BUCKET_NAME")) %>% 
+  aws.s3::get_bucket_df(bucket) %>%
     dplyr::as_tibble() %>% 
     dplyr::mutate(
       date= lubridate::as_date(LastModified)
