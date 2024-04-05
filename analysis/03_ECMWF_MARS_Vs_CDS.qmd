@@ -20,7 +20,6 @@ project:
      execute-dir: project
 ---
 
-
 **NOTE:** qmd format used for description purposes and not formatted for knitting.
 
 ## Key Takeaways
@@ -30,7 +29,7 @@ project:
 -   **Doc Objective:**
     -   Document comparison of MARS vs CDs for justification of final CADC AA trigger framework design
     -   provide documentation on the ECMWF Seasonal forecast products that may be useful for other projects and scientists.
-- **Update** - after developing framework using MARS in conjunction w/ data received from ECMWF directly via AWS bucket, as of **05 April 2024**, the AWS pipeline appears unstable. Therefore, as a contingency plan we may need to consider moving back to CDs.
+-   **Update** - after developing framework using MARS in conjunction w/ data received from ECMWF directly via AWS bucket, as of **05 April 2024**, the AWS pipeline appears unstable. Therefore, as a contingency plan we may need to consider moving back to CDs.
 
 ## Overview/Intro
 
@@ -43,7 +42,6 @@ During the initial design phase of the CADC trigger the public CD API was used t
     -   considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
     -   publication date:
     -   use: initial historical analysis/trigger design
-    
 -   MARS - SEAS51
     -   Resolution: 0.4 degree
     -   Leadtimes: 7 available. Leadtime 1 = publication date
@@ -134,4 +132,3 @@ df_ecmwf_wide %>%
   geom_point(alpha=0.009)
 
 ```
-

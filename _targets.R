@@ -140,7 +140,9 @@ list(
     description = "CDs - data.frame (long format) where quantiles defined by RPs 1-10 re provided for each season, country, leadtime",
     name = df_cds_q_summary,
     command = grouped_quantile_summary(
-      df = df_cds_seasonal_summarised,
+      df = df_cds_seasonal_summarised %>% 
+        # standardize to MARs date range
+        filter(year(pub_date)<2023),
       x = "mm",
       rps = c(1:10),
       grp_vars = c("adm0_es", "window", "lt")
