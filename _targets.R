@@ -37,6 +37,15 @@ gdb_ecmwf_mars_tifs <- file.path(
   "mars"
 )
 
+gdb_ecmwf_cds_tifs <- file.path(Sys.getenv("AA_DATA_DIR"),
+                            "private",
+                            "processed",
+                            "lac",
+                            "ecmwf_seasonal",
+                            "seas51",
+                            "tif"
+)
+
 
 gdb_insuvimeh_gtm <- file.path(
   Sys.getenv("AA_DATA_DIR"),
@@ -62,19 +71,21 @@ list(
     )
   ),
   # ECMWF MARS --------------------------------------------------------------
-
+  
   tar_target(
-    description = "PackedSpatRaster object containing each publication month leadtime combination as and individual band.",
+    description = "MARS Catalogue - PackedSpatRaster object containing each publication month leadtime combination as and individual band.",
     name = r_ecmwf_mars,
-    command = load_mars_raster(gdb = gdb_ecmwf_mars_tifs),
+    command = load_ecmwf_mars_stack(gdb = gdb_ecmwf_mars_tifs,
+                                      rm_from_ly_name="lac_seasonal-montly-individual-members_tprate-",
+                                      wrap=T),
   ),
   tar_target(
-    description = "data.frame in long format containing zonal means for each publication month-leadtime combination",
+    description = "MARS -data.frame in long format containing zonal means for each publication month-leadtime combination",
     name = df_ecmwf_mars,
-    command = zonal_ecmwf_mars(r_wrapped = r_ecmwf_mars, zone = gdf_aoi_adm$adm0, stat = "mean")
+    command = zonal_ecmwf(r_wrapped = r_ecmwf_mars, zone = gdf_aoi_adm$adm0, stat = "mean")
   ),
   tar_target(
-    description = "data.frame where monthly rainfall values have been summed to seasons of interest for trigger (MJJA,SON)",
+    description = "MARS -data.frame where monthly rainfall values have been summed to seasons of interest for trigger (MJJA,SON)",
     name = df_mars_seasonal_summarised,
     command = summarise_seasons(
       df = df_ecmwf_mars %>%
@@ -86,10 +97,50 @@ list(
     )
   ),
   tar_target(
-    description = "data.frame (long format) where quantiles defined by RPs 1-10 re provided for each season, country, leadtime",
+    description = "MARS - data.frame (long format) where quantiles defined by RPs 1-10 re provided for each season, country, leadtime",
     name = df_mars_q_summary,
     command = grouped_quantile_summary(
       df = df_mars_seasonal_summarised,
+      x = "mm",
+      rps = c(1:10),
+      grp_vars = c("adm0_es", "window", "lt")
+    )
+  ),
+  
+  # ECMWF CDS ---------------------------------------------------------------
+  tar_target(
+    description = "Copernicus Data Store (CDs)- PackedSpatRaster object containing each publication month leadtime combination as and individual band.",
+    name = r_ecmwf_cds,
+    command = load_ecmwf_cd_stack(gdb = gdb_ecmwf_cds_tifs,wrap = T),
+  ),
+  tar_target(
+    description = "CDs - data.frame in long format containing zonal means for each publication month-leadtime combination",
+    name = df_ecmwf_cds,
+    command = zonal_ecmwf(r_wrapped = r_ecmwf_cds, 
+                               zone = gdf_aoi_adm$adm0,
+                               stat = "mean") %>% 
+      mutate(
+        # raster still in average mm/hour
+        value = lubridate::days_in_month(valid_date)*24*3600*1000 * value
+      )
+  ),
+  tar_target(
+    description = "CDs data.frame where monthly rainfall values have been summed to seasons of interest for trigger (MJJA,SON)",
+    name = df_cds_seasonal_summarised,
+    command = summarise_seasons(
+      df = df_ecmwf_cds %>%
+        rename(mm = "value"), # get in same format as other
+      window_list = list(
+        "primera" = c(5, 6, 7, 8),
+        "postera" = c(9, 10, 11)
+      )
+    )
+  ),
+  tar_target(
+    description = "CDs - data.frame (long format) where quantiles defined by RPs 1-10 re provided for each season, country, leadtime",
+    name = df_cds_q_summary,
+    command = grouped_quantile_summary(
+      df = df_cds_seasonal_summarised,
       x = "mm",
       rps = c(1:10),
       grp_vars = c("adm0_es", "window", "lt")
@@ -104,14 +155,14 @@ list(
       file_name_pattern = "\\d{4}.nc$"
     ),
   ),
-
+  
   # load raster
   tar_target(
     description = "PackedSpatRaster object containing INSUVIMEH forecast with each publication month leadtime combination as and individual band.",
     name = r_wrap_gtm_nextgen,
     command = load_insuvimeh_raster(gdb = gdb_insuvimeh_gtm)
   ),
-
+  
   # run zonal stats on insuvimeh
   tar_target(
     description = "INSUVIMEH monthly zonal means by leadtime",
@@ -135,7 +186,7 @@ list(
       )
     )
   ),
-
+  
   # final decision is to use ECMWF for final month of monitoring to
   # include May forecast in May publication and to not include Sep monitoring of Postrera
   tar_target(
@@ -146,7 +197,7 @@ list(
       # harder to hit because of drought that is still largely in effect (2023)
       filter(year(pub_date) < 2023)
   ),
-
+  
   # these will be used for to threshold Guatemala.
   tar_target(
     description = "INSUVIMEH historical record broken into quantile classes by window/lt",
@@ -158,7 +209,7 @@ list(
       grp_vars = c("adm0_es", "window", "lt")
     )
   ),
-
+  
   # final decision was to go w/ RP 4 so saving this for easy manipulation in
   # analysis/threshold_tables.qmd
   tar_target(
@@ -174,6 +225,22 @@ list(
         filter(rp == 4) %>%
         mutate(
           forecast_source = "ECMWF MARS"
+        )
+    )
+  ),
+  tar_target(
+    description = "CDS ECMWF & INSUVIMEH Thresholds in long format",
+    name = df_cds_insivumeh_thresholds_rp4,
+    command = bind_rows(
+      df_insuvimeh_q_summary %>%
+        filter(rp == 4) %>%
+        mutate(
+          forecast_source = "INSUVIMEH"
+        ),
+      df_cds_q_summary %>%
+        filter(rp == 4) %>%
+        mutate(
+          forecast_source = "ECMWF CDs"
         )
     )
   )
