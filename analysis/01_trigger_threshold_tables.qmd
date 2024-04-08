@@ -184,7 +184,7 @@ gt_primera_mars_set <- df_primera_table$MARS_SET %>%
 
 gt_cds_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
-  ecmwf = "ECMWF (CDs)" ,
+  ecmwf = "ECMWF (CDS)" ,
     insuv= "INSIVUMEH"
 
 ) %>% 
