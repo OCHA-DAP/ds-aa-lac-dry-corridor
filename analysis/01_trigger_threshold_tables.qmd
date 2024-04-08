@@ -310,13 +310,7 @@ gt_postrera_mars_set <- df_postrera_table$MARS_SET %>%
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
-      rows = 1:2
-    )) %>% 
-   tab_style(
-    style = cell_fill(color = ecmwf_color),
-    locations = cells_body(
-      columns = c("Guatemala"), 
-      rows = 3
+      rows = 1:3
     )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
  tab_footnote(footnote = html(txt_footnote)) %>% 
@@ -335,14 +329,14 @@ gt_postrera_cds_set <- df_postrera_table$CDS_SET %>%
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
-      rows = 1:2
+      rows = 1:3
     )) %>% 
-   tab_style(
-    style = cell_fill(color = ecmwf_color),
-    locations = cells_body(
-      columns = c("Guatemala"), 
-      rows = 3
-    )) %>% 
+   # tab_style(
+   #  style = cell_fill(color = ecmwf_color),
+   #  locations = cells_body(
+   #    columns = c("Guatemala"), 
+   #    rows = 3
+   #  )) %>% 
  tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_cds_legend
