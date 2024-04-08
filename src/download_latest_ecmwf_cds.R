@@ -41,7 +41,12 @@ if(testing_phase){
 
 # pub dates - 5th day of every month
 # https://www.ecmwf.int/en/newsletter/154/meteorology/ecmwfs-new-long-range-forecasting-system-seas5
+fp_email_util_funcs <- list.files(
+  file.path("src","email","email_utils"),
+  full.names = T
+)
 
+walk(fp_email_util_funcs,~source(.x))
 # source(file.path("R","email_funcs.R"))
 # source(file.path("src","email","email_utils.R"))
 
@@ -128,15 +133,13 @@ cat("KEY SET\n")
 
 
 
-
 cat("defining bbox for extraction\n")
-aoi_countries <- ne_countries(country = c("Nicaragua", "Honduras", "Guatemala", "El Salvador")) %>%
-  st_as_sf() %>%
-  select(
-    contains("admin"),
-    iso_a3
-  )
-aoi_bbox <- st_bbox(aoi_countries)
+gdf_aoi <- load_drive_file(
+  dribble = drive_dribble,
+  file_name = "central_america_aoi_adm0.rds"
+)
+
+aoi_bbox <- st_bbox(gdf_aoi)
 
 
 # Create API requests ---------------------------------------------------------
@@ -148,7 +151,7 @@ request_coords <- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}
 lr <- ecmwf_leadimes %>%
   map(\(int_lt){
     # valid_mo <- as_date(pub_mo_date,"%Y%m%d")+months(int_lt-1)
-    bname <- paste0("lt", int_lt)
+    bname <- paste0("lt", int_lt-1)
     fname_grib <- glue("ecmwf_seas51_monthly_{pub_mo_date}_lt{int_lt}.grib")
     ecmwf_data_request <- list(
       product_type = "monthly_mean",
@@ -181,12 +184,27 @@ lr <- ecmwf_leadimes %>%
   })
 
 # merge bands
-r <- rast(lr)
+pub_mo <- floor_date(run_date, "month")
 
+# transform from  avg m/hr to mm/month & harmonize band name
+# we whats needed for analysis
+lr_processed <- lr %>% 
+  map(
+    \(r_tmp){
+      valid_mo <- pub_mo + months(parse_number(names(r_tmp)))
+      mult_factor = days_in_month(valid_mo)*24*3600*1000
+      r_tmp_mm <- r_tmp*mult_factor
+      bname <-  paste0(pub_mo,".", names(r_tmp_mm))
+      set.names(r_tmp_mm,bname) # in place
+      return(r_tmp_mm)
+    }
+  )
+r <- rast(lr_processed)
+r <- terra::project(r,"EPSG:4326")
 
 # make temp file
 file_date_suffix <- format(floor_date(run_date, "month"))
-fp_raster_name <- paste0("ecmwf_forecast_", file_date_suffix, "_aoi.tif")
+fp_raster_name <- paste0("cds_ecmwf_seas51_", file_date_suffix, "_aoi.tif")
 tmp_path <- file.path(tempdir(), fp_raster_name)
 writeRaster(r, tmp_path, overwrite = TRUE)
 
@@ -196,9 +214,10 @@ drive_upload(
   name = fp_raster_name,
   path = as_id(
     drive_dribble %>%
-      filter(name == "ecmwf_seas51_monitoring_tifs") %>%
+      filter(name == "cds_ecmwf_seas51_tifs") %>%
       pull(id)
-  )
+  ),
+  overwrite = T
 )
 
 unlink(tmp_path)

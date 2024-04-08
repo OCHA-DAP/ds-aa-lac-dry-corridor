@@ -105,7 +105,10 @@ insiv_gdb <- file.path(
 # targets::tar_load(gdf_aoi_adm)
 
 # load thresholds -- includes all framework thresholds
-tar_load(df_all_thresholds_rp4,store='_targets')
+tar_load(
+  df_all_thresholds_rp4,
+  store=here('_targets')
+)
 
 
 # 3. Get Relevant Thresholds ------------------------------------------------
