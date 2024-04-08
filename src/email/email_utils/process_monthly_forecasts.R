@@ -36,25 +36,17 @@ process_monthly_forecast <- function(df_threshold,
                                      df_forecast_monthly,
                                      season_params,
                                      forecast_source) {
-  
-  if(forecast_source%in%c("ECMWF","ECMWF MARS","ECMWF CDs")){
-    forecast_source_label <-  "ECMWF"
-  }
-  if(forecast_source=="INSIVUMEH"){
-    forecast_source_label =forecast_source
-  }
-  
   summarise_forecasted_season(
     df = df_forecast_monthly,
     season_params = season_params
   ) %>%
-    mutate(forecast_source = forecast_source_label) %>%
+    mutate(forecast_source = forecast_source) %>%
     left_join(df_threshold) %>%
     mutate(
       status_lgl = value < q_val,
       status = if_else(value < q_val, "Activation", "No Activation"),
       status = fct_expand(status, "Activation", "No Activation"),
-      source = forecast_source_label
+      source = forecast_source
     )
 }
 
