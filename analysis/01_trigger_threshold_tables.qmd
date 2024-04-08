@@ -134,7 +134,7 @@ df_primera_table <- list(
     }
   )
 
-txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSUVIMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
 
 
 # set colors for table/legend
@@ -147,7 +147,7 @@ insuv_color <- hdx_hex("sapphire-light")
 gt_mars_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF (MARS)" ,
-    insuv= "INSUVIMEH"
+    insuv= "INSIVUMEH"
 
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
@@ -185,7 +185,7 @@ gt_primera_mars_set <- df_primera_table$MARS_SET %>%
 gt_cds_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF (CDs)" ,
-    insuv= "INSUVIMEH"
+    insuv= "INSIVUMEH"
 
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
@@ -295,7 +295,7 @@ df_postrera_table <- list(
     }
   )
 
-txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSUVIMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
 
 
 
