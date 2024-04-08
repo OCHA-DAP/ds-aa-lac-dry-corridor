@@ -1,0 +1,198 @@
+---
+title: ""
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  include: true
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
+  code-fold: true
+editor: visual
+project:
+  execute-dir: project
+---
+
+## Intro
+
+As we are quickly needing to shift forecast data sources for AWS bucket to Copernicus Data Store (CDs), I've the relevant part from the email generation script and added it to this notebook just for a quick review. This will allow reviewer to quickly review the threshold comparison and activation status update without needing to review all of the pipeline code. 
+
+Once approved I willl merge this into the `nrt-monitoring` and eventually `main` so emails are generated only from CDs
+
+```{r}
+#' Description
+#' Script for monitoring CADC trigger.
+#' It needs to be run manually as natl forecast pipeline is not predictable.
+#' Unfortunately, no getting around this as we need to manually check this data everytime.
+#' 
+#' Some aspects, of script are being set for eventual migration to GH Action, but in other
+#' components this approach was abandoned -- eventually could be refactored to GH Action if
+#' data pipelines become stable.
+
+library(aws.s3)
+library(tidyverse)
+library(sf)
+library(googledrive)
+library(exactextractr)
+library(fs)
+library(gt)
+library(glue)
+library(gghdx)
+library(blastula)
+library(here)
+library(targets) # should remove for GHA eventually
+library(terra)
+gghdx()
+
+fp_email_util_funcs <- list.files(
+  file.path("src","email","email_utils"),
+  full.names = T
+)
+
+walk(fp_email_util_funcs,~source(.x))
+
+# 1. Input parameters --------------------------------------------------------
+
+# Analysis depends on run date & matches that to the correct forecast publication
+run_date <-  Sys.Date()
+run_date_chr <-  format(floor_date(run_date, "month"),"%Y%m")
+run_mo <-  month(run_date)
+
+# publication and valid months of interest - these are set in the framework and should not be changed
+# nonetheless if we want to see for example the May forecast of Primera for experimentation we can adjust here
+
+primera_params <- list(
+  pub_months = c(3,4,5),
+  valid_months = c(5,6,7,8),
+  trigger_season = "primera"
+)
+postrera_params <- list(
+  pub_months = c(6,7,8),
+  valid_months = c(9,10,11),
+  trigger_season = "postrera"
+)
+
+# 2. Load Files --------------------------------------------------------------
+# Load necessary files here
+# 2. Load Files --------------------------------------------------------------
+
+# I started setting this up using just googledrive package to allow data to be passed over during 
+# a GH Action, but it's currently a bit complicated by the uncertainty of INSIVUMEH data.
+# This is why there is a mix of input sources/access methods ({googledrive}, googledrive file paths, AWS).
+# Everything here works as long as you have you're googledrive synced, but if pipeline is ever made secure we can transfer 
+# everything to Azure cloud
+
+# authenticate w/ service account
+drive_auth(path="sa_auth.json")
+
+drive_dribble <- drive_ls(
+  corpus= "user"
+)
+
+df_email_receps <- load_drive_file(
+  dribble= drive_dribble,
+  file_name = "email_recepients_cadc_trigger.csv"
+)
+
+# this file is for mapping
+gdf_aoi <- load_drive_file(
+  dribble = drive_dribble,
+  file_name = "central_america_aoi_adm0.rds"
+)
+
+# these are just for mapping
+adm0_simp <-  load_drive_file(
+  dribble = drive_dribble,
+  file_name = "central_america_aoi_adm0_simplified.rds"
+)
+adm1_simp <-  load_drive_file(
+  dribble = drive_dribble,
+  file_name = "central_america_aoi_adm1_simplified.rds"
+)
+adm0_surrounding_simp <-  load_drive_file(
+  dribble = drive_dribble,
+  file_name = "surrounding_aoi_adm0_simplified.rds"
+)
+
+
+# file path where .nc files from INSIVUMEH are being saved
+insiv_gdb <- file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "private",
+  "raw",
+  "lac",
+  "INSUVIMEH",
+  "new_format")
+
+# load shape files for zonal extractoin
+# targets::tar_load(gdf_aoi_adm)
+
+# load thresholds -- includes all framework thresholds
+tar_load(
+  df_cds_insivumeh_thresholds_rp4,
+  store=here('_targets')
+)
+
+
+# 3. Get Relevant Thresholds ------------------------------------------------
+# Get relevant thresholds for Primera and Postrera
+df_threshold_primera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4, run_date, primera_params)
+df_threshold_postrera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4, run_date, postrera_params)
+
+is_primera <- nrow(df_threshold_primera)>0
+is_postrera <- nrow(df_threshold_postrera)>0
+
+# 4. Process Latest ECMWF ---------------------------------------------------
+r_cds <- load_drive_file(
+  dribble =drive_dribble,
+  file_name = "cds_ecmwf_seas51_2024-04-01_aoi.tif"
+)
+df_ecmwf_monthly <- r_cds %>% 
+  zonal_ecmwf(zonal = gdf_aoi)
+
+
+
+# Process ECMWF data for Primera and Postrera
+if (is_primera) {
+  df_ecmwf_primera_activation_status <- process_monthly_forecast(
+    df_threshold = df_threshold_primera,
+    df_forecast_monthly =  df_ecmwf_monthly,
+    season_params = primera_params,
+    forecast_source = "ECMWF CDs"
+  )
+}
+
+```
+
+
+## Trigger Status Table:
+
+Note that in email we typically exclude Guatemala until we receive national forecast.
+
+```{r}
+df_ecmwf_primera_activation_status %>% 
+  gt() %>% 
+  cols_label(
+    adm0_es="Country",
+    value= "Rainfall (mm)",
+    status = "Status",
+    q_val = "Threshold"
+  ) %>% 
+  gt::cols_hide(
+    columns = any_of(c('window',"lt","rp","q","status_lgl","source","include","forecast_source","pub_date"))
+  ) %>% 
+  gt::fmt_number(columns= c("value","q_val"),decimals=0) %>% 
+  gt::tab_header(
+    "Predicted Primera Rainfall and Trigger Thresholds"
+  )
+```
+

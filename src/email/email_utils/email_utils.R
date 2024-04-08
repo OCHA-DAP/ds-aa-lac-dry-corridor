@@ -187,11 +187,18 @@ load_drive_file <-  function(
   cat("downloading ", file_name," to temp path\n")
   googledrive::drive_download(
     file = googledrive::as_id(file_id),
-    path = tmp_file_path
+    path = tmp_file_path,
+    overwrite = T
   )
   cat("reading ", file_name," to memory\n")
   ret <- read_fun(tmp_file_path)
-  unlink(tmp_file_path)
+  
+  # dont want to immediately unlink file if raster
+  is_tif <-  stringr::str_detect(file_name,"\\.tif$")
+  if(!is_tif){
+    unlink(tmp_file_path)  
+  }
+  
   return(ret)
 }
 
@@ -234,7 +241,8 @@ read_fun <- function(x="central_america_aoi_adm0.rds"){
   file_ext<- fs::path_ext(x)
   switch(file_ext,
          "rds"=readr::read_rds(x),
-         "csv"= readr::read_csv(x)
+         "csv"= readr::read_csv(x),
+         "tif" = terra::rast(x)
   )
 }
 

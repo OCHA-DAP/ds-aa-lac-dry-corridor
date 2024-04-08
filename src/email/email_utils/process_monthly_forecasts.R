@@ -37,8 +37,8 @@ process_monthly_forecast <- function(df_threshold,
                                      season_params,
                                      forecast_source) {
   
-  if(forecast_source%in%c("ECMWF","ECMWF MARS")){
-    forecast_source_label <-  "ECMWF MARS"
+  if(forecast_source%in%c("ECMWF","ECMWF MARS","ECMWF CDs")){
+    forecast_source_label <-  "ECMWF"
   }
   if(forecast_source=="INSIVUMEH"){
     forecast_source_label =forecast_source
