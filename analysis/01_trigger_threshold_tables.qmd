@@ -134,7 +134,7 @@ df_primera_table <- list(
     }
   )
 
-txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSUVIMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
 
 
 # set colors for table/legend
@@ -147,7 +147,7 @@ insuv_color <- hdx_hex("sapphire-light")
 gt_mars_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF (MARS)" ,
-    insuv= "INSUVIMEH"
+    insuv= "INSIVUMEH"
 
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
@@ -184,8 +184,8 @@ gt_primera_mars_set <- df_primera_table$MARS_SET %>%
 
 gt_cds_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
-  ecmwf = "ECMWF (CDs)" ,
-    insuv= "INSUVIMEH"
+  ecmwf = "ECMWF (CDS)" ,
+    insuv= "INSIVUMEH"
 
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
@@ -228,13 +228,10 @@ gt_primera_mars_set
 ```
 
 
-
-
 ## Postera
 
 ```{r}
-
-# Prep Primera data
+# Prep postrera data
 # Prep MARS data
 
 postrera_thresholds <- map(
@@ -256,7 +253,6 @@ postrera_thresholds <- map(
   )
   }
 )
-    
 
 # merge mars and insiv for tabling
 df_postrera_thresholds_mars_long <- bind_rows(
@@ -295,7 +291,7 @@ df_postrera_table <- list(
     }
   )
 
-txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSUVIMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
 
 
 
@@ -310,13 +306,7 @@ gt_postrera_mars_set <- df_postrera_table$MARS_SET %>%
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
-      rows = 1:2
-    )) %>% 
-   tab_style(
-    style = cell_fill(color = ecmwf_color),
-    locations = cells_body(
-      columns = c("Guatemala"), 
-      rows = 3
+      rows = 1:3
     )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
  tab_footnote(footnote = html(txt_footnote)) %>% 
@@ -335,14 +325,14 @@ gt_postrera_cds_set <- df_postrera_table$CDS_SET %>%
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
-      rows = 1:2
+      rows = 1:3
     )) %>% 
-   tab_style(
-    style = cell_fill(color = ecmwf_color),
-    locations = cells_body(
-      columns = c("Guatemala"), 
-      rows = 3
-    )) %>% 
+   # tab_style(
+   #  style = cell_fill(color = ecmwf_color),
+   #  locations = cells_body(
+   #    columns = c("Guatemala"), 
+   #    rows = 3
+   #  )) %>% 
  tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_cds_legend

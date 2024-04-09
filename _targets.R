@@ -70,6 +70,18 @@ list(
       )
     )
   ),
+  tar_target(
+    name = gdf_aoi_adm0_no_islands,
+    command = read_rds(
+      file.path(
+        Sys.getenv("AA_DATA_DIR"),
+        "public",
+        "processed",
+        "lac",
+        "lac_cadc_adm0_no_islands.rds"
+      )
+    )
+  ),
   # ECMWF MARS --------------------------------------------------------------
   
   tar_target(
@@ -117,13 +129,14 @@ list(
     description = "CDs - data.frame in long format containing zonal means for each publication month-leadtime combination",
     name = df_ecmwf_cds,
     command = zonal_ecmwf(r_wrapped = r_ecmwf_cds, 
-                               zone = gdf_aoi_adm$adm0,
+                               zone = gdf_aoi_adm0_no_islands,
                                stat = "mean") %>% 
       mutate(
         # raster still in average mm/hour
         value = lubridate::days_in_month(valid_date)*24*3600*1000 * value
       )
   ),
+  
   tar_target(
     description = "CDs data.frame where monthly rainfall values have been summed to seasons of interest for trigger (MJJA,SON)",
     name = df_cds_seasonal_summarised,
