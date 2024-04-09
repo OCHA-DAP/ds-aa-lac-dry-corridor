@@ -224,11 +224,14 @@ gt_primera_cds_set <- df_primera_table$CDS_SET %>%
   tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_cds_legend
   )
+```
 
-
-
-
+```{r}
 gt_primera_cds_set
+```
+
+
+```{r}
 gt_primera_mars_set
 ```
 
@@ -346,9 +349,10 @@ gt_postrera_cds_set <- df_postrera_table$CDS_SET %>%
 ```
 
 ```{r}
-gt_postrera_mars_set
+gt_postrera_cds_set
 ```
 
 ```{r}
-gt_postrera_cds_set
+gt_postrera_mars_set
 ```
+
