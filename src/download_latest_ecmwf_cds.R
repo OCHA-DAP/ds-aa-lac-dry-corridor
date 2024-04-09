@@ -29,20 +29,20 @@ library(ecmwfr)
 library(glue)
 gghdx()
 
-testing_phase <-  T
+testing_phase <-  F
 ecmwf_leadimes <- c(1:6)
 
 if(!testing_phase){
   run_date <- Sys.Date()
 }
 if(testing_phase){
-  run_date <- as_date("2023-11-30")  
+  run_date <- as_date("2024-03-20")  
 }
 
 # pub dates - 5th day of every month
 # https://www.ecmwf.int/en/newsletter/154/meteorology/ecmwfs-new-long-range-forecasting-system-seas5
 fp_email_util_funcs <- list.files(
-  file.path("src","email","email_utils"),
+  here::here(file.path("src","email","email_utils")),
   full.names = T
 )
 
@@ -130,9 +130,6 @@ ecmwfr::wf_set_key(
 cat("KEY SET\n")
 
 
-
-
-
 cat("defining bbox for extraction\n")
 gdf_aoi <- load_drive_file(
   dribble = drive_dribble,
@@ -146,6 +143,7 @@ aoi_bbox <- st_bbox(gdf_aoi)
 pub_mo_date <- format(floor_date(run_date, "month"), "%Y%m%d")
 
 cat("writing data requests to list\n")
+# aoi_bbox <- round(aoi_bbox,0)
 request_coords <- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/{aoi_bbox['xmax']}")
 
 lr <- ecmwf_leadimes %>%

@@ -22,6 +22,8 @@ library(targets) # should remove for GHA eventually
 library(terra)
 gghdx()
 
+forecast_source <- c("AWS","CDS")[1]
+
 fp_email_util_funcs <- list.files(
   file.path("src","email","email_utils"),
   full.names = T
@@ -109,6 +111,16 @@ tar_load(
   df_all_thresholds_rp4,
   store=here('_targets')
 )
+tar_load(
+  df_cds_insivumeh_thresholds_rp4,
+  store=here('_targets')
+)
+if(forecast_source=="AWS"){
+  thresholds_use <-  df_all_thresholds_rp4
+}
+if(forecast_source=="CDS"){
+  thresholds_use <-  df_cds_insivumeh_thresholds_rp4
+}
 
 
 # 3. Get Relevant Thresholds ------------------------------------------------
@@ -119,9 +131,27 @@ df_threshold_postrera <- get_relevant_threshold(df_all_thresholds_rp4, run_date,
 is_primera <- nrow(df_threshold_primera)>0
 is_postrera <- nrow(df_threshold_postrera)>0
 
+
 # 4. Process Latest ECMWF ---------------------------------------------------
-df_ecmwf_monthly <- load_ecmwf_cog(run_date = run_date,zone = gdf_aoi) %>% 
-  zonal_ecmwf(zonal = gdf_aoi)
+
+
+if(forecast_source == "AWS"){
+  df_ecmwf_monthly <- load_ecmwf_cog(
+    run_date = run_date,
+    zone = gdf_aoi
+  ) %>% 
+    zonal_ecmwf(zonal = gdf_aoi)  
+}
+if(forecast_source=="CDS"){
+  filename_cds_forecast <- paste0("cds_ecmwf_seas51_",floor_date(run_date,"month"),".tif")
+  r_cds <- load_drive_file(
+    dribble =drive_dribble,
+    file_name = filename_cds_forecast
+  )
+  df_ecmwf_monthly <- r_cds %>% 
+    zonal_ecmwf(zonal = gdf_aoi)
+}
+
 
 # Process ECMWF data for Primera and Postrera
 if (is_primera) {
@@ -129,7 +159,7 @@ if (is_primera) {
     df_threshold = df_threshold_primera,
     df_forecast_monthly =  df_ecmwf_monthly,
     season_params = primera_params,
-    forecast_source = "ECMWF"
+    forecast_source = "ECMWF CDs"
   )
 }
 if (is_postrera) {

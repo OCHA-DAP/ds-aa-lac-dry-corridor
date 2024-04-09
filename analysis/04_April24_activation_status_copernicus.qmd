@@ -52,6 +52,7 @@ library(here)
 library(targets) # should remove for GHA eventually
 library(terra)
 gghdx()
+testing_phase <- c(T,F)[2]
 
 fp_email_util_funcs <- list.files(
   file.path("src","email","email_utils"),
@@ -61,9 +62,14 @@ fp_email_util_funcs <- list.files(
 walk(fp_email_util_funcs,~source(.x))
 
 # 1. Input parameters --------------------------------------------------------
-
+if(!testing_phase){
+  run_date <- Sys.Date()
+}
+if(testing_phase){
+  run_date <- as_date("2024-03-01")  
+}
 # Analysis depends on run date & matches that to the correct forecast publication
-run_date <-  Sys.Date()
+# run_date <-  Sys.Date()
 run_date_chr <-  format(floor_date(run_date, "month"),"%Y%m")
 run_mo <-  month(run_date)
 
@@ -151,10 +157,12 @@ df_threshold_postrera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4,
 is_primera <- nrow(df_threshold_primera)>0
 is_postrera <- nrow(df_threshold_postrera)>0
 
+r_file_name <- paste0("cds_ecmwf_seas51_",floor_date(run_date,"month"),"_aoi.tif")
+
 # 4. Process Latest ECMWF ---------------------------------------------------
 r_cds <- load_drive_file(
   dribble =drive_dribble,
-  file_name = "cds_ecmwf_seas51_2024-04-01_aoi.tif"
+  file_name = r_file_name
 )
 df_ecmwf_monthly <- r_cds %>% 
   zonal_ecmwf(zonal = gdf_aoi)
