@@ -64,14 +64,52 @@ plot(gdf_adm0_full$geometry)
 
 # after
 gdf_adm0_poly_no_islands$geometry %>% plot()
+
+fp_lac_adm0_no_islands <-   file.path(
+  Sys.getenv("AA_DATA_DIR"),
+  "public",
+  "processed",
+  "lac",
+  "lac_cadc_adm0_no_islands.rds"
+)
 write_rds(
   gdf_adm0_poly_no_islands,
-  file.path(
-    Sys.getenv("AA_DATA_DIR"),
-    "public",
-    "processed",
-    "lac",
-    "lac_cadc_adm0_no_islands.rds"
+  fp_lac_adm0_no_islands
+)
+
+
+
+# add file to drive
+library(googledrive)
+gdf_adm0_poly_no_islands <- read_rds(
+    file.path(
+      Sys.getenv("AA_DATA_DIR"),
+      "public",
+      "processed",
+      "lac",
+      "lac_cadc_adm0_no_islands.rds"
+    )
   )
+
+
+# authorize drive access
+drive_auth(
+  path = Sys.getenv("CADC_MONITORING_JSON")
+)
+
+drive_dribble <- drive_ls(
+  corpus = "user"
+)
+
+folder_id<- drive_dribble %>% 
+  filter(
+    name == "CADC_GHA"
+  ) %>% 
+  pull(id)
+
+drive_upload(
+  media = fp_lac_adm0_no_islands,
+  name = basename(fp_lac_adm0_no_islands),
+  path = as_id(folder_id)
 )
   
