@@ -55,7 +55,7 @@ gghdx()
 testing_phase <- c(T,F)[2]
 
 fp_email_util_funcs <- list.files(
-  file.path("src","email","email_utils"),
+  here::here(file.path("src","email","email_utils")),
   full.names = T
 )
 
