@@ -38,7 +38,11 @@ tar_load(df_all_thresholds_rp4,store = here("_targets"))
 tar_load(df_cds_insivumeh_thresholds_rp4,store = here("_targets"))
 
 ldf_ecmwf <- map(
-  list("MARS_based"=df_all_thresholds_rp4,"CDs_based"=df_cds_insivumeh_thresholds_rp4),
+  list("MARS_based"=df_all_thresholds_rp4,
+       "CDs_based"=df_cds_insivumeh_thresholds_rp4 %>% 
+         mutate(
+           forecast_source = if_else(forecast_source=="INSUVIMEH", "INSIVUMEH",forecast_source)
+         )),
   \(dft){
     dft_clean <- dft %>% 
       mutate(
@@ -53,7 +57,8 @@ ldf_ecmwf <- map(
     dft_clean %>% 
       split(.$forecast_source) %>% 
       map(\(dft_fcst){
-        if(unique(dft_fcst$forecast_source)!="INSUVIMEH"){
+        fcts_source_tmp<- unique(dft_fcst$forecast_source)
+        if(!fcts_source_tmp %in% c("INSUVIMEH","INSIVUMEH")){
           dft_fcst <- dft_fcst %>% 
             filter(
               !(adm0_es == "Guatemala" & 
@@ -63,7 +68,7 @@ ldf_ecmwf <- map(
         dft_fcst %>% 
           split(.$window)
         
-        })
+      })
   }
 )
 
@@ -78,24 +83,24 @@ ldf_ecmwf <- map(
 
 primera_thresholds <- map(
   list(`MARs`=ldf_ecmwf$MARS_based$`ECMWF MARS`$Primera,
-     `CDS` =ldf_ecmwf$CDs_based$`ECMWF CDs`$Primera,
-     # doesnt actually matter which  for insiv
-     `INSIV` =ldf_ecmwf$MARS_based$INSUVIMEH$Primera
+       `CDS` =ldf_ecmwf$CDs_based$`ECMWF CDs`$Primera,
+       # doesnt actually matter which  for insiv
+       `INSIV` =ldf_ecmwf$MARS_based$INSIVUMEH$Primera
   ), \(dft){
-       dft %>% 
-       mutate(
-    pub_month_int = 5- lt,
-    pub_month_chr = month(pub_month_int, label =T, abb=T),
-    pub_month_lt = paste0(pub_month_chr," (", lt,")")
-  ) %>% 
-  select(
-    adm0_es, 
-    pub_month_lt,
-    threshold = q_val
-  )
+    dft %>% 
+      mutate(
+        pub_month_int = 5- lt,
+        pub_month_chr = month(pub_month_int, label =T, abb=T),
+        pub_month_lt = paste0(pub_month_chr," (", lt,")")
+      ) %>% 
+      select(
+        adm0_es, 
+        pub_month_lt,
+        threshold = q_val
+      )
   }
 )
-    
+
 
 # merge mars and insiv for tabling
 df_primera_thresholds_mars_long <- bind_rows(
@@ -114,23 +119,23 @@ df_primera_table <- list(
   map(
     \(dft){
       dft %>% 
-      arrange(adm0_es) %>% 
-      filter(
-        !str_detect(pub_month_lt, "^Feb")
-      ) %>% 
-      pivot_wider(names_from = adm0_es,
-                  values_from =threshold
-      ) %>% 
-      select(
-        pub_month_lt, 
-        `El Salvador`,
-        Honduras,
-        Nicaragua,
-        Guatemala
-      ) %>% 
-      arrange(
-        desc(parse_number(pub_month_lt))
-      )
+        arrange(adm0_es) %>% 
+        filter(
+          !str_detect(pub_month_lt, "^Feb")
+        ) %>% 
+        pivot_wider(names_from = adm0_es,
+                    values_from =threshold
+        ) %>% 
+        select(
+          pub_month_lt, 
+          `El Salvador`,
+          Honduras,
+          Nicaragua,
+          Guatemala
+        ) %>% 
+        arrange(
+          desc(parse_number(pub_month_lt))
+        )
     }
   )
 
@@ -147,8 +152,8 @@ insuv_color <- hdx_hex("sapphire-light")
 gt_mars_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF (MARS)" ,
-    insuv= "INSIVUMEH"
-
+  insuv= "INSIVUMEH"
+  
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
   data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
@@ -165,13 +170,13 @@ gt_primera_mars_set <- df_primera_table$MARS_SET %>%
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
       rows = 1:2
     )) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = ecmwf_color),
     locations = cells_body(
       columns = c("Guatemala"), 
@@ -180,13 +185,13 @@ gt_primera_mars_set <- df_primera_table$MARS_SET %>%
   tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_mars_legend
-             )
+  )
 
 gt_cds_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
   ecmwf = "ECMWF (CDS)" ,
-    insuv= "INSIVUMEH"
-
+  insuv= "INSIVUMEH"
+  
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
   data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
@@ -203,13 +208,13 @@ gt_primera_cds_set <- df_primera_table$CDS_SET %>%
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
       rows = 1:2
     )) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = ecmwf_color),
     locations = cells_body(
       columns = c("Guatemala"), 
@@ -218,7 +223,7 @@ gt_primera_cds_set <- df_primera_table$CDS_SET %>%
   tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_cds_legend
-             )
+  )
 
 
 
@@ -236,21 +241,21 @@ gt_primera_mars_set
 
 postrera_thresholds <- map(
   list(`MARs`=ldf_ecmwf$MARS_based$`ECMWF MARS`$Postrera,
-     `CDS` =ldf_ecmwf$CDs_based$`ECMWF CDs`$Postrera,
-     # doesnt actually matter which  for insiv
-     `INSIV` =ldf_ecmwf$MARS_based$INSUVIMEH$Postrera
+       `CDS` =ldf_ecmwf$CDs_based$`ECMWF CDs`$Postrera,
+       # doesnt actually matter which  for insiv
+       `INSIV` =ldf_ecmwf$MARS_based$INSIVUMEH$Postrera
   ), \(dft){
-       dft %>% 
-       mutate(
-    pub_month_int = 9- lt,
-    pub_month_chr = month(pub_month_int, label =T, abb=T),
-    pub_month_lt = paste0(pub_month_chr," (", lt,")")
-  ) %>% 
-  select(
-    adm0_es, 
-    pub_month_lt,
-    threshold = q_val
-  )
+    dft %>% 
+      mutate(
+        pub_month_int = 9- lt,
+        pub_month_chr = month(pub_month_int, label =T, abb=T),
+        pub_month_lt = paste0(pub_month_chr," (", lt,")")
+      ) %>% 
+      select(
+        adm0_es, 
+        pub_month_lt,
+        threshold = q_val
+      )
   }
 )
 
@@ -271,23 +276,23 @@ df_postrera_table <- list(
   map(
     \(dft){
       dft %>% 
-      arrange(adm0_es) %>% 
-      filter(
-            !str_detect(pub_month_lt, "^Sep|^May")
-      ) %>% 
-      pivot_wider(names_from = adm0_es,
-                  values_from =threshold
-      ) %>% 
-      select(
-        pub_month_lt, 
-        `El Salvador`,
-        Honduras,
-        Nicaragua,
-        Guatemala
-      ) %>% 
-      arrange(
-        desc(parse_number(pub_month_lt))
-      )
+        arrange(adm0_es) %>% 
+        filter(
+          !str_detect(pub_month_lt, "^Sep|^May")
+        ) %>% 
+        pivot_wider(names_from = adm0_es,
+                    values_from =threshold
+        ) %>% 
+        select(
+          pub_month_lt, 
+          `El Salvador`,
+          Honduras,
+          Nicaragua,
+          Guatemala
+        ) %>% 
+        arrange(
+          desc(parse_number(pub_month_lt))
+        )
     }
   )
 
@@ -302,17 +307,17 @@ gt_postrera_mars_set <- df_postrera_table$MARS_SET %>%
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
       rows = 1:3
     )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
- tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_mars_legend
-             )
+  )
 
 gt_postrera_cds_set <- df_postrera_table$CDS_SET %>% 
   gt() %>% 
@@ -321,22 +326,22 @@ gt_postrera_cds_set <- df_postrera_table$CDS_SET %>%
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
       rows = 1:3
     )) %>% 
-   # tab_style(
-   #  style = cell_fill(color = ecmwf_color),
-   #  locations = cells_body(
-   #    columns = c("Guatemala"), 
-   #    rows = 3
-   #  )) %>% 
- tab_footnote(footnote = html(txt_footnote)) %>% 
+  # tab_style(
+  #  style = cell_fill(color = ecmwf_color),
+  #  locations = cells_body(
+  #    columns = c("Guatemala"), 
+  #    rows = 3
+  #  )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_cds_legend
-             )
+  )
 
 ```
 
