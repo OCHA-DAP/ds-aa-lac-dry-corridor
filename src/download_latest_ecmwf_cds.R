@@ -29,7 +29,7 @@ library(ecmwfr)
 library(glue)
 gghdx()
 
-testing_phase <-  F
+testing_phase <-  T
 ecmwf_leadimes <- c(1:6)
 
 if(!testing_phase){
@@ -133,11 +133,9 @@ cat("KEY SET\n")
 cat("defining bbox for extraction\n")
 gdf_aoi <- load_drive_file(
   dribble = drive_dribble,
-  file_name = "central_america_aoi_adm0.rds"
+  file_name = "lac_cadc_adm0_no_islands.rds"
 )
-
-aoi_bbox <- st_bbox(gdf_aoi)
-
+aoi_bbox <-  st_bbox(gdf_aoi)
 
 # Create API requests ---------------------------------------------------------
 pub_mo_date <- format(floor_date(run_date, "month"), "%Y%m%d")
@@ -198,13 +196,16 @@ lr_processed <- lr %>%
     }
   )
 r <- rast(lr_processed)
-r <- terra::project(r,"EPSG:4326")
+
+r_proj <- terra::project(r,"EPSG:4326")
+
+
 
 # make temp file
 file_date_suffix <- format(floor_date(run_date, "month"))
 fp_raster_name <- paste0("cds_ecmwf_seas51_", file_date_suffix, "_aoi.tif")
 tmp_path <- file.path(tempdir(), fp_raster_name)
-writeRaster(r, tmp_path, overwrite = TRUE)
+writeRaster(r_proj, tmp_path, overwrite = TRUE)
 
 
 drive_upload(
