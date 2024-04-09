@@ -58,8 +58,8 @@ gghdx()
 
 # tar_load(df_ecmwf_mars)
 # tar_load(df_ecmwf_zonal_all) 
-tar_load(df_ecmwf_mars)
-tar_load(df_ecmwf_cds)
+tar_load(df_ecmwf_mars,store = here::here("_targets"))
+tar_load(df_ecmwf_cds,store = here::here("_targets"))
 
 ldf_ecmwf <- set_names(
   list(df_ecmwf_cds, df_ecmwf_mars),

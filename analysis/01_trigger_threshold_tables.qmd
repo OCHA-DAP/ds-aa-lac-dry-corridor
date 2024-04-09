@@ -228,13 +228,10 @@ gt_primera_mars_set
 ```
 
 
-
-
 ## Postera
 
 ```{r}
-
-# Prep Primera data
+# Prep postrera data
 # Prep MARS data
 
 postrera_thresholds <- map(
@@ -256,7 +253,6 @@ postrera_thresholds <- map(
   )
   }
 )
-    
 
 # merge mars and insiv for tabling
 df_postrera_thresholds_mars_long <- bind_rows(
