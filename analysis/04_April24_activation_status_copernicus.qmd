@@ -110,9 +110,13 @@ df_email_receps <- load_drive_file(
 )
 
 # this file is for mapping
+# gdf_aoi <- load_drive_file(
+#   dribble = drive_dribble,
+#   file_name = "central_america_aoi_adm0.rds"
+# )
 gdf_aoi <- load_drive_file(
   dribble = drive_dribble,
-  file_name = "central_america_aoi_adm0.rds"
+  file_name = "lac_cadc_adm0_no_islands.rds"
 )
 
 # these are just for mapping
