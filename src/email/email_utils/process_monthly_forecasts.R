@@ -12,7 +12,7 @@ merge_forecast_status <-  function(df_ecmwf_status, df_insiv_status){
   ## 5f. remove status for Guatemala ####
   df_all_status %>% 
     mutate(
-      include = ifelse(source %in% c("ECMWF","ECMWF MARS") & adm0_es =="Guatemala",F,T),
+      include = ifelse(source %in% c("ECMWF","ECMWF MARS","ECMWF CDs") & adm0_es =="Guatemala",F,T),
       status= fct_expand(status,"Activation","No Activation")
     ) %>% 
     filter(include) %>% 
