@@ -187,11 +187,18 @@ load_drive_file <-  function(
   cat("downloading ", file_name," to temp path\n")
   googledrive::drive_download(
     file = googledrive::as_id(file_id),
-    path = tmp_file_path
+    path = tmp_file_path,
+    overwrite = T
   )
   cat("reading ", file_name," to memory\n")
   ret <- read_fun(tmp_file_path)
-  unlink(tmp_file_path)
+  
+  # dont want to immediately unlink file if raster
+  is_tif <-  stringr::str_detect(file_name,"\\.tif$")
+  if(!is_tif){
+    unlink(tmp_file_path)  
+  }
+  
   return(ret)
 }
 
@@ -234,7 +241,8 @@ read_fun <- function(x="central_america_aoi_adm0.rds"){
   file_ext<- fs::path_ext(x)
   switch(file_ext,
          "rds"=readr::read_rds(x),
-         "csv"= readr::read_csv(x)
+         "csv"= readr::read_csv(x),
+         "tif" = terra::rast(x)
   )
 }
 
@@ -294,7 +302,7 @@ email_text_list <- function(df=df_activation_status,
   date_header <- glue("{format(run_date,'%d %B %Y')} - Trigger status:")
   if(nrow(df_filt_activations)==0){
     
-    description_contents_txt= glue("The AA framework has has not been triggered in any country. The total rainfall forecast over the 2024 {season} season (May-August) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
+    description_contents_txt= glue("The AA framework has not triggered in any country. The total rainfall forecast over the 2024 {season} season (May-August) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
     # date_header_txt = glue("{date_header_prefix}:")
     subj_status <-  "No Activations"
     trigger_status_txt= "<span style='color: #55b284ff;'>Not Activated</span>"
@@ -317,8 +325,9 @@ email_text_list <- function(df=df_activation_status,
     description_content = description_contents_txt,
     contact_info= "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
     tbl_footnote = table_footnote,
-    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS51 & INSUVIMEH","ECMWF SEAS51"),
-    ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)"
+    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS51 (CDS) & INSUVIMEH","ECMWF SEAS51 (CDS)"),
+    ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)",
+    methodology_update= "In April 2024, the ECMWF forecast data source used for the trigger was adjusted from Seasonal 7-month forecast (SEAS) obtained directly from ECMWF to publicly available ECMWF data accessed from the Copernicus Data Store. Absolute threshold values have been updated to ensure that they align with the 1 in 4 year return period drought levels agreed upon. This change was implemented to ensure consistent data accessibility and improve transparency of analysis."
     )
 }
 

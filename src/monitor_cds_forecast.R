@@ -22,7 +22,7 @@ library(targets) # should remove for GHA eventually
 library(terra)
 gghdx()
 
-forecast_source <- c("AWS","CDS")[1]
+
 
 fp_email_util_funcs <- list.files(
   file.path("src","email","email_utils"),
@@ -76,7 +76,7 @@ df_email_receps <- load_drive_file(
 # this file is for mapping
 gdf_aoi <- load_drive_file(
   dribble = drive_dribble,
-  file_name = "central_america_aoi_adm0.rds"
+  file_name = "lac_cadc_adm0_no_islands.rds"
 )
 
 # these are just for mapping
@@ -108,25 +108,20 @@ insiv_gdb <- file.path(
 
 # load thresholds -- includes all framework thresholds
 tar_load(
-  df_all_thresholds_rp4,
-  store=here('_targets')
-)
-tar_load(
   df_cds_insivumeh_thresholds_rp4,
   store=here('_targets')
 )
-if(forecast_source=="AWS"){
-  thresholds_use <-  df_all_thresholds_rp4
-}
-if(forecast_source=="CDS"){
-  thresholds_use <-  df_cds_insivumeh_thresholds_rp4
-}
+
 
 
 # 3. Get Relevant Thresholds ------------------------------------------------
 # Get relevant thresholds for Primera and Postrera
-df_threshold_primera <- get_relevant_threshold(df_all_thresholds_rp4, run_date, primera_params)
-df_threshold_postrera <- get_relevant_threshold(df_all_thresholds_rp4, run_date, postrera_params)
+df_threshold_primera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4
+                                               %>% 
+                                                 mutate(
+                                                   forecast_source = str_replace(forecast_source,"INSUVIMEH","INSIVUMEH")
+                                                 ), run_date, primera_params)
+df_threshold_postrera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4, run_date, postrera_params)
 
 is_primera <- nrow(df_threshold_primera)>0
 is_postrera <- nrow(df_threshold_postrera)>0
@@ -134,23 +129,14 @@ is_postrera <- nrow(df_threshold_postrera)>0
 
 # 4. Process Latest ECMWF ---------------------------------------------------
 
+filename_cds_forecast <- paste0("cds_ecmwf_seas51_",floor_date(run_date,"month"),"_aoi.tif")
+r_cds <- load_drive_file(
+  dribble =drive_dribble,
+  file_name = filename_cds_forecast
+)
+df_ecmwf_monthly <- r_cds %>% 
+  zonal_ecmwf(zonal = gdf_aoi)
 
-if(forecast_source == "AWS"){
-  df_ecmwf_monthly <- load_ecmwf_cog(
-    run_date = run_date,
-    zone = gdf_aoi
-  ) %>% 
-    zonal_ecmwf(zonal = gdf_aoi)  
-}
-if(forecast_source=="CDS"){
-  filename_cds_forecast <- paste0("cds_ecmwf_seas51_",floor_date(run_date,"month"),".tif")
-  r_cds <- load_drive_file(
-    dribble =drive_dribble,
-    file_name = filename_cds_forecast
-  )
-  df_ecmwf_monthly <- r_cds %>% 
-    zonal_ecmwf(zonal = gdf_aoi)
-}
 
 
 # Process ECMWF data for Primera and Postrera
@@ -237,6 +223,11 @@ email_txt <- email_text_list(
 )
 
 ## 6c. Generate Status Table ####
+df_primera_status_email <- df_primera_status_email %>% 
+  mutate(
+    adm0_es = fct_relevel(adm0_es, "El Salvador","Honduras","Nicaragua","Guatemala")
+  )
+
 gt_threshold_table <- df_primera_status_email %>% 
   gt() %>% 
   cols_label(
@@ -336,7 +327,9 @@ render_email(
   envir = parent.frame()
 ) %>%
   smtp_send(
-   # to = 
+   
+    # to = "zachary.arno@un.org",
+    to = df_email_receps$Email,
     from = "data.science@humdata.org",
     subject = email_txt$subj,
     credentials = email_creds

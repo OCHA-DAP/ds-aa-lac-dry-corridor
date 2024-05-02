@@ -35,95 +35,125 @@ library(here)
 gghdx()
 
 tar_load(df_all_thresholds_rp4,store = here("_targets"))
-df_all_thresholds_rp4 <- df_all_thresholds_rp4 %>% 
-  mutate(
-    # quick little spelling fix for plotting
-    window = str_to_title(
-      case_when(
-        window=="postera"~"postrera",
-        .default =window
+tar_load(df_cds_insivumeh_thresholds_rp4,store = here("_targets"))
+
+ldf_ecmwf <- map(
+  list("MARS_based"=df_all_thresholds_rp4,
+       "CDs_based"=df_cds_insivumeh_thresholds_rp4 %>% 
+         mutate(
+           forecast_source = if_else(forecast_source=="INSUVIMEH", "INSIVUMEH",forecast_source)
+         )),
+  \(dft){
+    dft_clean <- dft %>% 
+      mutate(
+        # quick little spelling fix for plotting
+        window = str_to_title(
+          case_when(
+            window=="postera"~"postrera",
+            .default =window
+          )
         )
-    )
-  )
-
-ldf_insuv <-  df_all_thresholds_rp4 %>% 
-  filter(forecast_source=="INSIVUMEH") %>% 
-  split(.$window)
-
-ldf_ecmwf <-  df_all_thresholds_rp4 %>% 
-  filter(forecast_source=="ECMWF MARS") %>% 
-  # we keep ECMWF forecast for Guatemala only when LT == 0 (i.e in Primera)
-  filter(
-    !(adm0_es == "Guatemala" & 
-      lt %in% c(1:3))
-  ) %>% 
-  split(.$window)
-
-
+      )
+    dft_clean %>% 
+      split(.$forecast_source) %>% 
+      map(\(dft_fcst){
+        fcts_source_tmp<- unique(dft_fcst$forecast_source)
+        if(!fcts_source_tmp %in% c("INSUVIMEH","INSIVUMEH")){
+          dft_fcst <- dft_fcst %>% 
+            filter(
+              !(adm0_es == "Guatemala" & 
+                  lt %in% c(1:3))
+            )
+        }
+        dft_fcst %>% 
+          split(.$window)
+        
+      })
+  }
+)
 
 ```
 
 ## Primera
 
 ```{r}
-ecmwf_primera_thresholds <- ldf_ecmwf$Primera %>% 
-  mutate(
-    pub_month_int = 5- lt,
-    pub_month_chr = month(pub_month_int, label =T, abb=T),
-    pub_month_lt = paste0(pub_month_chr," (", lt,")")
-  ) %>% 
-  select(
-    adm0_es, 
-    pub_month_lt,
-    threshold = q_val
-  )
 
+# Prep Primera data
+# Prep MARS data
 
-insuv_primera_thresholds <- ldf_insuv$Primera %>% 
-  mutate(
+primera_thresholds <- map(
+  list(`MARs`=ldf_ecmwf$MARS_based$`ECMWF MARS`$Primera,
+       `CDS` =ldf_ecmwf$CDs_based$`ECMWF CDs`$Primera,
+       # doesnt actually matter which  for insiv
+       `INSIV` =ldf_ecmwf$MARS_based$INSIVUMEH$Primera
+  ), \(dft){
+    dft %>% 
+      mutate(
         pub_month_int = 5- lt,
         pub_month_chr = month(pub_month_int, label =T, abb=T),
         pub_month_lt = paste0(pub_month_chr," (", lt,")")
-  ) %>% 
-  select(
-    adm0_es, pub_month_lt, 
-    threshold= q_val
-  )
+      ) %>% 
+      select(
+        adm0_es, 
+        pub_month_lt,
+        threshold = q_val
+      )
+  }
+)
 
-df_primera_thresholds <- bind_rows(
-  ecmwf_primera_thresholds,
-  insuv_primera_thresholds
+
+# merge mars and insiv for tabling
+df_primera_thresholds_mars_long <- bind_rows(
+  primera_thresholds$MARs,
+  primera_thresholds$INSIV
+)
+df_primera_thresholds_cds_long <- bind_rows(
+  primera_thresholds$CDS,
+  primera_thresholds$INSIV
+)
+
+df_primera_table <- list(
+  "MARS_SET"= df_primera_thresholds_mars_long,
+  "CDS_SET"= df_primera_thresholds_cds_long
 ) %>% 
-  arrange(adm0_es) %>% 
-  filter(
-    !str_detect(pub_month_lt, "^Feb")
-  ) %>% 
-  pivot_wider(names_from = adm0_es,
-              values_from =threshold
-  ) %>% 
-  select(
-    pub_month_lt, 
-    `El Salvador`,
-    Honduras,
-    Nicaragua,
-    Guatemala
-  ) %>% 
-  arrange(
-    desc(parse_number(pub_month_lt))
+  map(
+    \(dft){
+      dft %>% 
+        arrange(adm0_es) %>% 
+        filter(
+          !str_detect(pub_month_lt, "^Feb")
+        ) %>% 
+        pivot_wider(names_from = adm0_es,
+                    values_from =threshold
+        ) %>% 
+        select(
+          pub_month_lt, 
+          `El Salvador`,
+          Honduras,
+          Nicaragua,
+          Guatemala
+        ) %>% 
+        arrange(
+          desc(parse_number(pub_month_lt))
+        )
+    }
   )
 
- ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
- 
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
 
 
+# set colors for table/legend
+ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
 ecmwf_color <- hdx_hex("mint-light")
 insuv_color <- hdx_hex("sapphire-light")
 
-gt_legend <- data.frame(
-  `Forecast Data Source` = "Forecast Data Source",
-  ecmwf = "ECMWF" ,
-    insuv= "INSIVUMEH"
 
+# make legend for table MARS data
+gt_mars_legend <- data.frame(
+  `Forecast Data Source` = "Forecast Data Source",
+  ecmwf = "ECMWF (MARS)" ,
+  insuv= "INSIVUMEH"
+  
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
   data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
@@ -133,107 +163,35 @@ gt_legend <- data.frame(
   ) %>% 
   as_raw_html()
 
-gt_primera <- df_primera_thresholds %>% 
+gt_primera_mars_set <- df_primera_table$MARS_SET %>% 
   gt() %>% 
-  # tab_spanner(
-  #   columns = ecmwf_cols,label = html("Only ECMWF<br>")
-  # ) %>% 
-  # tab_spanner(
-  #   columns = c("Guatemala"),label = html("National Forecast<br>Until May")
-  # ) %>% 
   fmt_number(decimals = 0) %>% 
   cols_label(
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
       rows = 1:2
     )) %>% 
-   tab_style(
+  tab_style(
     style = cell_fill(color = ecmwf_color),
     locations = cells_body(
       columns = c("Guatemala"), 
       rows = 3
     )) %>% 
-  # tab_footnote(
-  #   footnote= gt_legend
-  # ) %>% 
-  tab_footnote(footnote = html("Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries")) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
   tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
-             subtitle = gt_legend
-             )
-
-
-
-
-gt_primera
-```
-
-## Postera
-
-```{r}
-ecmwf_postrera_thresholds <- ldf_ecmwf$Postrera %>% 
-  mutate(
-    pub_month_int = 9- lt,
-    pub_month_chr = month(pub_month_int, label =T, abb=T),
-    pub_month_lt = paste0(pub_month_chr," (", lt,")")
-  ) %>% 
-  select(
-    adm0_es, 
-    pub_month_lt,
-    threshold = q_val
+             subtitle = gt_mars_legend
   )
 
-
-insuv_postrera_thresholds <- ldf_insuv$Postrera %>% 
-  mutate(
-        pub_month_int = 9- lt,
-        pub_month_chr = month(pub_month_int, label =T, abb=T),
-        pub_month_lt = paste0(pub_month_chr," (", lt,")")
-  ) %>% 
-  select(
-    adm0_es, pub_month_lt, 
-    threshold= q_val
-  )
-
-df_postrera_thresholds <- bind_rows(
-  ecmwf_postrera_thresholds %>% 
-    filter(adm0_es!="Guatemala"),
-  insuv_postrera_thresholds
-) %>% 
-  arrange(adm0_es) %>% 
-  filter(
-    !str_detect(pub_month_lt, "^Sep|^May")
-  ) %>% 
-  pivot_wider(names_from = adm0_es,
-              values_from =threshold
-  ) %>% 
-  select(
-    pub_month_lt, 
-    `El Salvador`,
-    Honduras,
-    Nicaragua,
-    Guatemala
-  ) %>% 
-  arrange(
-    desc(parse_number(pub_month_lt))
-  )
-
- ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
- 
-
-
-ecmwf_color <- hdx_hex("mint-light")
-insuv_color <- hdx_hex("sapphire-light")
-
-gt_legend <- data.frame(
+gt_cds_legend <- data.frame(
   `Forecast Data Source` = "Forecast Data Source",
-  ecmwf = "ECMWF" ,
-    insuv= "INSIVUMEH"
-
+  ecmwf = "ECMWF (CDS)" ,
+  insuv= "INSIVUMEH"
+  
 ) %>% 
   gt(rowname_col = "Forecast Data Source") %>%  
   data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
@@ -243,24 +201,158 @@ gt_legend <- data.frame(
   ) %>% 
   as_raw_html()
 
-gt_postrera <- df_postrera_thresholds %>% 
+gt_primera_cds_set <- df_primera_table$CDS_SET %>% 
   gt() %>% 
   fmt_number(decimals = 0) %>% 
   cols_label(
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
-  data_color(columns = "Guatemala", direction = "column",color=insuv_color) %>% 
-  # tab_footnote(
-  #   footnote= gt_legend
-  # ) %>% 
-  tab_footnote(footnote = html("Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used.")) %>% 
-  tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
-             subtitle = gt_legend
-             )
-
-
-
-
-gt_postrera
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+  tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_cds_legend
+  )
 ```
+
+```{r}
+gt_primera_cds_set
+```
+
+
+```{r}
+gt_primera_mars_set
+```
+
+
+## Postera
+
+```{r}
+# Prep postrera data
+# Prep MARS data
+
+postrera_thresholds <- map(
+  list(`MARs`=ldf_ecmwf$MARS_based$`ECMWF MARS`$Postrera,
+       `CDS` =ldf_ecmwf$CDs_based$`ECMWF CDs`$Postrera,
+       # doesnt actually matter which  for insiv
+       `INSIV` =ldf_ecmwf$MARS_based$INSIVUMEH$Postrera
+  ), \(dft){
+    dft %>% 
+      mutate(
+        pub_month_int = 9- lt,
+        pub_month_chr = month(pub_month_int, label =T, abb=T),
+        pub_month_lt = paste0(pub_month_chr," (", lt,")")
+      ) %>% 
+      select(
+        adm0_es, 
+        pub_month_lt,
+        threshold = q_val
+      )
+  }
+)
+
+# merge mars and insiv for tabling
+df_postrera_thresholds_mars_long <- bind_rows(
+  postrera_thresholds$MARs,
+  postrera_thresholds$INSIV
+)
+df_postrera_thresholds_cds_long <- bind_rows(
+  postrera_thresholds$CDS,
+  postrera_thresholds$INSIV
+)
+
+df_postrera_table <- list(
+  "MARS_SET"= df_postrera_thresholds_mars_long,
+  "CDS_SET"= df_postrera_thresholds_cds_long
+) %>% 
+  map(
+    \(dft){
+      dft %>% 
+        arrange(adm0_es) %>% 
+        filter(
+          !str_detect(pub_month_lt, "^Sep|^May")
+        ) %>% 
+        pivot_wider(names_from = adm0_es,
+                    values_from =threshold
+        ) %>% 
+        select(
+          pub_month_lt, 
+          `El Salvador`,
+          Honduras,
+          Nicaragua,
+          Guatemala
+        ) %>% 
+        arrange(
+          desc(parse_number(pub_month_lt))
+        )
+    }
+  )
+
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+
+
+
+gt_postrera_mars_set <- df_postrera_table$MARS_SET %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_mars_legend
+  )
+
+gt_postrera_cds_set <- df_postrera_table$CDS_SET %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:3
+    )) %>% 
+  # tab_style(
+  #  style = cell_fill(color = ecmwf_color),
+  #  locations = cells_body(
+  #    columns = c("Guatemala"), 
+  #    rows = 3
+  #  )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_cds_legend
+  )
+
+```
+
+```{r}
+gt_postrera_cds_set
+```
+
+```{r}
+gt_postrera_mars_set
+```
+

@@ -36,13 +36,13 @@ if(!testing_phase){
   run_date <- Sys.Date()
 }
 if(testing_phase){
-  run_date <- as_date("2023-11-30")  
+  run_date <- as_date("2024-03-20")  
 }
 
 # pub dates - 5th day of every month
 # https://www.ecmwf.int/en/newsletter/154/meteorology/ecmwfs-new-long-range-forecasting-system-seas5
 fp_email_util_funcs <- list.files(
-  file.path("src","email","email_utils"),
+  here::here(file.path("src","email","email_utils")),
   full.names = T
 )
 
@@ -130,22 +130,18 @@ ecmwfr::wf_set_key(
 cat("KEY SET\n")
 
 
-
-
-
 cat("defining bbox for extraction\n")
 gdf_aoi <- load_drive_file(
   dribble = drive_dribble,
-  file_name = "central_america_aoi_adm0.rds"
+  file_name = "lac_cadc_adm0_no_islands.rds"
 )
-
-aoi_bbox <- st_bbox(gdf_aoi)
-
+aoi_bbox <-  st_bbox(gdf_aoi)
 
 # Create API requests ---------------------------------------------------------
 pub_mo_date <- format(floor_date(run_date, "month"), "%Y%m%d")
 
 cat("writing data requests to list\n")
+# aoi_bbox <- round(aoi_bbox,0)
 request_coords <- glue("{aoi_bbox['ymin']}/{aoi_bbox['xmin']}/{aoi_bbox['ymax']}/{aoi_bbox['xmax']}")
 
 lr <- ecmwf_leadimes %>%
@@ -200,13 +196,16 @@ lr_processed <- lr %>%
     }
   )
 r <- rast(lr_processed)
-r <- terra::project(r,"EPSG:4326")
+
+r_proj <- terra::project(r,"EPSG:4326")
+
+
 
 # make temp file
 file_date_suffix <- format(floor_date(run_date, "month"))
 fp_raster_name <- paste0("cds_ecmwf_seas51_", file_date_suffix, "_aoi.tif")
 tmp_path <- file.path(tempdir(), fp_raster_name)
-writeRaster(r, tmp_path, overwrite = TRUE)
+writeRaster(r_proj, tmp_path, overwrite = TRUE)
 
 
 drive_upload(

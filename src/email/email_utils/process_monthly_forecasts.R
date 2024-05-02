@@ -12,7 +12,7 @@ merge_forecast_status <-  function(df_ecmwf_status, df_insiv_status){
   ## 5f. remove status for Guatemala ####
   df_all_status %>% 
     mutate(
-      include = ifelse(source %in% c("ECMWF","ECMWF MARS") & adm0_es =="Guatemala",F,T),
+      include = ifelse(source %in% c("ECMWF","ECMWF MARS","ECMWF CDs") & adm0_es =="Guatemala",F,T),
       status= fct_expand(status,"Activation","No Activation")
     ) %>% 
     filter(include) %>% 
@@ -36,25 +36,17 @@ process_monthly_forecast <- function(df_threshold,
                                      df_forecast_monthly,
                                      season_params,
                                      forecast_source) {
-  
-  if(forecast_source%in%c("ECMWF","ECMWF MARS")){
-    forecast_source_label <-  "ECMWF MARS"
-  }
-  if(forecast_source=="INSIVUMEH"){
-    forecast_source_label =forecast_source
-  }
-  
   summarise_forecasted_season(
     df = df_forecast_monthly,
     season_params = season_params
   ) %>%
-    mutate(forecast_source = forecast_source_label) %>%
+    mutate(forecast_source = forecast_source) %>%
     left_join(df_threshold) %>%
     mutate(
       status_lgl = value < q_val,
       status = if_else(value < q_val, "Activation", "No Activation"),
       status = fct_expand(status, "Activation", "No Activation"),
-      source = forecast_source_label
+      source = forecast_source
     )
 }
 
