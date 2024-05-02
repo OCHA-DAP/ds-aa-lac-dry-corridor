@@ -144,7 +144,8 @@ lr <- ecmwf_leadimes %>%
     return(r_mean)
   })
 
-# merge bands
+
+# Process individual leadtimes
 pub_mo <- floor_date(run_date, "month")
 
 # transform from  avg m/hr to mm/month & harmonize band name
@@ -160,13 +161,15 @@ lr_processed <- lr %>%
       return(r_tmp_mm)
     }
   )
+
+# merge into one spatRaster & ensure projection
 r <- rast(lr_processed)
 
 r_proj <- terra::project(r,"EPSG:4326")
 
 
+# Write file to Gdrive ----------------------------------------------------
 
-# make temp file
 file_date_suffix <- format(floor_date(run_date, "month"))
 fp_raster_name <- paste0("cds_ecmwf_seas51_", file_date_suffix, "_aoi.tif")
 tmp_path <- file.path(tempdir(), fp_raster_name)
@@ -185,6 +188,4 @@ drive_upload(
 )
 
 unlink(tmp_path)
-
-# viz factory ideas putting in separate script
 
