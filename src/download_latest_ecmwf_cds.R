@@ -47,9 +47,6 @@ fp_email_util_funcs <- list.files(
 )
 
 walk(fp_email_util_funcs,~source(.x))
-# source(file.path("R","email_funcs.R"))
-# source(file.path("src","email","email_utils.R"))
-
 
 # Google Drive ------------------------------------------------------------
 
@@ -64,38 +61,6 @@ drive_dribble <- drive_ls(
 
 cadc_gha_dribble <- drive_dribble %>%
   filter(name == "CADC_GHA")
-
-
-# Check drive -------------------------------------------------------------
-drive_download(
-  as_id(
-    drive_dribble %>%
-      filter(
-        str_detect(name, "_log\\.csv$")
-      ) %>%
-      pull(id)
-  ),
-  path = fp_dl_log <- tempfile(fileext = ".csv")
-)
-
-df_dl_log <- read_csv(fp_dl_log)
-
-
-## Load Thresholds #####
-## currently place holder - for df that should have country and threshold for season.
-# drive_download(
-#   as_id(
-#     drive_dribble %>%
-#       filter(
-#         str_detect(name, "_thresholds\\.csv$")
-#       )%>%
-#       pull(id)
-#   ),
-#   path = fp_thresholds_log <- tempfile(fileext = ".csv")
-# )
-#
-# df_thresholds <- read_csv(dl_log_path)
-
 
 
 # Latest Forecast ---------------------------------------------------------
