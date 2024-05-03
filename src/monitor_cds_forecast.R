@@ -321,17 +321,17 @@ email_creds <- creds_envvar(
 )
 email_rmd_fp <- "email_cadc_drought_monitoring.Rmd"
 
-# so dont render by accident
-render_email(
-  input = email_rmd_fp,
-  envir = parent.frame()
-) %>%
-  smtp_send(
-   
-    # to = "zachary.arno@un.org",
-    to = df_email_receps$Email,
-    from = "data.science@humdata.org",
-    subject = email_txt$subj,
-    credentials = email_creds
-  )
+# # so dont render by accident
+# render_email(
+#   input = email_rmd_fp,
+#   envir = parent.frame()
+# ) %>%
+#   smtp_send(
+#    
+#     # to = "zachary.arno@un.org",
+#     to = df_email_receps$Email,
+#     from = "data.science@humdata.org",
+#     subject = email_txt$subj,
+#     credentials = email_creds
+#   )
 # to = df_email_receps$Email,

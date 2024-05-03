@@ -89,8 +89,8 @@ gt_threshold_table %>%
   )
 ```
 
-**Methodology Update:**
-*`r email_txt$methodology_update`*
+<!-- **Methodology Update:** -->
+<!-- *`r email_txt$methodology_update`* -->
     
 **Forecast data source:** `r email_txt$data_source`
 
