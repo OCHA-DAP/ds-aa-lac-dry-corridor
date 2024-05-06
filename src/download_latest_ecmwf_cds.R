@@ -29,14 +29,14 @@ library(ecmwfr)
 library(glue)
 gghdx()
 
-testing_phase <-  T
+testing_phase <-  F
 ecmwf_leadimes <- c(1:6)
 
 if(!testing_phase){
   run_date <- Sys.Date()
 }
 if(testing_phase){
-  run_date <- as_date("2024-03-20")  
+  run_date <- as_date("2024-04-20")  
 }
 
 # pub dates - 5th day of every month
