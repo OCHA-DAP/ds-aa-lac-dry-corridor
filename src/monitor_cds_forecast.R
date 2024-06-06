@@ -385,7 +385,7 @@ render_email(
   smtp_send(
     from = "data.science@humdata.org",
     to = "zachary.arno@un.org",
-    subject = "AA Test",
+    subject = email_txt$subj,
     credentials = email_creds
   )
 
