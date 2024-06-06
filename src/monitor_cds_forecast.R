@@ -388,6 +388,6 @@ render_email(
     subject = email_txt$subj,
     credentials = email_creds
   )
-
+# df_email_receps$Email
 # email_txt$subj
 # to = df_email_receps$Email,
