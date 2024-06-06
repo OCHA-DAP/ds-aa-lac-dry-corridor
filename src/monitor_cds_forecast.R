@@ -24,7 +24,7 @@ library(glue)
 library(gghdx)
 library(blastula)
 # library(here)
-library(targets) # should remove for GHA eventually
+# library(targets) # should remove for GHA eventually
 library(terra)
 gghdx()
   
