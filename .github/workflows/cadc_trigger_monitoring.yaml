@@ -36,7 +36,7 @@ jobs:
         id: create-json
         uses: jsdaniell/create-json@v1.2.2
         with:
-          name: "auth.json" 
+          name: "sa_auth.json" 
           json: ${{ secrets.GCP_CREDENTIALS }}
       
       - name: Cache R dependencies

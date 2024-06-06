@@ -15,6 +15,8 @@ library(stringr)
 library(tidyr) # separate
 library(ggplot2)
 library(forcats)
+library(readr)
+
 library(sf)
 library(googledrive)
 library(exactextractr)
@@ -68,7 +70,9 @@ postrera_params <- list(
 # everything to Azure cloud
 
 # authenticate w/ service account
-drive_auth(path="sa_auth.json")
+drive_auth(
+  path=Sys.getenv("CADC_MONITORING_JSON")
+  )
 
 drive_dribble <- drive_ls(
   corpus= "user"
