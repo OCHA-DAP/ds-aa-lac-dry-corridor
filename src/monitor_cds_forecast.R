@@ -354,10 +354,11 @@ p_rainfall <- df_thresholds_email %>%
     title = element_text(size=16),
     plot.subtitle = element_text(size=16),
     legend.title = element_blank(),
-    axis.text.y = element_text(angle=90,size=14),
+    legend.text = element_text(size=14),
+    axis.text.y = element_text(angle=90,size=145),
     strip.text = element_text(size= 16),
     axis.text.x = element_blank(),
-    plot.caption = element_text(hjust=0, size =12)
+    plot.caption = element_text(hjust=0, size =14)
   )
 
 

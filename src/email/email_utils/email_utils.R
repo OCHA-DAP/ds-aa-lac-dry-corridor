@@ -289,6 +289,10 @@ email_text_list <- function(df=df_activation_status,
                      abbr=F,
                      label = T))
   monitored_range <- ifelse(season == "Primera","May-August","September-November")
+  
+  plot_title <- ifelse(season=="Primera",
+                       "CADC Drought Monitoring- Forecasted Primera Rainfall (MJJA 2024)",
+                       "CADC Drought Monitoring- Forecasted Postrera Rainfall (SON 2024)")
   # subj_month <- ifelse(!insiumeh_forecast_available,glue("Preliminary {month_chr}"),month_chr)
   
   
@@ -312,6 +316,7 @@ email_text_list <- function(df=df_activation_status,
     subj = gen_subject(df = df,run_date = run_date,insiumeh_forecast_available=insiumeh_forecast_available),
     title = "Anticipatory Action- Central American Dry Corridor",
     subtitle = glue("2024 {season} Drought Monitoring - {month_chr} Update"),
+    plot_title = plot_title,
     date_header = date_header,
     status=trigger_status_txt,
     description_title = "Trigger Description",

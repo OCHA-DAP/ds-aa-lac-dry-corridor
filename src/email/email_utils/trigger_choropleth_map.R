@@ -85,6 +85,7 @@ trigger_status_choropleth <- function(
     coord_sf(xlim=df_bbox[c(1,3)],ylim=df_bbox[c(2,4)])+
     theme(
       legend.title = element_blank(),
+      legend.text = element_text(size=12),
       axis.line = element_blank(),
       panel.grid = element_blank(),
       axis.text = element_blank(),
