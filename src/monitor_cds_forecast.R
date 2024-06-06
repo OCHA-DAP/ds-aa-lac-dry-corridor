@@ -344,7 +344,7 @@ p_rainfall <- df_thresholds_email %>%
     nrow = 1,ncol=4
   )+
   labs(
-    title = "CADC Drought Monitoring- Forecasted Primera Rainfall (MJJA 2024)",
+    title = email_txt$plot_title,
     subtitle= glue("Forecast Published: 2024 {email_txt$month_chr}") ,
     y= "Rainfall (mm)",
     caption = "Horizonal red dashed lines indicate trigger threshold level."
@@ -354,8 +354,8 @@ p_rainfall <- df_thresholds_email %>%
     title = element_text(size=16),
     plot.subtitle = element_text(size=16),
     legend.title = element_blank(),
-    legend.text = element_text(size=14),
-    axis.text.y = element_text(angle=90,size=145),
+    legend.text = element_text(size=15),
+    axis.text.y = element_text(angle=90,size=15),
     strip.text = element_text(size= 16),
     axis.text.x = element_blank(),
     plot.caption = element_text(hjust=0, size =14)
