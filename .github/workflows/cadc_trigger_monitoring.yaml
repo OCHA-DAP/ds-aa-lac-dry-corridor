@@ -52,7 +52,7 @@ jobs:
           Rscript .github/depends.R
       # - name: Run cadc-trigger-monitoring
       #   run: |
-      #     source(file.path("src", "download_ecmwf_cds.R"))
+      #     source(file.path("src", "monitor_cds_forecast.R"))
       #   shell: Rscript {0}
         env:
           CADC_MONITORING_JSON: "sa_auth.json" 
