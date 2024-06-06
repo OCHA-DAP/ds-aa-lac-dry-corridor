@@ -7,22 +7,28 @@
 #' components this approach was abandoned -- eventually could be refactored to GH Action if
 #' data pipelines become stable.
 
-library(aws.s3)
-library(tidyverse)
+# library(aws.s3)
+library(dplyr)
+library(purrr)
+library(lubridate)
+library(stringr)
+library(tidyr) # separate
+library(ggplot2)
+library(forcats)
 library(sf)
 library(googledrive)
 library(exactextractr)
-library(fs)
+# library(fs)
 library(gt)
 library(glue)
 library(gghdx)
 library(blastula)
-library(here)
+# library(here)
 library(targets) # should remove for GHA eventually
 library(terra)
 gghdx()
-
-
+  
+# Sys.setenv(RSTUDIO_PANDOC="/Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64")
 
 fp_email_util_funcs <- list.files(
   file.path("src","email","email_utils"),
@@ -92,6 +98,10 @@ adm0_surrounding_simp <-  load_drive_file(
   dribble = drive_dribble,
   file_name = "surrounding_aoi_adm0_simplified.rds"
 )
+df_cds_insivumeh_thresholds_rp4 <-  load_drive_file(
+  dribble = drive_dribble,
+  file_name = "thresholds_CDs_INSIV.rds"
+)
 
 
 # file path where .nc files from INSIVUMEH are being saved
@@ -106,22 +116,33 @@ insiv_gdb <- file.path(
 # load shape files for zonal extractoin
 # targets::tar_load(gdf_aoi_adm)
 
-# load thresholds -- includes all framework thresholds
-tar_load(
-  df_cds_insivumeh_thresholds_rp4,
-  store=here('_targets')
-)
 
+# replaced with this with file accessed through google drive
+# load thresholds -- includes all framework thresholds
+# tar_load(
+#   df_cds_insivumeh_thresholds_rp4
+#   # store=here('_targets')
+# )
 
 
 # 3. Get Relevant Thresholds ------------------------------------------------
 # Get relevant thresholds for Primera and Postrera
-df_threshold_primera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4
-                                               %>% 
-                                                 mutate(
-                                                   forecast_source = str_replace(forecast_source,"INSUVIMEH","INSIVUMEH")
-                                                 ), run_date, primera_params)
-df_threshold_postrera <- get_relevant_threshold(df_cds_insivumeh_thresholds_rp4, run_date, postrera_params)
+df_threshold_primera <- get_relevant_threshold(
+  df_cds_insivumeh_thresholds_rp4 %>% 
+    mutate(
+      forecast_source = str_replace(forecast_source,"INSUVIMEH","INSIVUMEH")
+    ),
+  run_date, primera_params
+  )
+
+df_threshold_postrera <- get_relevant_threshold(
+  df_cds_insivumeh_thresholds_rp4 |> 
+    mutate(
+      window = str_replace(window,"postera", "postrera")
+    ), 
+  run_date, 
+  postrera_params
+  )
 
 is_primera <- nrow(df_threshold_primera)>0
 is_postrera <- nrow(df_threshold_postrera)>0
@@ -153,13 +174,14 @@ if (is_postrera) {
     df_threshold_postrera, 
     df_ecmwf_monthly,
     season_params = postrera_params,
-    forecast_source = "ECMWF"
+    forecast_source = "ECMWF CDs"
     )
 }
 
-insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
-                                     run_date = run_date)
-
+# have to get rid of this for quick GHA run because relies on local files
+# insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
+#                                      run_date = run_date)
+insiv_received <- F
 # 5. INSIVUMEH DATA ----------------------------------------------------------
 # Process INSIVUMEH data if available
 if (insiv_received) {
@@ -211,24 +233,44 @@ if(is_primera){
     df_primera_status_email <- df_ecmwf_primera_activation_status
   }
 }
+if(is_postrera){  
+  if (insiv_received & run_mo != 9) {
+    df_postrera_status_email <- df_ecmwf_postrera_activation_status
+  } else if (!insiv_received & run_mo != 9) {
+    df_postrera_status_email <- df_ecmwf_postrera_activation_status %>%
+      filter(adm0_es != "Guatemala")
+  } else if (run_mo == 9) {
+    df_postrera_status_email <- df_ecmwf_postrera_activation_status
+  }
+}
+
+if(is_primera){
+  df_thresholds_email <- df_primera_status_email
+  season <- "Primera"
+}
+if(is_postrera){
+  df_thresholds_email <- df_postrera_status_email
+  season <- "Postrera"
+}
 
 
 
 ## 6b. Generate text used in email ####
 email_txt <- email_text_list(
-  df = df_primera_status_email,
-  season = "Primera",
+  df = df_thresholds_email,
+  season = season,
   run_date = run_date,
   insiumeh_forecast_available = insiv_received
 )
 
 ## 6c. Generate Status Table ####
-df_primera_status_email <- df_primera_status_email %>% 
+df_thresholds_email <- df_thresholds_email %>% 
   mutate(
-    adm0_es = fct_relevel(adm0_es, "El Salvador","Honduras","Nicaragua","Guatemala")
+    adm0_es = fct_relevel(adm0_es, "El Salvador","Honduras","Nicaragua","Guatemala"),
+    status = fct_expand(status, "No Activation","Activation")
   )
 
-gt_threshold_table <- df_primera_status_email %>% 
+gt_threshold_table <- df_thresholds_email %>% 
   gt() %>% 
   cols_label(
     adm0_es="Country",
@@ -248,19 +290,23 @@ gt_threshold_table <- df_primera_status_email %>%
   )
 gdf_adm0_status <- adm0_simp %>% 
   left_join(
-    df_primera_status_email
-  )
+    df_thresholds_email
+  ) 
+
+
+
+
 
 ## 6d. Generate Map - Choropleth ####
 m_choro <- trigger_status_choropleth(gdf_adm0 = gdf_adm0_status,
                                      gdf_adm1 = adm1_simp,
                                      insivumeh_data_available = insiv_received,
                                      aoi_txt_label_size = 8,
-                                     gdf_adm0_surrounding = adm0_surrounding_simp
+                                     gdf_adm0_surrounding = adm0_surrounding_simp, run_date = run_date
 )
 
 ## 6e. Generate plot ####
-p_rainfall <- df_primera_status_email %>% 
+p_rainfall <- df_thresholds_email %>% 
   ggplot(
     aes(x= adm0_es, y= value), 
     width =0.2
@@ -268,7 +314,8 @@ p_rainfall <- df_primera_status_email %>%
   geom_point(
     aes(
       color=status,
-    ) 
+    ) ,
+    show.legend = c(color=TRUE)
   ) +
   scale_color_manual(
     values = c(
@@ -284,7 +331,7 @@ p_rainfall <- df_primera_status_email %>%
     color="tomato"
   )+
   scale_y_continuous(
-    limits=c(0,max(df_primera_status_email$value)),
+    limits=c(0,max(df_thresholds_email$value)),
     expand = expansion(mult = c(0,0.1))
   )+
   facet_wrap(
@@ -310,7 +357,10 @@ p_rainfall <- df_primera_status_email %>%
   )
 
 
+
 ## 6f. Render and send email #####
+
+email_rmd_fp <- "email_cadc_drought_monitoring.Rmd"
 # Load in e-mail credentials
 email_creds <- creds_envvar(
   user = Sys.getenv("CHD_DS_EMAIL_USERNAME"),
@@ -319,19 +369,20 @@ email_creds <- creds_envvar(
   port = Sys.getenv("CHD_DS_PORT"),
   use_ssl = TRUE
 )
-email_rmd_fp <- "email_cadc_drought_monitoring.Rmd"
+
 
 # # so dont render by accident
-# render_email(
-#   input = email_rmd_fp,
-#   envir = parent.frame()
-# ) %>%
-#   smtp_send(
-#    
-#     # to = "zachary.arno@un.org",
-#     to = df_email_receps$Email,
-#     from = "data.science@humdata.org",
-#     subject = email_txt$subj,
-#     credentials = email_creds
-#   )
+# to = df_email_receps$Email,
+render_email(
+  input = email_rmd_fp,
+  envir = parent.frame()
+) %>%
+  smtp_send(
+    from = "data.science@humdata.org",
+    to = "zachary.arno@un.org",
+    subject = "AA Test",
+    credentials = email_creds
+  )
+
+# email_txt$subj
 # to = df_email_receps$Email,

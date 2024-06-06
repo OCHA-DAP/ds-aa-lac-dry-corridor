@@ -288,6 +288,7 @@ email_text_list <- function(df=df_activation_status,
   month_chr <- as.character(month(run_date,
                      abbr=F,
                      label = T))
+  monitored_range <- ifelse(season == "Primera","May-August","September-November")
   # subj_month <- ifelse(!insiumeh_forecast_available,glue("Preliminary {month_chr}"),month_chr)
   
   
@@ -295,7 +296,7 @@ email_text_list <- function(df=df_activation_status,
   date_header <- glue("{format(run_date,'%e %B %Y')} - Trigger status:")
   if(nrow(df_filt_activations)==0){
     
-    description_contents_txt= glue("The AA framework has not triggered in any country. The total rainfall forecast over the 2024 {season} season (May-August) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
+    description_contents_txt= glue("The AA framework has not triggered in any country. The total rainfall forecast over the 2024 {season} season ({monitored_range}) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
     # subj_status <-  "No Activations"
     trigger_status_txt= "<span style='color: #55b284ff;'>Not Activated</span>"
   }
@@ -303,7 +304,7 @@ email_text_list <- function(df=df_activation_status,
   if(nrow(df_filt_activations)>0){ 
     # subj_status <- "Activated"
     countries_activated_txt <- glue_collapse(df_filt_activations$adm0_es,sep = ",",last = " & ")
-    description_contents_txt= glue("The AA framework has been triggered in {countries_activated_txt} where the combined rainfall forecast over the 2024 {season} season (May-August) is predicted to below the 1 in 4 year drought levels. {description_ending}")
+    description_contents_txt= glue("The AA framework has been triggered in {countries_activated_txt} where the combined rainfall forecast over the 2024 {season} season ({monitored_range}) is predicted to below the 1 in 4 year drought levels. {description_ending}")
     trigger_status_txt = "<span style='color: #F2645A;'>Activated</span>"
   }
   list(
@@ -395,11 +396,11 @@ gen_subject <- function(df,
   subj_status <- ifelse(nrow(df_filt)>0,"Activated","No Activations")
   
   if(run_mo==5|insiumeh_forecast_available){
-    subj_ending <- "(NIC, HND, SLV,GTM)"
+    subj_ending <- "(NIC, HND, SLV, GTM)"
     subj_month <- month_chr
   }
   else if(!insiumeh_forecast_available){
-    subj_ending <- "(NIC,HND,SLV)"
+    subj_ending <- "(NIC, HND, SLV)"
     subj_month <- glue("Preliminary {month_chr}")
   }
   ret <- glue("AA Central America Dry Corridor - Drought Monitoring - {subj_month} update - {subj_status} {subj_ending}")

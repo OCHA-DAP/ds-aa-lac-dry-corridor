@@ -12,16 +12,21 @@ trigger_status_choropleth <- function(
     gdf_adm1,
     gdf_adm0_surrounding= gdf_adm0_surrounding_simp,
     insivumeh_data_available,
-    aoi_txt_label_size = 5
+    aoi_txt_label_size = 5,
+    run_date
     ){
   
-  if(!insivumeh_data_available){
+  run_mo <-  month(run_date)
+  run_mo_eq_lt0 <- run_mo %in% c(5,9)
+  
+  if(!insivumeh_data_available & !run_mo_eq_lt0){
     gdf_adm0 <- gdf_adm0 %>% 
       mutate(
         status = if_else(
           adm0_es == "Guatemala",
           as_factor("Not Available"),
           status)
+        
       )
     
   }
@@ -29,15 +34,23 @@ trigger_status_choropleth <- function(
   df_bbox <- st_bbox(gdf_adm0)
   pt_labels <- surrounding_country_labels()
   
+  
   ggplot()+
     geom_sf(
-      data= gdf_adm0,
-      aes(fill = status)
+      data= gdf_adm0 |> 
+        mutate(
+          status = fct_expand(status, "Not Available","No Activation","Activation")
+        ),
+      aes(fill = status),
+      show.legend = c(fill=TRUE)
     )+
     scale_fill_manual(
-      values = c("Activation"=hdx_hex("tomato-light"),
+      values = c(
+                 "Not Available" = hdx_hex("gray-medium"),
                  "No Activation"=hdx_hex("mint-ultra-light"),
-                 "Not Available" = hdx_hex("gray-medium")),
+                 "Activation"=hdx_hex("tomato-light")
+                 
+                 ),
       drop=FALSE
     )+
     

@@ -1,5 +1,5 @@
 ---
-title: "email"
+title: email
 output: blastula::blastula_email
 ---
 

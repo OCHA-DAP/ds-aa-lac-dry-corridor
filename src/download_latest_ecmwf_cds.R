@@ -189,3 +189,13 @@ drive_upload(
 
 unlink(tmp_path)
 
+cumulus::write_az_file(
+  service = "blob",
+  stage = "dev",
+  x = r_proj,
+  name = paste0("ds-aa-lac-dry-corridor/cogs/",fp_raster_name),
+  container = "projects",
+  endpoint_template =  Sys.getenv("DSCI_AZ_ENDPOINT"),
+  sas_key = Sys.getenv("DSCI_AZ_SAS_DEV")
+)
+
