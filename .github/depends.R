@@ -11,6 +11,7 @@ install.packages(c("dplyr",
                    
                    "sf",
                    
+                   
                    "googledrive",
                    
                    "janitor", # data cleaning - used in scraper
@@ -26,6 +27,7 @@ install.packages(c("dplyr",
                    "glue",  # mainly for pasting text in email.
                    "remotes", # needed to install gghdx
                    "showtext", # needed to set fonts in gghdx
-                   "gghdx"
+                   "gghdx",
+                   "gt"
                    ))
 
