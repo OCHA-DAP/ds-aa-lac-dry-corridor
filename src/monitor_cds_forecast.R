@@ -287,7 +287,7 @@ gt_threshold_table <- df_thresholds_email %>%
   ) %>% 
   gt::fmt_number(columns= c("value","q_val"),decimals=0) %>% 
   gt::tab_header(
-    "Predicted Primera Rainfall and Trigger Thresholds"
+    email_txt$gt_table_header
   ) %>% 
   gt::tab_footnote(
     footnote = email_txt$tbl_footnote
