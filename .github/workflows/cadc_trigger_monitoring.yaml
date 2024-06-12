@@ -2,6 +2,7 @@
 # script.
 
 name: cadc-trigger-monitoring
+
 on:
   workflow_dispatch:
   # schedule:
