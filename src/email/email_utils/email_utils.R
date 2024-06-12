@@ -324,7 +324,7 @@ email_text_list <- function(df=df_activation_status,
     description_content = description_contents_txt,
     contact_info= "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
     tbl_footnote = table_footnote,
-    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS51 (CDS) & INSUVIMEH","ECMWF SEAS51 (CDS)"),
+    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS51 (CDS) & INSIVUMEH","ECMWF SEAS51 (CDS)"),
     ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)",
     methodology_update= "In April 2024, the ECMWF forecast data source used for the trigger was adjusted from Seasonal 7-month forecast (SEAS) obtained directly from ECMWF to publicly available ECMWF data accessed from the Copernicus Data Store. Absolute threshold values have been updated to ensure that they align with the 1 in 4 year return period drought levels agreed upon. This change was implemented to ensure consistent data accessibility and improve transparency of analysis."
     )

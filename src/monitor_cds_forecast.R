@@ -183,9 +183,9 @@ if (is_postrera) {
 }
 
 # have to get rid of this for quick GHA run because relies on local files
-# insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
-#                                      run_date = run_date)
-insiv_received <- F
+insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
+                                     run_date = run_date)
+# insiv_received <- F
 # 5. INSIVUMEH DATA ----------------------------------------------------------
 # Process INSIVUMEH data if available
 if (insiv_received) {
@@ -215,7 +215,7 @@ if (insiv_received) {
       df_threshold=df_threshold_postrera, 
       df_forecast_monthly = df_monthly_gtm, 
       season_params= postrera_params,
-      forecast_source="INSIVUMEH"
+      forecast_source="INSUVIMEH" # spelled wrong, but matches for joing
       )
     
     df_framework_postrera_activation_status <- merge_forecast_status(
@@ -239,7 +239,7 @@ if(is_primera){
 }
 if(is_postrera){  
   if (insiv_received & run_mo != 9) {
-    df_postrera_status_email <- df_ecmwf_postrera_activation_status
+    df_postrera_status_email <- df_framework_postrera_activation_status
   } else if (!insiv_received & run_mo != 9) {
     df_postrera_status_email <- df_ecmwf_postrera_activation_status %>%
       filter(adm0_es != "Guatemala")
@@ -292,14 +292,11 @@ gt_threshold_table <- df_thresholds_email %>%
   gt::tab_footnote(
     footnote = email_txt$tbl_footnote
   )
+
 gdf_adm0_status <- adm0_simp %>% 
   left_join(
     df_thresholds_email
   ) 
-
-
-
-
 
 ## 6d. Generate Map - Choropleth ####
 m_choro <- trigger_status_choropleth(gdf_adm0 = gdf_adm0_status,
@@ -376,15 +373,16 @@ email_creds <- creds_envvar(
 )
 
 
-# # so dont render by accident
-# to = df_email_receps$Email,
+# # # so dont render by accident
+# # to = df_email_receps$Email,
 render_email(
   input = email_rmd_fp,
   envir = parent.frame()
 ) %>%
   smtp_send(
     from = "data.science@humdata.org",
-    to = df_email_receps$Email,
+    # to = df_email_receps$Email,
+    to = "zachary.arno@un.org",
     subject = email_txt$subj,
     credentials = email_creds
   )
