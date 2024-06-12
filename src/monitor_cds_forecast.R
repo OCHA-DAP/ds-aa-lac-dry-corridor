@@ -183,17 +183,21 @@ if (is_postrera) {
 }
 
 # have to get rid of this for quick GHA run because relies on local files
-insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
-                                     run_date = run_date)
-# insiv_received <- F
+# insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
+#                                      run_date = run_date)
+
+insiv_received <- T
 # 5. INSIVUMEH DATA ----------------------------------------------------------
 # Process INSIVUMEH data if available
 if (insiv_received) {
   gdf_gtm <- gdf_aoi %>% 
     filter(adm0_es=="Guatemala")
     ## 5b. load & process insivumeh raster ####
-  r_insiv <-  load_ncdf_insivumeh(
-    gdb =build_insiv_path(gdb_base =insiv_gdb,run_date = run_date )
+  r_insiv <-  load_ncdf_blob_insiv(
+    run_date = run_date,
+    container = "global",
+    dir = "raster/raw",
+    stage = "dev"
   )
   ## 5c. Zonal Stats on INSIVUMEH raster ####
   df_monthly_gtm <- zonal_insivumeh(r_insiv,zone =gdf_gtm )
