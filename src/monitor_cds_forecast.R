@@ -378,20 +378,16 @@ email_creds <- creds_envvar(
 )
 
 
-send_to <- ifelse(is_test_email,"zachary.arno@un.org",NULL)
-# # # so dont render by accident
-# # to = df_email_receps$Email,
+send_to <- ifelse(is_test_email,"zachary.arno@un.org",df_email_receps$Email)
+
 render_email(
   input = email_rmd_fp,
   envir = parent.frame()
 ) %>%
   smtp_send(
     from = "data.science@humdata.org",
-    # to = df_email_receps$Email,
     to = send_to,
     subject = email_txt$subj,
     credentials = email_creds
   )
-# df_email_receps$Email
-# email_txt$subj
-# to = df_email_receps$Email,
+
