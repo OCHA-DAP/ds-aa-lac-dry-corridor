@@ -82,3 +82,4 @@ jobs:
           ECMWF_USER_KEY: ${{ secrets.ECMWF_USER_KEY }}
           DSCI_AZ_ENDPOINT: ${{ secrets.DSCI_AZ_ENDPOINT }}
           DSCI_AZ_SAS_DEV: ${{ secrets.DSCI_AZ_SAS_DEV}}
+          TEST_EMAIL: ${{ inputs.TEST_EMAIL || 'FALSE' }}
