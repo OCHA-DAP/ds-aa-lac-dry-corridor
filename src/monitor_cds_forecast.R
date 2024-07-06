@@ -386,7 +386,8 @@ render_email(
 ) %>%
   smtp_send(
     from = "data.science@humdata.org",
-    to = send_to,
+    # to = send_to,
+    to = df_email_receps$Email,
     subject = email_txt$subj,
     credentials = email_creds
   )
