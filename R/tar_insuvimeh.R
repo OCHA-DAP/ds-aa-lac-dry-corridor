@@ -48,6 +48,94 @@ catalogue_insuvimeh_files <- function(gdb, file_name_pattern = "\\d{4}.nc$") {
   return(lr)
 }
 
+
+
+#' load_insuvimeh_raster2
+#' An improved version of load raster where we utilize lessons learned
+#' from FloodScan to better set extent using r_extent() function defined below
+#' **TODO* rm fps[1:3] for actual run.... re-run thresholds to see if any difference
+#' worth re-running for postrera.
+#'
+#' @param gdb 
+#' @param wrap 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' load_insuvimeh_raster2(gdb = gdb,wrap=FALSE)
+load_insuvimeh_raster2 <- function(gdb,wrap=T) {
+  fps <- list.files(gdb,
+                    full.names = T,
+                    recursive = T,
+                    pattern = "\\d{4}.nc$"
+  )
+  
+  ## NOTE CHANGE THIS ON FULL RUN
+  # fps <- fps[1:3]
+  lr <- fps %>%
+    map(\(fp_nc){
+      # meta data collection  - to write band_name as "{pub_date}.lt_{leadtime}"
+      valid_time_meta <- ncmeta::nc_att(fp_nc, "T", "units")$value$units
+      start_time_meta <- ncmeta::nc_att(fp_nc, "S", "units")$value$units
+      valid_date <- as_date(str_extract(valid_time_meta, "\\d{4}-\\d{2}-\\d{2}"))
+      start_date <- as_date(str_extract(start_time_meta, "\\d{4}-\\d{2}-\\d{2}"))
+      lead_time_diff <- interval(start_date, valid_date)
+      lt <- lead_time_diff %/% months(1)
+      bname <- paste0(start_date, ".lt_", lt)
+      
+      # Now we open the each file and turn it into a terra::rast()
+      cat(bname, "\n")
+      dat <- RNetCDF::open.nc(fp_nc)
+      dat_extent <- r_extent(nc_ob= dat)
+      value_array <-  var.get.nc(dat, "deterministic")
+      value_array_fixed <- aperm(value_array, c(2, 1))
+      
+      rtmp <- terra::rast(
+        x = value_array_fixed,
+        ext = dat_extent,
+        crs = "OGC:CRS84"
+        # crs = "EPSG:4326"
+      )
+      # set correct band nanme
+      rtmp %>%
+        set.names(bname)
+      return(rtmp)
+    })
+  # merge multi-band
+  r <- rast(lr)
+  
+  # wrap so it can be saved as a target - in monitoring we won't want it wrapped
+  if(wrap){
+    r <- wrap(r)  
+  }
+  return(r)
+}
+
+
+
+#' Title
+#'
+#' @param nc_ob 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' nc_ck<- RNetCDF::open.nc(fps[1])
+#' r_extent(nc_ck  )
+
+r_extent <- function(nc_ob){
+  lat <- var.get.nc(nc_ob, "Y")
+  lon <- var.get.nc(nc_ob, "X")
+  dx <- diff(lon[1:2])
+  dy <- abs(diff(lat[1:2]))
+  ex <- c(min(lon) - dx/2, max(lon) + dx/2,
+          min(lat) - dy/2, max(lat) + dy/2)
+  return(ex)
+}
+
+
 load_insuvimeh_raster <- function(gdb,wrap=T) {
   fps <- list.files(gdb,
                     full.names = T,
