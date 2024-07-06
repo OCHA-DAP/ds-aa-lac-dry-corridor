@@ -58,6 +58,9 @@ if(!download_from_aws){
   lr <-  load_mf_ensemble_mean(file_paths =grib_files_filt )
   r <-  rast(lr)
 }
+
+lr <-  load_mf_ensemble_mean(file_paths =grib_files_filt )
+r <-  rast(lr)
 # lr_ems <- load_mf_ensembles(file_paths = grib_files_filt)
 # r_ems_nrt <- rast(lr_ems)
 
