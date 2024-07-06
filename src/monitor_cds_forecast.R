@@ -29,8 +29,9 @@ library(blastula)
 # library(targets) # should remove for GHA eventually
 library(terra)
 gghdx()
+
   
-# Sys.setenv(RSTUDIO_PANDOC="/Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64")
+is_test_email <- as.logical(Sys.getenv("TEST_EMAL", unset = TRUE))
 
 fp_email_util_funcs <- list.files(
   file.path("src","email","email_utils"),
@@ -183,10 +184,10 @@ if (is_postrera) {
 }
 
 # have to get rid of this for quick GHA run because relies on local files
-# insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
-#                                      run_date = run_date)
+insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
+                                     run_date = run_date)
 
-insiv_received <- T
+# insiv_received <- T
 # 5. INSIVUMEH DATA ----------------------------------------------------------
 # Process INSIVUMEH data if available
 if (insiv_received) {
@@ -377,6 +378,7 @@ email_creds <- creds_envvar(
 )
 
 
+send_to <- ifelse(is_test_email,"zachary.arno@un.org",NULL)
 # # # so dont render by accident
 # # to = df_email_receps$Email,
 render_email(
@@ -385,8 +387,8 @@ render_email(
 ) %>%
   smtp_send(
     from = "data.science@humdata.org",
-    to = df_email_receps$Email,
-    # to = "zachary.arno@un.org",
+    # to = df_email_receps$Email,
+    to = send_to,
     subject = email_txt$subj,
     credentials = email_creds
   )
