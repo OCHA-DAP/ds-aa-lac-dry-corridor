@@ -30,7 +30,7 @@ library(blastula)
 library(terra)
 gghdx()
 
-  
+
 is_test_email <- as.logical(Sys.getenv("TEST_EMAL", unset = TRUE))
 
 fp_email_util_funcs <- list.files(
@@ -73,7 +73,7 @@ postrera_params <- list(
 # authenticate w/ service account
 drive_auth(
   path=Sys.getenv("CADC_MONITORING_JSON")
-  )
+)
 
 drive_dribble <- drive_ls(
   corpus= "user"
@@ -118,36 +118,26 @@ insiv_gdb <- file.path(
   "INSUVIMEH",
   "new_format")
 
-# load shape files for zonal extractoin
-# targets::tar_load(gdf_aoi_adm)
 
-
-# replaced with this with file accessed through google drive
-# load thresholds -- includes all framework thresholds
-# tar_load(
-#   df_cds_insivumeh_thresholds_rp4
-#   # store=here('_targets')
-# )
-
-
+# clean up spelling for referencing in alert email
+df_cds_insivumeh_thresholds_rp4 <- df_cds_insivumeh_thresholds_rp4 %>% 
+  mutate(
+    forecast_source = str_replace(forecast_source,"INSUVIMEH","INSIVUMEH"),
+    window = str_replace(window,"postera", "postrera")
+  )
 # 3. Get Relevant Thresholds ------------------------------------------------
 # Get relevant thresholds for Primera and Postrera
 df_threshold_primera <- get_relevant_threshold(
-  df_cds_insivumeh_thresholds_rp4 %>% 
-    mutate(
-      forecast_source = str_replace(forecast_source,"INSUVIMEH","INSIVUMEH")
-    ),
-  run_date, primera_params
-  )
+  df_thresh_tbl = df_cds_insivumeh_thresholds_rp4,
+  run_date = run_date,
+  season_params = primera_params
+)
 
 df_threshold_postrera <- get_relevant_threshold(
-  df_cds_insivumeh_thresholds_rp4 |> 
-    mutate(
-      window = str_replace(window,"postera", "postrera")
-    ), 
-  run_date, 
-  postrera_params
-  )
+  df_thresh_tbl = df_cds_insivumeh_thresholds_rp4 ,
+  run_date = run_date, 
+  season_params = postrera_params
+)
 
 is_primera <- nrow(df_threshold_primera)>0
 is_postrera <- nrow(df_threshold_postrera)>0
@@ -156,10 +146,12 @@ is_postrera <- nrow(df_threshold_postrera)>0
 # 4. Process Latest ECMWF ---------------------------------------------------
 
 filename_cds_forecast <- paste0("cds_ecmwf_seas51_",floor_date(run_date,"month"),"_aoi.tif")
+
 r_cds <- load_drive_file(
   dribble =drive_dribble,
   file_name = filename_cds_forecast
 )
+
 df_ecmwf_monthly <- r_cds %>% 
   zonal_ecmwf(zonal = gdf_aoi)
 
@@ -180,7 +172,7 @@ if (is_postrera) {
     df_ecmwf_monthly,
     season_params = postrera_params,
     forecast_source = "ECMWF CDs"
-    )
+  )
 }
 
 # have to get rid of this for quick GHA run because relies on local files
@@ -193,7 +185,7 @@ insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
 if (insiv_received) {
   gdf_gtm <- gdf_aoi %>% 
     filter(adm0_es=="Guatemala")
-    ## 5b. load & process insivumeh raster ####
+  ## 5b. load & process insivumeh raster ####
   r_insiv <-  load_ncdf_blob_insiv(
     run_date = run_date,
     container = "global",
@@ -209,11 +201,11 @@ if (insiv_received) {
       df_forecast_monthly = df_monthly_gtm, 
       season_params= primera_params,
       forecast_source="INSIVUMEH"
-      )
+    )
     df_framework_primera_activation_status <- merge_forecast_status(
       df_ecmwf_status =df_ecmwf_primera_activation_status,
       df_insiv_status =insiv_primera_status_update 
-      )
+    )
   }
   if (is_postrera) {
     insiv_postrera_status_update <- process_monthly_forecast(
@@ -221,7 +213,7 @@ if (insiv_received) {
       df_forecast_monthly = df_monthly_gtm, 
       season_params= postrera_params,
       forecast_source="INSUVIMEH" # spelled wrong, but matches for joing
-      )
+    )
     
     df_framework_postrera_activation_status <- merge_forecast_status(
       df_ecmwf_status =df_ecmwf_postrera_activation_status,
