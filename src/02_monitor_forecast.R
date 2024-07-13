@@ -31,6 +31,7 @@ library(terra)
 gghdx()
 
 
+
 is_test_email <- as.logical(Sys.getenv("TEST_EMAIL", unset = TRUE))
 
 fp_email_util_funcs <- list.files(
@@ -371,7 +372,12 @@ email_creds <- creds_envvar(
 )
 
 
-send_to <- ifelse(is_test_email,"zachary.arno@un.org",df_email_receps$Email)
+if(is_test_email) {
+  send_to <- "zachary.arno@un.org"
+}
+if(!is_test_email) {
+  send_to <- df_email_receps$Email
+}
 
 render_email(
   input = email_rmd_fp,
