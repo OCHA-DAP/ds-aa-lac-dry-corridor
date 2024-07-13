@@ -4,7 +4,7 @@
 name: cadc-trigger-monitoring
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
       inputs:
         TEST_EMAIL:
           required: true
@@ -12,7 +12,7 @@ on:
           default: "TRUE"
           options:
             - "TRUE"
-            - "FALSE"
+            - "FALSE" 
 jobs:
   monitor:
     runs-on: ubuntu-latest
