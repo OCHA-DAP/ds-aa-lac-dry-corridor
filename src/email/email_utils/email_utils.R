@@ -269,10 +269,10 @@ read_fun <- function(x="central_america_aoi_adm0.rds"){
 #'   )}
 
 email_text_list <- function(df=df_activation_status,
-                        season = "Primera",
-                        run_date= run_date,
-                        insiumeh_forecast_available
-                        ){
+                            season = "Primera",
+                            run_date= run_date,
+                            insiumeh_forecast_available
+){
   
   
   df_filt_activations <- df %>% 
@@ -280,14 +280,14 @@ email_text_list <- function(df=df_activation_status,
       status_lgl
     )
   
-
+  
   description_ending <-  gen_description_end(run_date = run_date,insiumeh_forecast_available = insiv_received)
   table_footnote <- gen_table_footnote(run_date = run_date,insiumeh_forecast_available = insiv_received)
   
   # subj_ending <-  ifelse(!insiumeh_forecast_available,"(NIC,HND,SLV)","(NIC, HND, SLV,GTM)")
   month_chr <- as.character(month(run_date,
-                     abbr=F,
-                     label = T))
+                                  abbr=F,
+                                  label = T))
   monitored_range <- ifelse(season == "Primera","May-August","September-November")
   
   plot_title <- ifelse(season=="Primera",
@@ -327,7 +327,7 @@ email_text_list <- function(df=df_activation_status,
     data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS51 (CDS) & INSIVUMEH","ECMWF SEAS51 (CDS)"),
     ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)",
     methodology_update= "In April 2024, the ECMWF forecast data source used for the trigger was adjusted from Seasonal 7-month forecast (SEAS) obtained directly from ECMWF to publicly available ECMWF data accessed from the Copernicus Data Store. Absolute threshold values have been updated to ensure that they align with the 1 in 4 year return period drought levels agreed upon. This change was implemented to ensure consistent data accessibility and improve transparency of analysis."
-    )
+  )
 }
 
 #' Title
@@ -387,7 +387,7 @@ gen_table_footnote <- function(run_date,insiumeh_forecast_available){
 gen_subject <- function(df,
                         run_date,
                         insiumeh_forecast_available
-                        ){
+){
   run_mo <- month(run_date)
   df_filt <- df %>% 
     filter(
@@ -459,8 +459,6 @@ insivumeh_received <-  function(gdb_base,run_date= run_date){
   }
   return(ret_lgl)
   
-
-  
 }
 
 #' build_insiv_path
@@ -473,14 +471,16 @@ insivumeh_received <-  function(gdb_base,run_date= run_date){
 #' @export
 #'
 #' @examples
-build_insiv_path <-  function(gdb_base,run_date){
-  DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
+build_insiv_path <-  function(gdb_base,run_date,blob=T){
+    DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
+    
+    file.path(
+      gdb_base,
+      year(run_date),
+      DIR_CURRENT_INSIV
+    ) 
   
-  file.path(
-    gdb_base,
-    year(run_date),
-    DIR_CURRENT_INSIV
-  )
 }
+
 
 

@@ -176,8 +176,9 @@ if (is_postrera) {
 }
 
 # have to get rid of this for quick GHA run because relies on local files
-insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
-                                     run_date = run_date)
+# insiv_received <- insivumeh_received(gdb_base = insiv_gdb,
+#                                      run_date = run_date)
+insiv_received <- check_insivumeh_blob(run_date= run_date)
 
 # insiv_received <- T
 # 5. INSIVUMEH DATA ----------------------------------------------------------
