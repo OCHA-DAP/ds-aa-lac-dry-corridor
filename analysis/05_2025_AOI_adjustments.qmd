@@ -29,6 +29,7 @@ project:
 Analysis to assess potential to refine AOI for CADC
 
 ```{r}
+# rendered doc stored here: https://rpubs.com/zackarno/1268712
 #' analysis script to understand implication of changing AOI to select admin 1's
 
 box::use(
