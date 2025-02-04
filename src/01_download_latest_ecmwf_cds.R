@@ -129,11 +129,13 @@ lr <- ecmwf_leadimes %>%
     )
 
     tmp_dir <- file.path(tempdir())
+    
     wf_request(
       user = Sys.getenv("ECMWF_USER_UID"), # user ID (for authentication)
       request = ecmwf_data_request, # the request
       transfer = TRUE, # download the data
-      path = tmp_dir
+      path = tmp_dir,
+      time_out = 60*60*3
     )
     r_tmp <- rast(
       file.path(tmp_dir, fname_grib)

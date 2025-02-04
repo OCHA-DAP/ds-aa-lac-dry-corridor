@@ -217,11 +217,11 @@ load_drive_file <-  function(
 #' )
 #' }
 get_drive_id <- function(dribble, file_name){
-  dribble %>% 
+  dribble |> 
     dplyr::filter(
       name == file_name
-    ) %>% 
-    dplyr::pull(id) %>% 
+    ) |>  
+    dplyr::pull(id) |> 
     googledrive::as_id()
 }
 
