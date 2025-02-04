@@ -41,14 +41,20 @@ box::use(
   purrr[...],
   gghdx[...],
   ggplot2[...],
+  forcats[...],
   sf[...],
+  readr[...],
   
   lubridate[...],
   ggrepel[...],
-  gt,
+  gt[...],
+  geoarrow[...],
+  arrow[...],
   cumulus
 )
+
 gghdx()
+txt_label_size <- 3
 
 
 
@@ -69,8 +75,7 @@ threshold_var <-  function(df,var, by,rp_threshold,direction=1){
       ) |> 
       select(
         -rank,
-        -q_rank,
-        # -rp_emp
+        -q_rank
         )
   }
   if(direction == -1){
@@ -89,8 +94,7 @@ threshold_var <-  function(df,var, by,rp_threshold,direction=1){
       ) |> 
       select(
         -rank,
-        -q_rank,
-        # -rp_emp
+        -q_rank
         )
   }
   ret
@@ -136,6 +140,8 @@ df_new_aoi_meta <- df_poly_meta |>
 ## Map new AOI
 
 ```{r}
+#| eval: true
+
 
 lgdf_nic <- cumulus$download_fieldmaps_sf(iso3="nic",layer =c("nic_adm1","nic_adm0"))
 lgdf_hnd <- cumulus$download_fieldmaps_sf(iso3="hnd",layer=c("hnd_adm1","hnd_adm0"))
@@ -167,6 +173,39 @@ gdf_adm0_cadc <- list_rbind(
     geometry=geom
   )
 
+
+```
+
+```{r}
+#| eval: false
+
+cumulus$blob_write(
+  gdf_adm1_cadc,
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet"
+  )
+cumulus$blob_write(
+  gdf_adm0_cadc,
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet"
+  )
+
+gdf_adm1_cadc <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet"
+  )
+
+gdf_adm0_cadc <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet"
+  )
+
+
+```
+
+
+```{r}
+
 gdf_aoi <- gdf_adm1_cadc |> 
   filter(
     ADM1_PCODE %in% df_new_aoi_meta$pcode
@@ -187,14 +226,13 @@ ggplot()+
 
 Quickly checking the SEAS5 meta-data from our postgres DB to make sure the number of pixels per admin is adequate. Here are the pixels per admin
 ```{r}
-
 # quick check on number of pixels.
 df_new_aoi_meta |> 
   select(
     pcode, iso3, name,starts_with("seas5")
   ) |> 
-  gt$gt() |> 
-  gt$fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
+  gt() |> 
+  fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
 ```
 
 At the end of the day we will be aggregating per `country`/`iso3` so let's sum across countrys
@@ -207,8 +245,8 @@ df_new_aoi_meta |>
   summarise(
     across(where(is.numeric),\(x) sum(x))
   ) |> 
-  gt$gt() |> 
-  gt$fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
+  gt() |> 
+  fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
 ```
 
 ## Aggreate/Analyze Forecast
@@ -313,7 +351,7 @@ p_timeseries_refined_aoi <- ldf_thresholded |>
         ) +
         geom_text_repel(
           data= filter(dft_min,mm_flag),
-          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx")
+          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
         )+
         theme(
           axis.title = element_blank(),
@@ -425,7 +463,7 @@ p_timeseries_refined_aoi_1988_2022_base <- ldf_seas5_thresholded_w_recent |>
         ) +
         geom_text_repel(
           data= filter(dft_min,mm_flag),
-          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx")
+          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size= txt_label_size
         )+
         theme(
           axis.title = element_blank(),
@@ -493,7 +531,7 @@ df_insivumeh_zonal_min_per_year |>
   ) +
   geom_text_repel(
     data= filter(df_insivumeh_zonal_min_per_year,mm_flag),
-    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx")
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"),size= txt_label_size
   )+
   theme(
     axis.title = element_blank(),
@@ -593,7 +631,7 @@ ldf_thresholds_wide <- split(df_thresholds_labelled,df_thresholds_labelled$seaso
   })
         
 
-txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore when that month is included as an activation moment, ECMWF is used."
 
 
 # set colors for table/legend
@@ -654,14 +692,14 @@ ldf_thresholds_wide$postrera %>%
     style = cell_fill(color = insuv_color),
     locations = cells_body(
       columns = c("Guatemala"), 
-      rows = 1:2
+      rows = 1:3
     )) %>% 
-  tab_style(
-    style = cell_fill(color = ecmwf_color),
-    locations = cells_body(
-      columns = c("Guatemala"), 
-      rows = 3
-    )) %>% 
+  # tab_style(
+  #   style = cell_fill(color = ecmwf_color),
+  #   locations = cells_body(
+  #     columns = c("Guatemala"), 
+  #     rows = 3
+  #   )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
    tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_legend
