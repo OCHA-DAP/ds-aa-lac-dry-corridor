@@ -1,0 +1,422 @@
+---
+title: "AOI Refine"
+format: html
+editor: visual
+---
+
+## AOI Refinement
+
+Analysis to assess potential to refine AOI for CADC
+
+```{r}
+#' analysis script to understand implication of changing AOI to select admin 1's
+
+box::use(
+  dplyr[...],
+  tidyr[...],
+  janitor[...],
+  stringr[...],
+  glue[...],
+  rlang[...],
+  purrr[...],
+  gghdx[...],
+  ggplot2[...],
+  sf[...],
+  
+  lubridate[...],
+  ggrepel[...],
+  gt,
+  cumulus
+)
+gghdx()
+
+
+
+threshold_var <-  function(df,var, by,rp_threshold,direction=1){
+  if(direction==1){
+    ret <- df |> 
+      group_by(
+        across({{by}})
+      ) |> 
+      arrange(
+        desc(!!sym(var))
+      ) |> 
+      mutate(
+        rank = row_number(),
+        q_rank = rank/(max(rank)+1),
+        rp_emp = 1/q_rank,
+        !!sym(glue("{var}_flag")):= rp_emp>=rp_threshold
+      ) |> 
+      select(
+        -rank,
+        -q_rank,
+        # -rp_emp
+        )
+  }
+  if(direction == -1){
+    ret <- df |> 
+      group_by(
+        across({{by}})
+      ) |> 
+      arrange(
+        (!!sym(var))
+      ) |> 
+      mutate(
+        rank = row_number(),
+        q_rank = rank/(max(rank)+1),
+        rp_emp = 1/q_rank,
+        !!sym(glue("{var}_flag")):= rp_emp>=rp_threshold
+      ) |> 
+      select(
+        -rank,
+        -q_rank,
+        # -rp_emp
+        )
+  }
+  ret
+}
+```
+
+
+
+```{r}
+# Prep Meta Lookup --------------------------------------------------------
+con <- cumulus$pg_con()
+
+tbl_polys <- tbl(con,"polygon") |> 
+  filter(adm_level == 1)
+
+df_lookup <- cumulus$blob_load_admin_lookup() |> 
+  clean_names()
+
+df_polys <- tbl_polys |> 
+  filter(
+    iso3 %in% c("NIC","HND","SLV","GTM")
+  ) |> 
+  collect() |> 
+  clean_names()
+
+df_poly_meta <- df_polys |> 
+  left_join(
+    df_lookup |> 
+      select(iso3,matches("adm\\d"),matches("adm_level")) |> 
+      filter(adm_level ==1), by = c("iso3" = "iso3","pcode"="adm1_pcode","adm_level")
+  )
+
+df_new_aoi_meta <- df_poly_meta |> 
+  filter(
+    # just lazy regex to detect names provided to me in a teams chat -- the returned data.frame
+    # is correct -- for an official pipeline - we would hardcode these more explicitly
+    str_detect(
+      adm1_name, 
+      "San Vicente|El Paraiso|Francisco Morazan|Matagalpa|Estel|Nueva Segovia|Madriz|Chiquimula")
+  )
+```
+
+## Map new AOI
+
+```{r}
+
+lgdf_nic <- cumulus$download_fieldmaps_sf(iso3="nic",layer =c("nic_adm1","nic_adm0"))
+lgdf_hnd <- cumulus$download_fieldmaps_sf(iso3="hnd",layer=c("hnd_adm1","hnd_adm0"))
+lgdf_slv <- cumulus$download_fieldmaps_sf(iso3="slv",layer=c("slv_adm1","slv_adm0"))
+lgdf_gtm <- cumulus$download_fieldmaps_sf(iso3="gtm",layer=c("gtm_adm1","gtm_adm0"))
+
+
+gdf_adm1_cadc <- purrr$list_rbind(
+  list(
+    lgdf_nic$nic_adm1,
+    lgdf_hnd$hnd_adm1,
+    lgdf_slv$slv_adm1,
+    lgdf_gtm$gtm_adm1
+  )
+) |> 
+  rename(
+    geometry=geom
+  )
+
+gdf_adm0_cadc <- purrr$list_rbind(
+  list(
+    lgdf_nic$nic_adm0,
+    lgdf_hnd$hnd_adm0,
+    lgdf_slv$slv_adm0,
+    lgdf_gtm$gtm_adm0
+  )
+) |> 
+  rename(
+    geometry=geom
+  )
+
+gdf_aoi <- gdf_adm1_cadc |> 
+  filter(
+    ADM1_PCODE %in% df_new_aoi_meta$pcode
+  )
+
+ggplot()+
+  geom_sf(data =gdf_adm0_cadc,aes(geometry= geometry), fill ="white")+
+  geom_sf(data= gdf_aoi,aes(geometry=geometry), fill = "red")+
+  theme_void()+
+  theme(
+    panel.background = element_rect(fill = "lightblue"),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = "lightblue")
+  )
+```
+
+
+
+Quickly checking the SEAS5 meta-data from our postgres DB to make sure the number of pixels per admin is adequate. Here are the pixels per admin
+```{r}
+
+# quick check on number of pixels.
+df_new_aoi_meta |> 
+  select(
+    pcode, iso3, name,starts_with("seas5")
+  ) |> 
+  gt$gt() |> 
+  gt$fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
+```
+
+At the end of the day we will be aggregating per `country`/`iso3` so let's sum across countrys
+```{r}
+df_new_aoi_meta |> 
+  select(
+    pcode, iso3, name,starts_with("seas5")
+  ) |> 
+  group_by(iso3) |> 
+  summarise(
+    across(where(is.numeric),\(x) sum(x))
+  ) |> 
+  gt$gt() |> 
+  gt$fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
+```
+
+## Aggreate/Analyze Forecast
+
+```{r}  
+# Prep Seas5 --------------------------------------------------------------
+
+df_seas5 <- tbl(con,"seas5") |> 
+  filter(
+    adm_level == 1,
+    pcode %in% df_new_aoi_meta$pcode,
+    month(valid_date)%in% c(5:11) # just grabbing all relevant months for both windows
+  ) |> 
+  collect() # this actually loads data into memory so can take a 10s or so.
+
+df_seas5 <- df_seas5 |> 
+  mutate(
+    precipitation = days_in_month(valid_date) * mean
+  )
+  
+
+df_primera <- cumulus$seas5_aggregate_forecast(
+    df_seas5,
+    value = "precipitation",
+  valid_months =c(5:8),
+  by = c("iso3", "pcode","issued_date")
+) |> 
+    filter(
+    month(issued_date)!=2 # remove Feb
+  )
+
+df_postrera <- cumulus$seas5_aggregate_forecast(
+  df_seas5,
+  valid_months =c(9:11),
+  value = "precipitation",
+  by = c("iso3", "pcode","issued_date")
+  )
+
+
+
+# Weighted Average of Forecast AOI ----------------------------------------
+
+ldf_seas <- list(
+  "primera"= df_primera,
+  "postrera" = df_postrera
+) |> 
+  map(
+    \(dft){
+      dft |> 
+        left_join(df_new_aoi_meta) |> 
+        group_by(iso3, issued_date, leadtime, valid_month_label) |> 
+        summarise(
+          mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),.groups="drop"
+        )
+    }
+  )
+
+ldf_thresholded <- ldf_seas |> 
+  map(
+    \(dft){
+      dft |> 
+        threshold_var(
+          var= "mm",
+          by = c("iso3","leadtime"),
+          rp_threshold = 4,
+          direction =-1
+        ) 
+    }
+  )
+
+```
+
+
+```{r}
+p_timeseries_refined_aoi <- ldf_thresholded |> 
+  imap(
+    \(dft,nmt){
+      month_range_temp <- ifelse(nmt == "primera","MJJA","SON")
+      dft_min <- dft |> 
+        # get min per issued date (across LTs)
+        group_by(iso3,year(issued_date)) |> 
+        slice_min(
+          order_by = mm, n= 1
+        ) 
+      dft_min |> 
+        ggplot(
+          aes(x= year(issued_date),y=mm, group = 1)
+        )+
+        geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+        geom_line(color = "black")+
+        facet_wrap(~iso3)+
+        scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+        labs(
+          title = glue("ECMWF SEAS {month_range_temp} Forecasts"),
+          subtitle = str_to_title(nmt),
+          caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+        ) +
+        geom_text_repel(
+          data= filter(dft_min,mm_flag),
+          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx")
+        )+
+        theme(
+          axis.title = element_blank(),
+          legend.position = "none"
+        )
+    }
+  )
+
+```
+
+Plot historical time series of minimum rainfall per season/yr for both Primera and Postrera
+```{r}
+p_timeseries_refined_aoi$primera
+```
+
+```{r}
+p_timeseries_refined_aoi$postrera
+```
+
+
+## Thresholds 
+
+- let's do simple linear interpolation of empirical RPs to calculate the thresholds - i think let's keep the historical record the same as 2024 monitoring 1981-2022
+- note that previously I had don't he RP by calculating the inverse of the percentile as defines in R base langauage. Now I'm using the classical empirical RP calculation to align better w/ new frameworks etc.
+
+- results unchanged
+```{r}
+ldf_thresholded_1981_2022 <- ldf_seas |> 
+  map(
+    \(dft){
+      dft |> 
+        filter(
+          year(issued_date)<=2022
+        ) |> 
+        threshold_var(
+          var= "mm",
+          by = c("iso3","leadtime"),
+          rp_threshold = 4,
+          direction =-1
+        ) 
+    }
+  )
+
+# now we can linearly interpolate:
+rp_linear_funcs <- ldf_thresholded_1981_2022 |> 
+  map(
+    \(dft){
+      dft |> 
+        group_by(iso3,leadtime) |> 
+        summarise(
+          calc_empirical_rp_level = list(approxfun(rp_emp, mm,method = "linear", rule =2,yright =Inf)),
+          calc_empirical_rp = list(approxfun( mm,rp_emp,method = "linear",rule =2))
+        )
+          }
+    )
+
+
+df_rp4_by_lt <- rp_linear_funcs |> 
+  map(\(dft){
+    dft |> 
+      group_by(iso3, leadtime) |> 
+      reframe(
+        RP_empirical = 4,
+        value_empirical = map_dbl(RP_empirical,calc_empirical_rp_level),
+        # these values are exactly the same as already calculated in `df_lp3_rps` so this
+        # step is redundant, but will pack it in here anyways
+        # value_LP3 = map_dbl(RP_empirical,calc_lp3_rp_level),
+        # RP_LP3_calc = map_dbl(value_empirical,calc_lp3_rp)
+      )
+  }
+  )
+
+
+ldf_seas5_thresholded_w_recent <-   map(
+    set_names(names(df_rp4_by_lt),names(df_rp4_by_lt)),
+    \(season_temp){
+    season_temp <- "primera"
+    df_thresh <- df_rp4_by_lt[[season_temp]]
+    df_historical  = ldf_seas[[season_temp]]
+    df_historical |> 
+      left_join(df_thresh) |> 
+      mutate(
+        mm_flag = mm<=value_empirical
+      )
+  })
+
+p_timeseries_refined_aoi_1988_2022_base <- ldf_seas5_thresholded_w_recent |> 
+  imap(
+    \(dft,nmt){
+      month_range_temp <- ifelse(nmt == "primera","MJJA","SON")
+      dft_min <- dft |> 
+        # get min per issued date (across LTs)
+        group_by(iso3,year(issued_date)) |> 
+        slice_min(
+          order_by = mm, n= 1
+        ) 
+      dft_min |> 
+        ggplot(
+          aes(x= year(issued_date),y=mm, group = 1)
+        )+
+        geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+        geom_line(color = "black")+
+        facet_wrap(~iso3)+
+        scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+        labs(
+          title = glue("ECMWF SEAS {month_range_temp} Forecasts"),
+          subtitle = str_to_title(nmt),
+          caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+        ) +
+        geom_text_repel(
+          data= filter(dft_min,mm_flag),
+          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx")
+        )+
+        theme(
+          axis.title = element_blank(),
+          legend.position = "none"
+        )
+    }
+  )
+```
+
+```{r}
+p_timeseries_refined_aoi_1988_2022_base$primera
+```
+
+```{r}
+p_timeseries_refined_aoi_1988_2022_base$postrera
+```
+
