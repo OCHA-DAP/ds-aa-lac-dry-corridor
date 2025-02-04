@@ -4,6 +4,9 @@ library(sf)
 library(dplyr)
 library(exactextractr)
 library(lubridate)
+library(ggplot2)
+library(ggrepel)
+
 source("R/tar_insuvimeh.R")
 
 AOI_GTM <-  "Chiquimula"
@@ -111,10 +114,6 @@ df_rp4_by_lt <- rp_linear_funcs |>
       reframe(
         RP_empirical = 4,
         value_empirical = map_dbl(RP_empirical,calc_empirical_rp_level),
-        # these values are exactly the same as already calculated in `df_lp3_rps` so this
-        # step is redundant, but will pack it in here anyways
-        # value_LP3 = map_dbl(RP_empirical,calc_lp3_rp_level),
-        # RP_LP3_calc = map_dbl(value_empirical,calc_lp3_rp)
       )
   }
   )
@@ -171,3 +170,37 @@ p_timeseries_refined_aoi_1988_2022_base <- ldf_seas5_thresholded_w_recent |>
 p_timeseries_refined_aoi_1988_2022_base$primera
 p_timeseries_refined_aoi_1988_2022_base$postrera
 
+
+df_insivumeh_thresholds_combined <- df_rp4_by_lt |> 
+  imap(\(x,nmt){
+    x |> 
+      mutate(
+        season = nmt
+      )
+  }
+  ) |> 
+  list_rbind()
+
+df_insiv_seasons <- ldf_insiv |> 
+  imap(
+    \(dft,nmt){
+      dft |> 
+        mutate(
+          season = nmt
+        )
+    }
+  ) |> 
+  list_rbind()
+  
+
+cumulus::blob_write(
+  df = df_insivumeh_thresholds_combined,
+  container = "projects",
+  name = "ds-aa-lac-dry-corridor/insivumeh_thresholds_aoi_chiquimula.parquet"
+  )
+
+cumulus::blob_write(
+  df = df_insiv_seasons,
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/insivumeh_zonal_stats_seasonal_aoi_chiquimula.parquet"
+  )

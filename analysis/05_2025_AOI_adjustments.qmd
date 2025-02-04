@@ -1,7 +1,27 @@
 ---
-title: "AOI Refine"
-format: html
+title-block-banner: "#00ad78ff"
+title-block-banner-color: "#ffffff"
+title: CADC - 2025 Monitoring - AOI Adjustment Evaluation
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  include: true
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
+  code-fold: true
 editor: visual
+project:
+  execute-dir: project
 ---
 
 ## AOI Refinement
@@ -123,7 +143,7 @@ lgdf_slv <- cumulus$download_fieldmaps_sf(iso3="slv",layer=c("slv_adm1","slv_adm
 lgdf_gtm <- cumulus$download_fieldmaps_sf(iso3="gtm",layer=c("gtm_adm1","gtm_adm0"))
 
 
-gdf_adm1_cadc <- purrr$list_rbind(
+gdf_adm1_cadc <- list_rbind(
   list(
     lgdf_nic$nic_adm1,
     lgdf_hnd$hnd_adm1,
@@ -135,7 +155,7 @@ gdf_adm1_cadc <- purrr$list_rbind(
     geometry=geom
   )
 
-gdf_adm0_cadc <- purrr$list_rbind(
+gdf_adm0_cadc <- list_rbind(
   list(
     lgdf_nic$nic_adm0,
     lgdf_hnd$hnd_adm0,
@@ -192,6 +212,10 @@ df_new_aoi_meta |>
 ```
 
 ## Aggreate/Analyze Forecast
+
+### ECMWF SEAS5
+
+First we just look at ECMWF  - here we actually consider all leadtimes -- not just those considered for monitoring and we see no activations present in historical record. If we did see activations we would want to check on what leadtimes those occured.
 
 ```{r}  
 # Prep Seas5 --------------------------------------------------------------
@@ -310,10 +334,8 @@ p_timeseries_refined_aoi$postrera
 ```
 
 
-## Thresholds 
-
 - let's do simple linear interpolation of empirical RPs to calculate the thresholds - i think let's keep the historical record the same as 2024 monitoring 1981-2022
-- note that previously I had don't he RP by calculating the inverse of the percentile as defines in R base langauage. Now I'm using the classical empirical RP calculation to align better w/ new frameworks etc.
+- note that previously I had calculated empirical RP using the inverse of the percentile as defined by default settings in R  R base `stats::quantile()`.  However, now I'm using the classical empirical RP calculation to align better w/ new frameworks etc.
 
 - results unchanged
 ```{r}
@@ -324,6 +346,8 @@ ldf_thresholded_1981_2022 <- ldf_seas |>
         filter(
           year(issued_date)<=2022
         ) |> 
+        # this func classifies each record RP and creates a boolean of whether or not the threshold
+        # is passed. We ignore the boolean and just grab the rp_empiricaal values for interpolation
         threshold_var(
           var= "mm",
           by = c("iso3","leadtime"),
@@ -346,7 +370,7 @@ rp_linear_funcs <- ldf_thresholded_1981_2022 |>
           }
     )
 
-
+# interpolate for RP 4
 df_rp4_by_lt <- rp_linear_funcs |> 
   map(\(dft){
     dft |> 
@@ -354,14 +378,13 @@ df_rp4_by_lt <- rp_linear_funcs |>
       reframe(
         RP_empirical = 4,
         value_empirical = map_dbl(RP_empirical,calc_empirical_rp_level),
-        # these values are exactly the same as already calculated in `df_lp3_rps` so this
-        # step is redundant, but will pack it in here anyways
-        # value_LP3 = map_dbl(RP_empirical,calc_lp3_rp_level),
-        # RP_LP3_calc = map_dbl(value_empirical,calc_lp3_rp)
       )
   }
   )
 
+# now we can compare the entire record to this interpolated RP 4. We basically had to this extra
+# step so that we could use the 1981-2022 as a baeline for creating the threshold. If we were
+# using the whole record the `threshold_var()` func would habe done it all.
 
 ldf_seas5_thresholded_w_recent <-   map(
     set_names(names(df_rp4_by_lt),names(df_rp4_by_lt)),
@@ -412,6 +435,8 @@ p_timeseries_refined_aoi_1988_2022_base <- ldf_seas5_thresholded_w_recent |>
   )
 ```
 
+We see that the results are still the same as previously when RP was calculated from all years on record 1981-2024
+
 ```{r}
 p_timeseries_refined_aoi_1988_2022_base$primera
 ```
@@ -419,4 +444,231 @@ p_timeseries_refined_aoi_1988_2022_base$primera
 ```{r}
 p_timeseries_refined_aoi_1988_2022_base$postrera
 ```
+
+### INSIVUMEH
+
+
+Looking at just INSIVUMEH historical activation record - again, we see again no activations in 2024.
+```{r}
+
+# We ran the same basic analysis for INSIVUMEH data in a separate R-script. As this required zonal stats on the raster files theselves, this was done in a separate rscript: `analysis/insivumeh_refined_aoi_zonal_stats.R` so that the intermediate outputs could be saved on blob to be pulled into this notebook for quicker/more effecient rendering.
+
+df_insivumeh_thresholds <- cumulus$blob_read(
+container = "projects",
+  name = "ds-aa-lac-dry-corridor/insivumeh_thresholds_aoi_chiquimula.parquet"
+)
+
+df_insivumeh_zonal <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/insivumeh_zonal_stats_seasonal_aoi_chiquimula.parquet"
+)
+
+df_insivumeh_zonal_min_per_year <- df_insivumeh_zonal |> 
+  left_join(
+    df_insivumeh_thresholds
+  ) |> 
+  mutate(
+    mm_flag = value<=value_empirical,
+    season= fct_relevel(season, "primera","postrera")
+  ) |> 
+  group_by(adm0_es,adm1_es,season,year(issued_date)) |> 
+  slice_min(
+    order_by = value, n= 1
+  ) 
+  
+
+df_insivumeh_zonal_min_per_year |> 
+  ggplot(
+    aes(x= year(issued_date),y=value, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_wrap(~season,scales="free", ncol=1)+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  labs(
+    title = glue("Guatemala - INSIVUMEH - Forecasts"),
+    subtitle = "Chiquimula",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_insivumeh_zonal_min_per_year,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx")
+  )+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+
+```
+
+
+## Threshold Tables
+
+Let's remake threshold tables in case we want to update technical note in 2025:
+```{r}
+
+df_insivumeh_thresholds <- df_insivumeh_thresholds |> 
+  mutate(
+    iso3 = "GTM",
+    forecast_source = "INSIVUMEH"
+  )
+
+df_ecmwf_thresholds <- df_rp4_by_lt |> 
+  imap(\(dft,nmt){
+    dft |> 
+      mutate(
+        season = nmt
+      )
+    
+  }) |> 
+  list_rbind() |> 
+  mutate(
+    forecast_source = "ECMWF SEAS5"
+  )
+
+
+df_seas5_insiv_thresholds <- df_ecmwf_thresholds |> 
+  filter(
+    !(iso3 == "GTM" & leadtime %in% c(1:4))
+  ) |> 
+  bind_rows(
+    df_insivumeh_thresholds 
+  ) |> 
+  filter(
+        leadtime<=3
+      )
+
+
+df_thresholds_labelled <- df_seas5_insiv_thresholds %>% 
+  arrange(
+    iso3, season
+  ) |> 
+  # print(n=15) |> 
+  mutate(
+    pub_month_int = ifelse(season == "primera",5- leadtime,9-leadtime),
+    pub_month_chr = month(pub_month_int, label =T, abb=T),
+    pub_month_lt = paste0(pub_month_chr," (", leadtime,")"),
+    adm0_es = case_when(
+      iso3== "GTM"~"Guatemala",
+      iso3=="HND"~"Honduras",
+      iso3=="SLV"~"El Salvador",
+      iso3 == "NIC"~"Nicaragua"
+    )
+  ) %>% 
+  select(
+    adm0_es, 
+    pub_month_lt,
+    threshold = value_empirical,
+    season,
+    forecast_source
+  ) |> 
+  filter(
+    !str_detect(pub_month_lt,"Sep")
+  )
+  
+
+ldf_thresholds_wide <- split(df_thresholds_labelled,df_thresholds_labelled$season) %>% 
+  map(\(dft){
+    dft |> 
+    arrange(adm0_es) %>% 
+        select(-forecast_source,-season) |> 
+        filter(
+          !str_detect(pub_month_lt, "^Feb")
+        ) %>% 
+        pivot_wider(names_from = adm0_es,
+                    values_from =threshold
+        ) |> 
+        select(
+          pub_month_lt,
+          `El Salvador`,
+          Honduras,
+          Nicaragua,
+          Guatemala
+        ) %>%
+        arrange(
+          desc(parse_number(pub_month_lt))
+        )
+    
+  })
+        
+
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore for the final month of primera monitoring we use ECMWF data for all 4 countries"
+
+
+# set colors for table/legend
+ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
+ecmwf_color <- hdx_hex("mint-light")
+insuv_color <- hdx_hex("sapphire-light")
+
+
+# make legend for table MARS data
+gt_legend <- data.frame(
+  `Forecast Data Source` = "Forecast Data Source",
+  ecmwf = "ECMWF SEAS5" ,
+  insuv= "INSIVUMEH"
+  
+) %>% 
+  gt(rowname_col = "Forecast Data Source") %>%  
+  data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
+  data_color(columns = "insuv", direction = "column",color=insuv_color) %>% 
+  tab_options(
+    column_labels.hidden = T
+  ) %>% 
+  as_raw_html()
+
+
+ldf_thresholds_wide$primera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+  tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+
+
+ldf_thresholds_wide$postrera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+  tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+   tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+
+
+
+```
+
 
