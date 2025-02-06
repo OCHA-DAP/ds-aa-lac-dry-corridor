@@ -54,55 +54,48 @@ box::use(
   cumulus
 )
 
+box::use(
+  utils = ../ src/utils/gen_utils
+)
+
 gghdx()
 txt_label_size <- 3
 
 
+df_combined_thresholds <- cumulus$blob_read(
+    container = "projects",
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/df_thresholds_seas5_insivumeh_adm1_refined.parquet"
+  )
 
-threshold_var <-  function(df,var, by,rp_threshold,direction=1){
-  if(direction==1){
-    ret <- df |> 
-      group_by(
-        across({{by}})
-      ) |> 
-      arrange(
-        desc(!!sym(var))
-      ) |> 
-      mutate(
-        rank = row_number(),
-        q_rank = rank/(max(rank)+1),
-        rp_emp = 1/q_rank,
-        !!sym(glue("{var}_flag")):= rp_emp>=rp_threshold
-      ) |> 
-      select(
-        -rank,
-        -q_rank
-        )
-  }
-  if(direction == -1){
-    ret <- df |> 
-      group_by(
-        across({{by}})
-      ) |> 
-      arrange(
-        (!!sym(var))
-      ) |> 
-      mutate(
-        rank = row_number(),
-        q_rank = rank/(max(rank)+1),
-        rp_emp = 1/q_rank,
-        !!sym(glue("{var}_flag")):= rp_emp>=rp_threshold
-      ) |> 
-      select(
-        -rank,
-        -q_rank
-        )
-  }
-  ret
-}
+
+# insivumeh zonal stats from parquet on blob - - not ecmwf comes from postgres in code below
+df_insivumeh_zonal <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/insivumeh_zonal_stats_seasonal_aoi_chiquimula.parquet"
+)
+
+
+df_aoi <- utils$load_aoi_df()
 ```
 
+```{r}
 
+tibble::tribble(
+          ~Country,                                                                           ~Departments,
+     "El Salvador",                                                                          "San Vicente",
+        "Honduras", "El Paraíso (Texiguat, Vado Ancho) and Francisco Morazán (Curarén, Alubarén, Reitoca)",
+       "Nicaragua",                                          "Matagalpa, Estelí, Nueva Segovia and Madriz",
+       "Guatemala",                                 "Chiquimula (Jocotán, Camotán, and San José La Arada)"
+     ) |> 
+  gt() |> 
+  tab_header(
+    "Analysis filtered to admin 1's listed under departments"
+  ) |> 
+  tab_options(
+       heading.background.color = "#00ad78ff",
+    column_labels.background.color = hdx_hex("mint-ultra-light")
+  )
+```
 
 ```{r}
 # Prep Meta Lookup --------------------------------------------------------
@@ -125,7 +118,8 @@ df_poly_meta <- df_polys |>
   left_join(
     df_lookup |> 
       select(iso3,matches("adm\\d"),matches("adm_level")) |> 
-      filter(adm_level ==1), by = c("iso3" = "iso3","pcode"="adm1_pcode","adm_level")
+      filter(adm_level ==1),
+    by = c("iso3" = "iso3","pcode"="adm1_pcode","adm_level")
   )
 
 df_new_aoi_meta <- df_poly_meta |> 
@@ -136,6 +130,8 @@ df_new_aoi_meta <- df_poly_meta |>
       adm1_name, 
       "San Vicente|El Paraiso|Francisco Morazan|Matagalpa|Estel|Nueva Segovia|Madriz|Chiquimula")
   )
+
+
 ```
 
 ## Map new AOI
@@ -179,6 +175,7 @@ gdf_adm0_cadc <- list_rbind(
 
 ```{r}
 #| eval: false
+#| echo: false
 
 cumulus$blob_write(
   gdf_adm1_cadc,
@@ -204,7 +201,6 @@ gdf_adm0_cadc <- cumulus$blob_read(
 
 ```
 
-
 ```{r}
 
 gdf_aoi <- gdf_adm1_cadc |> 
@@ -223,9 +219,8 @@ ggplot()+
   )
 ```
 
-
-
 Quickly checking the SEAS5 meta-data from our postgres DB to make sure the number of pixels per admin is adequate. Here are the pixels per admin
+
 ```{r}
 # quick check on number of pixels.
 df_new_aoi_meta |> 
@@ -236,7 +231,8 @@ df_new_aoi_meta |>
   fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
 ```
 
-At the end of the day we will be aggregating per `country`/`iso3` so let's sum across countrys
+At the end of the day we will be aggregating per `country`/`iso3` so let's sum across countries
+
 ```{r}
 df_new_aoi_meta |> 
   select(
@@ -254,15 +250,15 @@ df_new_aoi_meta |>
 
 ### ECMWF SEAS5
 
-First we just look at ECMWF  - here we actually consider all leadtimes -- not just those considered for monitoring and we see no activations present in historical record. If we did see activations we would want to check on what leadtimes those occured.
+First we just look at ECMWF - here we actually consider all leadtimes -- not just those considered for monitoring and we see no activations present in historical record. If we did see activations we would want to check on what leadtimes those occured.
 
-```{r}  
+```{r}
 # Prep Seas5 --------------------------------------------------------------
 
 df_seas5 <- tbl(con,"seas5") |> 
   filter(
     adm_level == 1,
-    pcode %in% df_new_aoi_meta$pcode,
+    pcode %in% df_aoi$pcode,
     month(valid_date)%in% c(5:11) # just grabbing all relevant months for both windows
   ) |> 
   collect() # this actually loads data into memory so can take a 10s or so.
@@ -272,15 +268,22 @@ df_seas5 <- df_seas5 |>
     precipitation = days_in_month(valid_date) * mean
   )
   
-
+filter_historical_to_moments <-  function(df,window_col){
+  df |> 
+    filter(
+      !(month(issued_date)==2 & !!sym(window_col)=="primera"),
+      !(month(issued_date) %in% c(5,9) & !!sym(window_col)=="postrera")
+    )
+    
+}
 df_primera <- cumulus$seas5_aggregate_forecast(
     df_seas5,
     value = "precipitation",
   valid_months =c(5:8),
   by = c("iso3", "pcode","issued_date")
 ) |> 
-    filter(
-    month(issued_date)!=2 # remove Feb
+  mutate(
+    window = "primera"
   )
 
 df_postrera <- cumulus$seas5_aggregate_forecast(
@@ -288,229 +291,174 @@ df_postrera <- cumulus$seas5_aggregate_forecast(
   valid_months =c(9:11),
   value = "precipitation",
   by = c("iso3", "pcode","issued_date")
+  ) |> 
+  mutate(
+    window = "postrera"
   )
+df_historical <- bind_rows(
+  df_primera,
+  df_postrera
+)
+
+df_historical_aa <- df_historical |> 
+  filter_historical_to_moments(
+    window_col ="window"
+    )
 
 
 
 # Weighted Average of Forecast AOI ----------------------------------------
 
-ldf_seas <- list(
-  "primera"= df_primera,
-  "postrera" = df_postrera
-) |> 
-  map(
-    \(dft){
-      dft |> 
-        left_join(df_new_aoi_meta) |> 
-        group_by(iso3, issued_date, leadtime, valid_month_label) |> 
-        summarise(
-          mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),.groups="drop"
-        )
-    }
+df_historical_aa_adm0 <- df_historical_aa |> 
+  left_join(df_new_aoi_meta) |> 
+  group_by(iso3, issued_date, leadtime, valid_month_label,window) |> 
+  summarise(
+    mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),.groups="drop"
   )
 
-ldf_thresholded <- ldf_seas |> 
-  map(
-    \(dft){
-      dft |> 
-        threshold_var(
-          var= "mm",
-          by = c("iso3","leadtime"),
-          rp_threshold = 4,
-          direction =-1
-        ) 
-    }
-  )
+df_historical_aa_classified <- df_historical_aa_adm0 |> 
+  utils$threshold_var(
+    var= "mm",
+    by = c("iso3","leadtime","window"),
+    rp_threshold = 4,
+    direction =-1
+  ) 
 
-```
-
-
-```{r}
-p_timeseries_refined_aoi <- ldf_thresholded |> 
-  imap(
-    \(dft,nmt){
-      month_range_temp <- ifelse(nmt == "primera","MJJA","SON")
-      dft_min <- dft |> 
-        # get min per issued date (across LTs)
-        group_by(iso3,year(issued_date)) |> 
-        slice_min(
-          order_by = mm, n= 1
-        ) 
-      dft_min |> 
-        ggplot(
-          aes(x= year(issued_date),y=mm, group = 1)
-        )+
-        geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
-        geom_line(color = "black")+
-        facet_wrap(~iso3)+
-        scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
-        labs(
-          title = glue("ECMWF SEAS {month_range_temp} Forecasts"),
-          subtitle = str_to_title(nmt),
-          caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
-          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
-        ) +
-        geom_text_repel(
-          data= filter(dft_min,mm_flag),
-          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
-        )+
-        theme(
-          axis.title = element_blank(),
-          legend.position = "none"
-        )
-    }
-  )
 
 ```
 
 Plot historical time series of minimum rainfall per season/yr for both Primera and Postrera
-```{r}
-p_timeseries_refined_aoi$primera
-```
 
 ```{r}
-p_timeseries_refined_aoi$postrera
-```
+#| fig.height: 8
 
-
-- let's do simple linear interpolation of empirical RPs to calculate the thresholds - i think let's keep the historical record the same as 2024 monitoring 1981-2022
-- note that previously I had calculated empirical RP using the inverse of the percentile as defined by default settings in R  R base `stats::quantile()`.  However, now I'm using the classical empirical RP calculation to align better w/ new frameworks etc.
-
-- results unchanged
-```{r}
-ldf_thresholded_1981_2022 <- ldf_seas |> 
-  map(
-    \(dft){
-      dft |> 
-        filter(
-          year(issued_date)<=2022
-        ) |> 
-        # this func classifies each record RP and creates a boolean of whether or not the threshold
-        # is passed. We ignore the boolean and just grab the rp_empiricaal values for interpolation
-        threshold_var(
-          var= "mm",
-          by = c("iso3","leadtime"),
-          rp_threshold = 4,
-          direction =-1
-        ) 
-    }
+df_min_forecast_per_year_window <- df_historical_aa_classified |> 
+  # get min per issued date (across LTs)
+  group_by(iso3,year(issued_date),window) |> 
+  slice_max(
+    order_by = rp_emp, n= 1,with_ties = F
+  ) |> 
+  ungroup() |> 
+  mutate(
+    window = factor(window, levels =c("primera","postrera"))
   )
+    
 
-# now we can linearly interpolate:
-rp_linear_funcs <- ldf_thresholded_1981_2022 |> 
-  map(
-    \(dft){
-      dft |> 
-        group_by(iso3,leadtime) |> 
-        summarise(
-          calc_empirical_rp_level = list(approxfun(rp_emp, mm,method = "linear", rule =2,yright =Inf)),
-          calc_empirical_rp = list(approxfun( mm,rp_emp,method = "linear",rule =2))
-        )
-          }
-    )
-
-# interpolate for RP 4
-df_rp4_by_lt <- rp_linear_funcs |> 
-  map(\(dft){
-    dft |> 
-      group_by(iso3, leadtime) |> 
-      reframe(
-        RP_empirical = 4,
-        value_empirical = map_dbl(RP_empirical,calc_empirical_rp_level),
-      )
-  }
-  )
-
-# now we can compare the entire record to this interpolated RP 4. We basically had to this extra
-# step so that we could use the 1981-2022 as a baeline for creating the threshold. If we were
-# using the whole record the `threshold_var()` func would habe done it all.
-
-ldf_seas5_thresholded_w_recent <-   map(
-    set_names(names(df_rp4_by_lt),names(df_rp4_by_lt)),
-    \(season_temp){
-    season_temp <- "primera"
-    df_thresh <- df_rp4_by_lt[[season_temp]]
-    df_historical  = ldf_seas[[season_temp]]
-    df_historical |> 
-      left_join(df_thresh) |> 
-      mutate(
-        mm_flag = mm<=value_empirical
-      )
-  })
-
-p_timeseries_refined_aoi_1988_2022_base <- ldf_seas5_thresholded_w_recent |> 
-  imap(
-    \(dft,nmt){
-      month_range_temp <- ifelse(nmt == "primera","MJJA","SON")
-      dft_min <- dft |> 
-        # get min per issued date (across LTs)
-        group_by(iso3,year(issued_date)) |> 
-        slice_min(
-          order_by = mm, n= 1
-        ) 
-      dft_min |> 
-        ggplot(
-          aes(x= year(issued_date),y=mm, group = 1)
-        )+
-        geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
-        geom_line(color = "black")+
-        facet_wrap(~iso3)+
-        scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
-        labs(
-          title = glue("ECMWF SEAS {month_range_temp} Forecasts"),
-          subtitle = str_to_title(nmt),
-          caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+df_min_forecast_per_year_window |> 
+  ggplot(
+    aes(x= year(issued_date),y=mm, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_grid(rows = vars(iso3), cols = vars(window))+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  labs(
+    title = "CADC: Primera (MJJA) & Postrera (SON) Seasonal Precipitation Forecasts",
+    subtitle = "Selected admin 1 units in CADC",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
           Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
-        ) +
-        geom_text_repel(
-          data= filter(dft_min,mm_flag),
-          aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size= txt_label_size
-        )+
-        theme(
-          axis.title = element_blank(),
-          legend.position = "none"
-        )
-    }
+  ) +
+  geom_text_repel(
+    data= filter(df_min_forecast_per_year_window,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
+  )+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
   )
+
+
 ```
 
-We see that the results are still the same as previously when RP was calculated from all years on record 1981-2024
+-   let's do simple linear interpolation of empirical RPs to calculate the thresholds - i think let's keep the historical record the same as 2024 monitoring 1981-2022
+
+-   note that previously I had calculated empirical RP using the inverse of the percentile as defined by default settings in R R base `stats::quantile()`. However, now I'm using the classical empirical RP calculation to align better w/ new frameworks etc.
+
+-   results unchanged
 
 ```{r}
-p_timeseries_refined_aoi_1988_2022_base$primera
-```
+#| fig.height: 8
 
-```{r}
-p_timeseries_refined_aoi_1988_2022_base$postrera
+df_seas5_thresholds <- df_combined_thresholds |> 
+  filter(
+    forecast_source =="SEAS5"
+  )
+
+df_classified_2024_seas5_thresholds <- df_historical_aa_classified |> 
+  left_join(df_seas5_thresholds, by = c("iso3","leadtime","window")) |> 
+  mutate(
+    mm_flag = mm<=value_empirical
+  )
+
+
+df_min_2024_seas5_thresholds <- df_classified_2024_seas5_thresholds |> 
+  # get min per issued date (across LTs)
+  group_by(iso3,year(issued_date),window) |> 
+  slice_max(
+    order_by = rp_emp, n= 1,with_ties = F
+  ) |> 
+  ungroup() |> 
+  mutate(
+    window = factor(window, levels =c("primera","postrera"))
+  )
+    
+
+
+
+
+df_min_2024_seas5_thresholds |> 
+  ggplot(
+    aes(x= year(issued_date),y=mm, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_grid(rows = vars(iso3), cols = vars(window))+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  labs(
+    title = "CADC: Primera (MJJA) & Postrera (SON) Seasonal Precipitation Forecasts",
+    subtitle = "Selected admin 1 units in CADC",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_min_forecast_per_year_window,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
+  )+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+
 ```
 
 ### INSIVUMEH
 
-
 Looking at just INSIVUMEH historical activation record - again, we see again no activations in 2024.
+
 ```{r}
+#| fig.height: 8
 
-# We ran the same basic analysis for INSIVUMEH data in a separate R-script. As this required zonal stats on the raster files theselves, this was done in a separate rscript: `analysis/insivumeh_refined_aoi_zonal_stats.R` so that the intermediate outputs could be saved on blob to be pulled into this notebook for quicker/more effecient rendering.
+df_insivumeh_thresholds <- df_combined_thresholds |> 
+  filter(forecast_source == "INSIVUMEH")
 
-df_insivumeh_thresholds <- cumulus$blob_read(
-container = "projects",
-  name = "ds-aa-lac-dry-corridor/insivumeh_thresholds_aoi_chiquimula.parquet"
-)
 
-df_insivumeh_zonal <- cumulus$blob_read(
-  container = "projects",
-  name =  "ds-aa-lac-dry-corridor/insivumeh_zonal_stats_seasonal_aoi_chiquimula.parquet"
-)
+df_insivumeh_aa <- df_insivumeh_zonal |> 
+  # already done in parquet file -- but not bad to leav here
+  filter_historical_to_moments(window_col = "season") |> 
+  # rename to use same plotting code above
+  rename(
+    window = "season"
+  )
 
-df_insivumeh_zonal_min_per_year <- df_insivumeh_zonal |> 
+df_insivumeh_zonal_min_per_year <- df_insivumeh_aa |> 
   left_join(
     df_insivumeh_thresholds
   ) |> 
   mutate(
     mm_flag = value<=value_empirical,
-    season= fct_relevel(season, "primera","postrera")
+    window= fct_relevel(window, "primera","postrera")
   ) |> 
-  group_by(adm0_es,adm1_es,season,year(issued_date)) |> 
+  group_by(adm0_es,adm1_es,window,year(issued_date)) |> 
   slice_min(
     order_by = value, n= 1
   ) 
@@ -522,7 +470,7 @@ df_insivumeh_zonal_min_per_year |>
   )+
   geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
   geom_line(color = "black")+
-  facet_wrap(~season,scales="free", ncol=1)+
+  facet_wrap(~window)+
   scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
   labs(
     title = glue("Guatemala - INSIVUMEH - Forecasts"),
@@ -541,77 +489,47 @@ df_insivumeh_zonal_min_per_year |>
 
 ```
 
-
 ## Threshold Tables
 
 Let's remake threshold tables in case we want to update technical note in 2025:
+
 ```{r}
 
-df_insivumeh_thresholds <- df_insivumeh_thresholds |> 
-  mutate(
-    iso3 = "GTM",
-    forecast_source = "INSIVUMEH"
-  )
 
-df_ecmwf_thresholds <- df_rp4_by_lt |> 
-  imap(\(dft,nmt){
-    dft |> 
-      mutate(
-        season = nmt
-      )
-    
-  }) |> 
-  list_rbind() |> 
-  mutate(
-    forecast_source = "ECMWF SEAS5"
-  )
-
-
-df_seas5_insiv_thresholds <- df_ecmwf_thresholds |> 
+df_thresholds_aa <- df_combined_thresholds |> 
   filter(
-    !(iso3 == "GTM" & leadtime %in% c(1:4))
-  ) |> 
-  bind_rows(
-    df_insivumeh_thresholds 
-  ) |> 
-  filter(
-        leadtime<=3
-      )
+    # do not use SEAS5 for Guatemala -- only for leadtime 0
+      !(iso3 == "GTM" & leadtime %in% c(1:4) & forecast_source == "SEAS5"),
+      
+      # these 2 months not being moniored
+      !(issued_month_label %in% c("Feb","Sep")),
+      !(issued_month_label == "May" & window =="postrera")
+  )
+  
 
-
-df_thresholds_labelled <- df_seas5_insiv_thresholds %>% 
+df_thresholds_labelled <- df_thresholds_aa %>% 
   arrange(
-    iso3, season
+    iso3, window
   ) |> 
   # print(n=15) |> 
   mutate(
-    pub_month_int = ifelse(season == "primera",5- leadtime,9-leadtime),
+    pub_month_int = ifelse(window == "primera",5- leadtime,9-leadtime),
     pub_month_chr = month(pub_month_int, label =T, abb=T),
     pub_month_lt = paste0(pub_month_chr," (", leadtime,")"),
-    adm0_es = case_when(
-      iso3== "GTM"~"Guatemala",
-      iso3=="HND"~"Honduras",
-      iso3=="SLV"~"El Salvador",
-      iso3 == "NIC"~"Nicaragua"
-    )
   ) %>% 
   select(
     adm0_es, 
     pub_month_lt,
     threshold = value_empirical,
-    season,
+    window,
     forecast_source
-  ) |> 
-  filter(
-    !str_detect(pub_month_lt,"Sep")
-  )
-  
+  ) 
 
-ldf_thresholds_wide <- split(df_thresholds_labelled,df_thresholds_labelled$season) %>% 
+ldf_thresholds_wide <- split(df_thresholds_labelled,df_thresholds_labelled$window) %>% 
   map(\(dft){
     dft |> 
     arrange(adm0_es) %>% 
-        select(-forecast_source,-season) |> 
+        select(-forecast_source,-window) |> 
         filter(
           !str_detect(pub_month_lt, "^Feb")
         ) %>% 
@@ -695,19 +613,9 @@ ldf_thresholds_wide$postrera %>%
       columns = c("Guatemala"), 
       rows = 1:3
     )) %>% 
-  # tab_style(
-  #   style = cell_fill(color = ecmwf_color),
-  #   locations = cells_body(
-  #     columns = c("Guatemala"), 
-  #     rows = 3
-  #   )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
    tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_legend
   )
 
-
-
 ```
-
-
