@@ -137,8 +137,7 @@ df_new_aoi_meta <- df_poly_meta |>
 ## Map new AOI
 
 ```{r}
-#| eval: true
-
+#| eval: false
 
 lgdf_nic <- cumulus$download_fieldmaps_sf(iso3="nic",layer =c("nic_adm1","nic_adm0"))
 lgdf_hnd <- cumulus$download_fieldmaps_sf(iso3="hnd",layer=c("hnd_adm1","hnd_adm0"))
@@ -171,12 +170,6 @@ gdf_adm0_cadc <- list_rbind(
   )
 
 
-```
-
-```{r}
-#| eval: false
-#| echo: false
-
 cumulus$blob_write(
   gdf_adm1_cadc,
   container = "projects",
@@ -188,21 +181,33 @@ cumulus$blob_write(
   name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet"
   )
 
+```
+
+```{r}
+#| eval: true
+#| echo: false
+
+# read
 gdf_adm1_cadc <- cumulus$blob_read(
   container = "projects",
-  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet"
-  )
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet",
+  as_data_frame =FALSE
+  ) |> 
+  st_as_sf()
 
 gdf_adm0_cadc <- cumulus$blob_read(
   container = "projects",
-  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet"
-  )
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet",
+  as_data_frame = FALSE
+  ) |> 
+  st_as_sf()
 
 
 ```
 
-```{r}
 
+
+```{r}
 gdf_aoi <- gdf_adm1_cadc |> 
   filter(
     ADM1_PCODE %in% df_new_aoi_meta$pcode
@@ -250,7 +255,7 @@ df_new_aoi_meta |>
 
 ### ECMWF SEAS5
 
-First we just look at ECMWF - here we actually consider all leadtimes -- not just those considered for monitoring and we see no activations present in historical record. If we did see activations we would want to check on what leadtimes those occured.
+First we just look at ECMWF - here we actually consider all leadtimes -- not just those considered for monitoring and we see no activations present in historical record. If we did see activation we would want to check on what lead times those occured.
 
 ```{r}
 # Prep Seas5 --------------------------------------------------------------
@@ -327,12 +332,14 @@ df_historical_aa_classified <- df_historical_aa_adm0 |>
 
 ```
 
-Plot historical time series of minimum rainfall per season/yr for both Primera and Postrera
+
+
+Plot historical time series of minimum rainfall per season/yr for both Primera and Postrera. In this plot the threshold is calculated form the entire historical record using all available data
 
 ```{r}
 #| fig.height: 8
 
-df_min_forecast_per_year_window <- df_historical_aa_classified |> 
+df_max_rp_forecast_per_year_window <- df_historical_aa_classified |> 
   # get min per issued date (across LTs)
   group_by(iso3,year(issued_date),window) |> 
   slice_max(
@@ -344,7 +351,7 @@ df_min_forecast_per_year_window <- df_historical_aa_classified |>
   )
     
 
-df_min_forecast_per_year_window |> 
+df_max_rp_forecast_per_year_window |> 
   ggplot(
     aes(x= year(issued_date),y=mm, group = 1)
   )+
@@ -370,10 +377,7 @@ df_min_forecast_per_year_window |>
 
 ```
 
--   let's do simple linear interpolation of empirical RPs to calculate the thresholds - i think let's keep the historical record the same as 2024 monitoring 1981-2022
-
--   note that previously I had calculated empirical RP using the inverse of the percentile as defined by default settings in R R base `stats::quantile()`. However, now I'm using the classical empirical RP calculation to align better w/ new frameworks etc.
-
+-   Below we plot the same thing, but to be more exact on the question of what would have happened in 2024 with the same method we calculate the thresholds using the same set of baseline years used to the 2024 monitoring (1984-2022) 
 -   results unchanged
 
 ```{r}
@@ -391,7 +395,7 @@ df_classified_2024_seas5_thresholds <- df_historical_aa_classified |>
   )
 
 
-df_min_2024_seas5_thresholds <- df_classified_2024_seas5_thresholds |> 
+df_max_rp_2024_seas5_thresholds <- df_classified_2024_seas5_thresholds |> 
   # get min per issued date (across LTs)
   group_by(iso3,year(issued_date),window) |> 
   slice_max(
@@ -406,7 +410,7 @@ df_min_2024_seas5_thresholds <- df_classified_2024_seas5_thresholds |>
 
 
 
-df_min_2024_seas5_thresholds |> 
+df_max_rp_2024_seas5_thresholds |> 
   ggplot(
     aes(x= year(issued_date),y=mm, group = 1)
   )+
@@ -460,7 +464,8 @@ df_insivumeh_zonal_min_per_year <- df_insivumeh_aa |>
   ) |> 
   group_by(adm0_es,adm1_es,window,year(issued_date)) |> 
   slice_min(
-    order_by = value, n= 1
+    # just plot the value closest to the threshold  per year/season
+    order_by = abs(value-value_empirical), n= 1
   ) 
   
 
@@ -507,7 +512,7 @@ df_thresholds_aa <- df_combined_thresholds |>
   )
   
 
-df_thresholds_labelled <- df_thresholds_aa %>% 
+df_thresholds_formatted <- df_thresholds_aa %>% 
   arrange(
     iso3, window
   ) |> 
@@ -525,7 +530,7 @@ df_thresholds_labelled <- df_thresholds_aa %>%
     forecast_source
   ) 
 
-ldf_thresholds_wide <- split(df_thresholds_labelled,df_thresholds_labelled$window) %>% 
+ldf_thresholds_wide <- split(df_thresholds_formatted,df_thresholds_formatted$window) %>% 
   map(\(dft){
     dft |> 
     arrange(adm0_es) %>% 
@@ -619,3 +624,216 @@ ldf_thresholds_wide$postrera %>%
   )
 
 ```
+
+## Joint RPs
+
+Next we want to look at how the joint return periods/activation rates could theoretically change using the refined AOI methodology
+```{r}
+
+# bind together all 
+df_all_forecasts <- bind_rows(
+  df_insivumeh_aa |> 
+    mutate(
+      forecast_source = "INSIVUMEH",
+      iso3 = "GTM"
+    ),
+  df_historical_aa_adm0 |> 
+    mutate(
+      forecast_source = "SEAS5"
+    ) |> 
+    rename(
+      value =mm
+    )
+) |> 
+  select(-adm0_es)
+
+
+# classify all forecasts as above or below threshold
+df_all_historical_forecasts_classified <- df_all_forecasts |> 
+  left_join(
+    df_combined_thresholds
+  ) |> 
+    mutate(
+    flag = value<= value_empirical
+  )
+```
+
+
+```{r}
+#| eval: false
+#| echo: false # dont need to show this in rendered doc
+
+
+# nice verification -- activation rates approximate 0.25% 1
+df_all_historical_forecasts_classified |> 
+  group_by(
+    iso3, leadtime,forecast_source
+  ) |> 
+  summarise(
+    ar = mean(flag)
+  )
+```
+
+
+
+```{r}
+# now filter to only relevant  forecast sources for monitoring
+
+df_historical_forecasts_classified_filtered <- df_all_historical_forecasts_classified |> 
+  filter(
+    !(iso3 =="GTM" & leadtime>0 & forecast_source=="SEAS5")
+  ) |> 
+  mutate(
+        adm0_es = case_when(
+      iso3== "GTM"~"Guatemala",
+      iso3 == "HND"~"Honduras",
+      iso3=="NIC"~"Nicaragua",
+      iso3=="SLV"~ "El Salvador"
+    )
+  )
+
+# get activation rates per window over all leadtimes
+df_jrp_window <- df_historical_forecasts_classified_filtered |> 
+  group_by(iso3,adm0_es, year(issued_date),window) |> 
+  summarise(
+    flag = any(flag)
+  ) |> 
+  group_by(iso3,adm0_es,window) |> 
+  summarise(
+    ar = mean(flag),
+    rp = 1/ar,
+    .groups="drop"
+  )
+
+# get activation rates across both windows -- activation rate of either occuring
+df_jrp_both_windows <- df_historical_forecasts_classified_filtered |> 
+  group_by(iso3, adm0_es,year(issued_date)) |> 
+  summarise(
+    flag = any(flag)
+  ) |> 
+  group_by(iso3,adm0_es) |> 
+  summarise(
+    ar = mean(flag),
+    rp = 1/ar,.groups="drop"
+  )
+
+
+df_jrp_per_window_wide <- df_jrp_window |> 
+  select(-iso3) |> 
+  pivot_wider(
+    names_from= adm0_es,
+    values_from = ar:rp
+  ) 
+
+df_jrp_both_windows_wide <- df_jrp_both_windows |> 
+    select(-iso3) |> 
+  pivot_wider(
+    names_from= adm0_es,
+    values_from = ar:rp
+  ) |> 
+  mutate(
+    window = "Combined"
+  )
+```
+
+
+```{r}
+bind_rows(df_jrp_per_window_wide,
+          df_jrp_both_windows_wide
+          ) |> 
+  
+  gt() |> 
+  fmt_percent(starts_with("ar"),decimals = 0) |> 
+  fmt_number(starts_with("rp"), decimals=1) |> 
+     cols_merge(
+    columns = c(`rp_El Salvador`, `ar_El Salvador`),
+    pattern = "{1} ({2})"
+  ) %>% 
+   cols_merge(
+    columns = c(`rp_Nicaragua`, `ar_Nicaragua`),
+    pattern = "{1} ({2})"
+  ) %>% 
+   cols_merge(
+    columns = c(`rp_Honduras`, `ar_Honduras`),
+    pattern = "{1} ({2})"
+  ) %>% 
+   cols_merge(
+    columns = c(`rp_Guatemala`, `ar_Guatemala`),
+    pattern = "{1} ({2})"
+  ) %>% 
+  cols_label(
+    "rp_El Salvador" = "El Salvador",
+    "rp_Guatemala" = "Guatemala",
+    "rp_Nicaragua" = "Nicaragua",
+    "rp_Honduras" = "Honduras",
+  ) |> 
+  tab_header(
+    title=  "Joint Return Periods/Activation Rate (selected admin 1 AOI)",
+    subtitle = "Across all monitored leadtimes and windows"
+  ) |> 
+  tab_options(
+    heading.background.color = "#00ad78ff",
+    column_labels.background.color = hdx_hex("mint-ultra-light")
+  )
+
+```
+
+
+```{r 2025_season}
+#| eval: false
+#| echo: true
+
+# one-off quick look at the upcoming season. Don't need to render this, but can keep in here for now
+# don't have INSIVUMEH data yet, so just doing on ECMWF SEAS5
+
+df_primera_feb <- df_primera |> 
+    mutate(
+    window = "primera"
+  ) |> 
+  left_join(df_new_aoi_meta) |> 
+  group_by(iso3, issued_date, leadtime, valid_month_label,window) |> 
+  summarise(
+    mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),.groups="drop"
+  ) |> 
+  filter(
+    month(issued_date) ==2
+  ) |> 
+  left_join(
+    df_combined_thresholds |> 
+      filter(
+    forecast_source == "SEAS5", issued_month_label =="Feb"
+  )
+  ) |> 
+  mutate(
+    mm_flag = mm<=value_empirical
+  )
+  
+
+df_primera_feb |> 
+  ggplot(
+    aes(x= year(issued_date),y=mm, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_grid(rows = vars(iso3))+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  scale_x_continuous(breaks = 1981:2025) |> 
+  labs(
+    title = "CADC: Primera (MJJA) & Postrera (SON) Seasonal Precipitation Forecasts",
+    subtitle = "February publications: Selected admin 1 units in CADC",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_primera_feb,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
+  )+
+  geom_hline(
+    data = distinct(df_primera_feb,iso3,value_empirical),
+             aes(yintercept = value_empirical), color =hdx_hex("tomato-hdx"), linetype ="dashed")+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+```
+
