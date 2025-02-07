@@ -139,6 +139,9 @@ df_new_aoi_meta <- df_poly_meta |>
 ```{r}
 #| eval: false
 
+# the below doesn't need to be evaluated on render - as I save the outputs of this 
+# chunk to blob and load later. Nonetheless, we can keep the code in the notebook.
+
 lgdf_nic <- cumulus$download_fieldmaps_sf(iso3="nic",layer =c("nic_adm1","nic_adm0"))
 lgdf_hnd <- cumulus$download_fieldmaps_sf(iso3="hnd",layer=c("hnd_adm1","hnd_adm0"))
 lgdf_slv <- cumulus$download_fieldmaps_sf(iso3="slv",layer=c("slv_adm1","slv_adm0"))
@@ -310,8 +313,6 @@ df_historical_aa <- df_historical |>
     window_col ="window"
     )
 
-
-
 # Weighted Average of Forecast AOI ----------------------------------------
 
 df_historical_aa_adm0 <- df_historical_aa |> 
@@ -328,8 +329,6 @@ df_historical_aa_classified <- df_historical_aa_adm0 |>
     rp_threshold = 4,
     direction =-1
   ) 
-
-
 ```
 
 
@@ -350,7 +349,6 @@ df_max_rp_forecast_per_year_window <- df_historical_aa_classified |>
     window = factor(window, levels =c("primera","postrera"))
   )
     
-
 df_max_rp_forecast_per_year_window |> 
   ggplot(
     aes(x= year(issued_date),y=mm, group = 1)
@@ -366,14 +364,13 @@ df_max_rp_forecast_per_year_window |>
           Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
   ) +
   geom_text_repel(
-    data= filter(df_min_forecast_per_year_window,mm_flag),
+    data= filter(df_max_rp_forecast_per_year_window,mm_flag),
     aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
   )+
   theme(
     axis.title = element_blank(),
     legend.position = "none"
   )
-
 
 ```
 
@@ -407,9 +404,6 @@ df_max_rp_2024_seas5_thresholds <- df_classified_2024_seas5_thresholds |>
   )
     
 
-
-
-
 df_max_rp_2024_seas5_thresholds |> 
   ggplot(
     aes(x= year(issued_date),y=mm, group = 1)
@@ -425,7 +419,7 @@ df_max_rp_2024_seas5_thresholds |>
           Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
   ) +
   geom_text_repel(
-    data= filter(df_min_forecast_per_year_window,mm_flag),
+    data= filter(df_max_rp_2024_seas5_thresholds,mm_flag),
     aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
   )+
   theme(
@@ -781,7 +775,7 @@ bind_rows(df_jrp_per_window_wide,
 
 ```{r 2025_season}
 #| eval: false
-#| echo: true
+#| echo: false
 
 # one-off quick look at the upcoming season. Don't need to render this, but can keep in here for now
 # don't have INSIVUMEH data yet, so just doing on ECMWF SEAS5
