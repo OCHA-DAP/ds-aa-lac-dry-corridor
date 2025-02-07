@@ -2,8 +2,57 @@ box::use(
   dplyr[...],
   rlang[...],
   glue[...],
-  tibble[...]
+  tibble[...],
+  cumulus,
+  sf,
+  geoarrow[...]
 )
+
+
+#' @export
+load_adm1_sf <- function(){
+  cumulus$blob_read(
+    container = "projects",
+    name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet",
+    as_data_frame =FALSE
+  ) |> 
+    sf$st_as_sf()
+}
+
+
+#' @export
+load_threshold_table <- function(file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", fallback_to_seas5= FALSE){
+  df <- load_raw_threshold_table(file_name=file_name)
+  if(!fallback_to_seas5){
+    ret <- df |> 
+      filter(
+        # do not use SEAS5 for Guatemala -- only for leadtime 0
+        !(iso3 == "GTM" & leadtime %in% c(1:4) & forecast_source == "SEAS5"),
+        # these 2 months not being moniored
+        !(issued_month_label %in% c("Feb","Sep")),
+        !(issued_month_label == "May" & window =="postrera")
+      )
+  }
+  if(fallback_to_seas5){
+    ret <- df |> 
+      filter(
+        forecast_source == "SEAS5",
+        !(issued_month_label %in% c("Feb","Sep")),
+        !(issued_month_label == "May" & window =="postrera")
+      )
+    
+  }
+  ret
+}
+
+
+#' @export
+load_raw_threshold_table <- function(file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet"){
+  cumulus$blob_read(
+    container = "projects",
+    name = paste0("ds-aa-lac-dry-corridor/framework_update_2025/",file_name)
+  )
+}
 
 
 #' RP based thresholding/classifications
