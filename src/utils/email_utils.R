@@ -1,258 +1,15 @@
 
-# blastula/html wrappers --------------------------------------------------
-
-
-# utility functions for the emails
-
-# creates a custom add image by using code that makes the image responsive
-# even in Windows Outlook
-# based on here: https://stackoverflow.com/questions/2426072/is-there-an-equivalent-of-css-max-width-that-works-in-html-emails
-add_image_custom <- function(
-    file,
-    alt = "",
-    width = 520,
-    align = c("center", "left", "right", "inline"),
-    float = c("none", "left", "right")
-) {
-  # get default blastula image HTML
-  html <- blastula::add_image(
-    file = file,
-    alt = alt,
-    width = width,
-    align = align,
-    float = float
-  )
-  
-  custom_html(
-    html = html,
-    width = width
-  )
-}
-
-# use add_image to save out plots and add them back to the file
-# use custom width
-add_ggplot_custom <- function(
-    plot_object,
-    width = 5,
-    height = 5,
-    html_width = 1000,
-    alt = NULL,
-    align = c("center", "left", "right", "inline"),
-    float = c("none", "left", "right")
-) {
-  html <- blastula::add_ggplot(
-    plot_object = plot_object,
-    width = width,
-    height = height,
-    alt = alt,
-    align = align,
-    float = float
-  )
-  
-  custom_html(
-    html = html,
-    width = html_width
-  )
-}
-
-# add_gt_custom <- function(
-    #     plot_object,
-#     width = 5,
-#     height = 5,
-#     html_width = 1000,
-#     alt = NULL,
-#     align = c("center", "left", "right", "inline"),
-#     float = c("none", "left", "right")
-# ) {
-#   html <- blastula::add_ggplot(
-#     plot_object = plot_object,
-#     width = width,
-#     height = height,
-#     alt = alt,
-#     align = align,
-#     float = float
-#   )
-#
-#   custom_html(
-#     html = html,
-#     width = html_width
-#   )
-# }
-
-custom_html <- function(html, width) {
-  img_html <- stringr::str_extract(
-    html,
-    "(<img src.*px;\"/>)",
-    group = 1
-  )
-  img_html_styled <- stringr::str_replace(
-    img_html,
-    "(?<=style=\")(.*)(?=\"/>)",
-    "display:block;width:100%"
-  )
-  
-  # create the new custom table for the HTML
-  cat(
-    paste0(
-      '<table border="0" cellspacing="0" width="100%"><tr><td></td><td width="',
-      width,
-      '">',
-      img_html_styled,
-      "</td><td></td></tr></table>"
-    )
-  )
-}
-
-add_tmap <- function (plot_object,
-                      width = 5,
-                      height = 5,
-                      alt = NULL,
-                      align = c("center",
-                                "left",
-                                "right",
-                                "inline"),
-                      float = c("none", "left", "right")
-)
-{
-  tmpfile <- tempfile("tmap", fileext = ".png")
-  if (requireNamespace("tmap", quietly = TRUE)) {
-    tmap::tmap_save(tm = plot_object,
-                    # device = "png",
-                    filename = tmpfile,
-                    dpi = 200,
-                    width = width,
-                    height = height)
-  }
-  else {
-    stop("Please ensure that the `tmap` package is installed before using `add_tmap()`.",
-         call. = FALSE)
-  }
-  on.exit(file.remove(tmpfile), add = TRUE)
-  alt_text <- alt
-  image_html <- add_image(file = tmpfile,
-                          alt = alt_text,
-                          width = width * 100,
-                          align = align,
-                          float = float)
-  image_html
-}
-
-
-add_tmap_custom <-  function(
-    plot_object,
-    width = 5,
-    height = 5,
-    html_width = 1000,
-    alt = NULL,
-    align = c("center", "left", "right", "inline"),
-    float = c("none", "left", "right")
-){
-  html <- add_tmap(
-    plot_object = plot_object,
-    width = width,
-    height = height,
-    alt = alt,
-    align = align,
-    float = float
-  )
-  # return(html)
-  custom_html(
-    html = html,
-    width = html_width
-  )
-}
-
-
-# google drive helpers ----------------------------------------------------
-
-
-#' Title
-#'
-#' @param dribble 
-#' @param file_name 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-load_drive_file <-  function(
-    dribble,
-    file_name){
-  file_id <-  get_drive_id(dribble = dribble,
-                           file_name = file_name)
-  tmp_file_path <-  file.path(
-    tempdir(),file_name
-  )
-  
-  cat("downloading ", file_name," to temp path\n")
-  googledrive::drive_download(
-    file = googledrive::as_id(file_id),
-    path = tmp_file_path,
-    overwrite = T
-  )
-  cat("reading ", file_name," to memory\n")
-  ret <- read_fun(tmp_file_path)
-  
-  # dont want to immediately unlink file if raster
-  is_tif <-  stringr::str_detect(file_name,"\\.tif$")
-  if(!is_tif){
-    unlink(tmp_file_path)  
-  }
-  
-  return(ret)
-}
-
-#' Title
-#'
-#' @param dribble 
-#' @param file_name 
-#'
-#' @return
-#' @export
-#'
-#' @examples \dontrun{
-#' get_drive_id(
-#'   dribble = drive_dribble,
-#'   file_name = "central_america_aoi_adm0.rds" 
-#' )
-#' }
-get_drive_id <- function(dribble, file_name){
-  dribble |> 
-    dplyr::filter(
-      name == file_name
-    ) |>  
-    dplyr::pull(id) |> 
-    googledrive::as_id()
-}
-
-
-
-
-
-#' Title
-#'
-#' @param x 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-read_fun <- function(x="central_america_aoi_adm0.rds"){
-  file_ext<- fs::path_ext(x)
-  switch(file_ext,
-         "rds"=readr::read_rds(x),
-         "csv"= readr::read_csv(x),
-         "tif" = terra::rast(x)
-  )
-}
-
 
 
 
 
 # Email Text --------------------------------------------------------------
 
-box::use(dplyr[...])
+box::use(dplyr[...],
+         lubridate[...],
+         glue[...],
+         blastula)
+
 #' Title
 #'
 #' @param df 
@@ -281,8 +38,8 @@ email_text_list <- function(df=df_activation_status,
     )
   
   
-  description_ending <-  gen_description_end(run_date = run_date,insiumeh_forecast_available = insiv_received)
-  table_footnote <- gen_table_footnote(run_date = run_date,insiumeh_forecast_available = insiv_received)
+  description_ending <-  gen_description_end(run_date = run_date,insiumeh_forecast_available = insiumeh_forecast_available)
+  table_footnote <- gen_table_footnote(run_date = run_date,insiumeh_forecast_available = insiumeh_forecast_available)
   
   # subj_ending <-  ifelse(!insiumeh_forecast_available,"(NIC,HND,SLV)","(NIC, HND, SLV,GTM)")
   month_chr <- as.character(month(run_date,
@@ -324,7 +81,7 @@ email_text_list <- function(df=df_activation_status,
     description_content = description_contents_txt,
     contact_info= "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
     tbl_footnote = table_footnote,
-    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS51 (CDS) & INSIVUMEH","ECMWF SEAS51 (CDS)"),
+    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS5 & INSIVUMEH","ECMWF SEAS51 (CDS)"),
     ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)",
     methodology_update= "In April 2024, the ECMWF forecast data source used for the trigger was adjusted from Seasonal 7-month forecast (SEAS) obtained directly from ECMWF to publicly available ECMWF data accessed from the Copernicus Data Store. Absolute threshold values have been updated to ensure that they align with the 1 in 4 year return period drought levels agreed upon. This change was implemented to ensure consistent data accessibility and improve transparency of analysis."
   )
@@ -336,7 +93,6 @@ email_text_list <- function(df=df_activation_status,
 #' @param insiumeh_forecast_available 
 #'
 #' @return
-#' @export
 #'
 #' @examples \dontrun{
 #' gen_description_end(run_date = Sys.Date(),insiumeh_forecast_available = insiv_received)
@@ -363,7 +119,6 @@ gen_description_end <- function(run_date,insiumeh_forecast_available){
 #' @param insiumeh_forecast_available 
 #'
 #' @return
-#' @export
 #'
 #' @examples \dontrun{
 #'  gen_table_footnote(run_date = Sys.Date(),insiumeh_forecast_available = insiv_received)
@@ -472,15 +227,159 @@ insivumeh_received <-  function(gdb_base,run_date= run_date){
 #'
 #' @examples
 build_insiv_path <-  function(gdb_base,run_date,blob=T){
-    DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
-    
-    file.path(
-      gdb_base,
-      year(run_date),
-      DIR_CURRENT_INSIV
-    ) 
+  DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
+  
+  file.path(
+    gdb_base,
+    year(run_date),
+    DIR_CURRENT_INSIV
+  ) 
   
 }
+
+
+
+# blastula/html wrappers --------------------------------------------------
+
+
+# utility functions for the emails
+
+# creates a custom add image by using code that makes the image responsive
+# even in Windows Outlook
+# based on here: https://stackoverflow.com/questions/2426072/is-there-an-equivalent-of-css-max-width-that-works-in-html-emails
+add_image_custom <- function(
+    file,
+    alt = "",
+    width = 520,
+    align = c("center", "left", "right", "inline"),
+    float = c("none", "left", "right")
+) {
+  # get default blastula image HTML
+  html <- blastula::add_image(
+    file = file,
+    alt = alt,
+    width = width,
+    align = align,
+    float = float
+  )
+  
+  custom_html(
+    html = html,
+    width = width
+  )
+}
+
+# use add_image to save out plots and add them back to the file
+# use custom width
+#' @export
+add_ggplot_custom <- function(
+    plot_object,
+    width = 5,
+    height = 5,
+    html_width = 1000,
+    alt = NULL,
+    align = c("center", "left", "right", "inline"),
+    float = c("none", "left", "right")
+) {
+  html <- blastula$add_ggplot(
+    plot_object = plot_object,
+    width = width,
+    height = height,
+    alt = alt,
+    align = align,
+    float = float
+  )
+  
+  custom_html(
+    html = html,
+    width = html_width
+  )
+}
+
+
+custom_html <- function(html, width) {
+  img_html <- stringr::str_extract(
+    html,
+    "(<img src.*px;\"/>)",
+    group = 1
+  )
+  img_html_styled <- stringr::str_replace(
+    img_html,
+    "(?<=style=\")(.*)(?=\"/>)",
+    "display:block;width:100%"
+  )
+  
+  # create the new custom table for the HTML
+  cat(
+    paste0(
+      '<table border="0" cellspacing="0" width="100%"><tr><td></td><td width="',
+      width,
+      '">',
+      img_html_styled,
+      "</td><td></td></tr></table>"
+    )
+  )
+}
+
+add_tmap <- function (plot_object,
+                      width = 5,
+                      height = 5,
+                      alt = NULL,
+                      align = c("center",
+                                "left",
+                                "right",
+                                "inline"),
+                      float = c("none", "left", "right")
+)
+{
+  tmpfile <- tempfile("tmap", fileext = ".png")
+  if (requireNamespace("tmap", quietly = TRUE)) {
+    tmap::tmap_save(tm = plot_object,
+                    # device = "png",
+                    filename = tmpfile,
+                    dpi = 200,
+                    width = width,
+                    height = height)
+  }
+  else {
+    stop("Please ensure that the `tmap` package is installed before using `add_tmap()`.",
+         call. = FALSE)
+  }
+  on.exit(file.remove(tmpfile), add = TRUE)
+  alt_text <- alt
+  image_html <- add_image(file = tmpfile,
+                          alt = alt_text,
+                          width = width * 100,
+                          align = align,
+                          float = float)
+  image_html
+}
+
+
+add_tmap_custom <-  function(
+    plot_object,
+    width = 5,
+    height = 5,
+    html_width = 1000,
+    alt = NULL,
+    align = c("center", "left", "right", "inline"),
+    float = c("none", "left", "right")
+){
+  html <- add_tmap(
+    plot_object = plot_object,
+    width = width,
+    height = height,
+    alt = alt,
+    align = align,
+    float = float
+  )
+  # return(html)
+  custom_html(
+    html = html,
+    width = html_width
+  )
+}
+
 
 
 

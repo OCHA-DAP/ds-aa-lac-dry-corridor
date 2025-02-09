@@ -16,12 +16,46 @@ box::use(
 )
 
 #' @export
+load_zonal_insivumeh <-  function(run_date = Sys.Date(),
+                                  zone,
+                                  container = "global",
+                                  dir = "raster/raw",
+                                  stage = "dev"){
+
+  # Define and create temporary directory
+  td <- file.path(tempdir(),"insivumeh")
+  # dir.create(td, showWarnings = FALSE)
+  
+  r_insiv <- load_ncdf_blob_insiv(run_date = run_date, temp_dir = td)
+  
+  # Load raster into memory to prevent issues after deletion
+  # r_insiv <- terra::wrap(r_insiv)
+  
+  logger$log_info("Running INSIVUMEH Zonal Stats")
+  dfz_insiv <- zonal_insivumeh(
+    r = r_insiv,
+    zone = zone
+  ) |> 
+    mutate(
+      iso3 ="GTM",
+      forecast_source ="INSIVUMEH"
+    )
+  # Ensure deletion after function exits
+  on.exit({
+    unlink(td, recursive = TRUE, force = TRUE)
+    message("Temporary directory deleted: ", td)
+  }, add = TRUE)
+  return(dfz_insiv)
+
+}
+#' @export
 load_ncdf_blob_insiv <- function(
     run_date = Sys.Date(),
     container = "global",
     dir = "raster/raw",
     stage = "dev"
-){
+    ){
+  
   run_mo = month(run_date,label = TRUE, abbr = TRUE)
   run_yr = year(run_date)
   
@@ -37,14 +71,12 @@ load_ncdf_blob_insiv <- function(
   # Check if blob_names is empty
   if (length(blob_names) == 0) {
     stop("No matching files found for the specified criteria. Check the run_date, container, and dir arguments.")
-  }
-  td <- tempdir()
+   }
+  td <- file.path(tempdir(),"insivumeh")
+  dir.create(td)
   
   # Ensure the temporary directory is deleted when the function exits -- 
-  on.exit({
-    unlink(td, recursive = TRUE, force = TRUE)
-    message("Temporary directory deleted: ", td)
-  }, add = TRUE)
+
   
   blob_names |> 
     purrr::map(
@@ -62,8 +94,12 @@ load_ncdf_blob_insiv <- function(
       }
     )
   r <- load_ncdf_insivumeh(gdb = td)
-  unlink(td)
-  r
+  on.exit({
+    unlink(td, recursive = TRUE, force = TRUE)
+    message("Temporary directory deleted: ", td)
+  }, add = TRUE)
+  return(r)
+
 }
 
 #' Title
@@ -152,30 +188,30 @@ r_extent <- function(nc_ob){
 #'
 #' @return `data.frame` in long format w/ zonal means by publication date and leadtime
 #' @export
-zonal_insivumeh <- function(r, zone) {
-  
-  exactextractr$exact_extract(
-    x = r,
-    y = zone,
-    fun = "mean"
-  ) %>%
-    tidyr$pivot_longer(everything()) %>%
-    tidyr$separate(name, into = c("stat", "issued_date", "lt_chr"), sep = "\\.") %>%
-    mutate(
-      adm0_es = "Guatemala",
-      issued_date = as_date(issued_date),
-      leadtime = readr$parse_number(lt_chr),
-      valid_date = issued_date + months(leadtime)
-    ) |> 
-    filter(
-      month(valid_date)%in% 5:11
-    ) |> 
-    filter(
-      month(issued_date)!=2
-    ) 
-  
+  zonal_insivumeh <- function(r, zone) {
     
-}
+    exactextractr$exact_extract(
+      x = r,
+      y = zone,
+      fun = "mean"
+    ) %>%
+      tidyr$pivot_longer(everything()) %>%
+      tidyr$separate(name, into = c("stat", "issued_date", "lt_chr"), sep = "\\.") %>%
+      mutate(
+        adm0_es = "Guatemala",
+        issued_date = as_date(issued_date),
+        leadtime = readr$parse_number(lt_chr),
+        valid_date = issued_date + months(leadtime)
+      ) |> 
+      filter(
+        month(valid_date)%in% 5:11
+      ) |> 
+      filter(
+        month(issued_date)!=2
+      ) 
+    
+      
+  }
 
 
 #' @export
