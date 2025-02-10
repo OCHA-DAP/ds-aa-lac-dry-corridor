@@ -74,16 +74,21 @@ trigger_status_choropleth <- function(
       drop=FALSE
     )+
     geom_sf(
+      data= gdf_adm1,
+      color = hdx_hex("gray-medium"),
+      fill=NA, linewidth=0.2
+    )+
+    geom_sf(
+      data= gdf_aoi,
+      fill = NA, color = "darkgrey", linewidth = 1
+      
+    )+
+    geom_sf(
       data= gdf_adm0 ,
       fill = NA, linewidth = 0.8
     )+
     
-    geom_sf(
-      data= gdf_adm1,
-      color = hdx_hex("gray-medium"),
-      fill=NA,
-      alpha= 1
-    )+
+
     geom_sf_text(
       data= centroid_adm0,
       aes(label= adm0_es), 

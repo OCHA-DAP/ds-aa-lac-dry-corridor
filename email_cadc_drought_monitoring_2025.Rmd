@@ -97,9 +97,7 @@ gt_threshold_table
 gt_aoi
 ```
 
-<!-- **Methodology Update:** -->
-<!-- *`r email_txt$methodology_update`* -->
-    
+
 **Forecast data source:** `r email_txt$data_source`
 
 Data accessed `r trimws(format(lubridate$as_date(Sys.Date()), "%B %Y"))`. 

@@ -28,7 +28,7 @@ box::use(dplyr[...],
 
 email_text_list <- function(df=df_activation_status,
                             run_date= run_date,
-                            insiumeh_forecast_available
+                            insivumeh_forecast_available
 ){
   
   
@@ -40,10 +40,10 @@ email_text_list <- function(df=df_activation_status,
   season <- stringr$str_to_title(unique(df$window))
   
   
-  description_ending <-  gen_description_end(run_date = run_date,insiumeh_forecast_available = insiumeh_forecast_available)
-  table_footnote <- gen_table_footnote(run_date = run_date,insiumeh_forecast_available = insiumeh_forecast_available)
+  description_ending <-  gen_description_end(run_date = run_date,insivumeh_forecast_available = insivumeh_forecast_available)
+  table_footnote <- gen_table_footnote(run_date = run_date,insivumeh_forecast_available = insivumeh_forecast_available)
   
-  # subj_ending <-  ifelse(!insiumeh_forecast_available,"(NIC,HND,SLV)","(NIC, HND, SLV,GTM)")
+  # subj_ending <-  ifelse(!insivumeh_forecast_available,"(NIC,HND,SLV)","(NIC, HND, SLV,GTM)")
   month_chr <- as.character(month(run_date,
                                   abbr=F,
                                   label = T))
@@ -52,7 +52,7 @@ email_text_list <- function(df=df_activation_status,
   plot_title <- ifelse(season=="Primera",
                        "CADC Drought Monitoring- Forecasted Primera Rainfall (MJJA 2024)",
                        "CADC Drought Monitoring- Forecasted Postrera Rainfall (SON 2024)")
-  # subj_month <- ifelse(!insiumeh_forecast_available,glue("Preliminary {month_chr}"),month_chr)
+  # subj_month <- ifelse(!insivumeh_forecast_available,glue("Preliminary {month_chr}"),month_chr)
   
   
   
@@ -72,41 +72,40 @@ email_text_list <- function(df=df_activation_status,
   }
   list(
     month_chr = month_chr,
-    subj = gen_subject(df = df,run_date = run_date,insiumeh_forecast_available=insiumeh_forecast_available),
+    subj = gen_subject(df = df,run_date = run_date,insivumeh_forecast_available=insivumeh_forecast_available),
     title = "Anticipatory Action- Central American Dry Corridor",
     subtitle = glue("2024 {season} Drought Monitoring - {month_chr} Update"),
     plot_title = plot_title,
-    gt_table_header = glue("Predicted {stringr::str_to_title(season)} Rainfall and Trigger Thresholds"),
+    gt_table_header = glue("Predicted {stringr$str_to_title(season)} Rainfall and Trigger Thresholds"),
     date_header = date_header,
     status=trigger_status_txt,
     description_title = "Trigger Description",
     description_content = description_contents_txt,
     contact_info= "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
     tbl_footnote = table_footnote,
-    data_source = ifelse(insiumeh_forecast_available,"ECMWF SEAS5 & INSIVUMEH","ECMWF SEAS51 (CDS)"),
-    ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)",
-    methodology_update= "In April 2024, the ECMWF forecast data source used for the trigger was adjusted from Seasonal 7-month forecast (SEAS) obtained directly from ECMWF to publicly available ECMWF data accessed from the Copernicus Data Store. Absolute threshold values have been updated to ensure that they align with the 1 in 4 year return period drought levels agreed upon. This change was implemented to ensure consistent data accessibility and improve transparency of analysis."
+    data_source = ifelse(insivumeh_forecast_available,"ECMWF SEAS5 & INSIVUMEH","ECMWF SEAS5"),
+    ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)"
   )
 }
 
 #' Title
 #'
 #' @param run_date 
-#' @param insiumeh_forecast_available 
+#' @param insivumeh_forecast_available 
 #'
 #' @return
 #'
 #' @examples \dontrun{
-#' gen_description_end(run_date = Sys.Date(),insiumeh_forecast_available = insiv_received)
+#' gen_description_end(run_date = Sys.Date(),insivumeh_forecast_available = insiv_received)
 #' }
 
-gen_description_end <- function(run_date,insiumeh_forecast_available){
+gen_description_end <- function(run_date,insivumeh_forecast_available){
   run_mo <- month(run_date)
   if(run_mo==5) {
     ret <- "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently.<br><br><i>As indicated in the Dry Corridor AA framework, the May update only uses ECMWF data which allows for the inclusion of May rainfall forecast in the calculations.</i>"
   }
   else if (run_mo!=5){
-    ret <-  ifelse(!insiumeh_forecast_available,
+    ret <-  ifelse(!insivumeh_forecast_available,
                    "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently. <br><br><i>As indicated in the Dry Corridor AA framework, for Guatemala, the final trigger status is determined using the forecast of the national meteorological service INSIVUMEH. Therefore, the trigger status for Guatemala will be provided when the INSIVUMEH forecast is received which is estimated to be between the 5th and 10th of the month.</i>",
                    "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for Nicarauga, El Salvador, and Honduras independently. For Guatemala the thresholds and trigger as based on the official national forecast and historical forecasts obtained from INSIVUMEH.")
     
@@ -118,14 +117,14 @@ gen_description_end <- function(run_date,insiumeh_forecast_available){
 #' Title
 #'
 #' @param run_date 
-#' @param insiumeh_forecast_available 
+#' @param insivumeh_forecast_available 
 #'
 #' @return
 #'
 #' @examples \dontrun{
-#'  gen_table_footnote(run_date = Sys.Date(),insiumeh_forecast_available = insiv_received)
+#'  gen_table_footnote(run_date = Sys.Date(),insivumeh_forecast_available = insiv_received)
 #' }
-gen_table_footnote <- function(run_date,insiumeh_forecast_available){
+gen_table_footnote <- function(run_date,insivumeh_forecast_available){
   run_mo <- month(run_date)
   if(run_mo==5) {
     ret <- "Thresholds for all countries have been calculated from historical ECMWF (1981-2022) to approximate 4 year return period drought level."
@@ -133,7 +132,7 @@ gen_table_footnote <- function(run_date,insiumeh_forecast_available){
   }
   else if (run_mo!=5){
     ret <- ifelse(
-      !insiumeh_forecast_available ,
+      !insivumeh_forecast_available ,
       glue("Thresholds for all countries have been calculated from historical ECMWF (1981-2022) to approximate 4 year return period drought level. An update will be provided for Guatemala when the national forecast data are received."),
       "Thresholds calculated to approximate a 4 year return period drought level. For Guatemala, these calculations were based on the official national historical forecasts from INSIVUMEH (1981-2022), For the remaining 3 countries the calculations were based on historical seasonal ECMWF Forecasts (1981-2022)"
     )
@@ -143,7 +142,7 @@ gen_table_footnote <- function(run_date,insiumeh_forecast_available){
 
 gen_subject <- function(df,
                         run_date,
-                        insiumeh_forecast_available
+                        insivumeh_forecast_available
 ){
   run_mo <- month(run_date)
   df_filt <- df %>% 
@@ -158,11 +157,11 @@ gen_subject <- function(df,
   
   subj_status <- ifelse(nrow(df_filt)>0,"Activated","No Activations")
   
-  if(run_mo==5|insiumeh_forecast_available){
+  if(run_mo==5|insivumeh_forecast_available){
     subj_ending <- "(NIC, HND, SLV, GTM)"
     subj_month <- month_chr
   }
-  else if(!insiumeh_forecast_available){
+  else if(!insivumeh_forecast_available){
     subj_ending <- "(NIC, HND, SLV)"
     subj_month <- glue("Preliminary {month_chr}")
   }
@@ -218,28 +217,6 @@ insivumeh_received <-  function(gdb_base,run_date= run_date){
   
 }
 
-#' build_insiv_path
-#' helper function to create path to hypothetical folder containing latest INSIVUMEH  naming convention based on run_date/pub_date
-#' can deprecate as we move from gdrive
-#' @param gdb_base 
-#' @param run_date 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-build_insiv_path <-  function(gdb_base,run_date,blob=T){
-  DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
-  
-  file.path(
-    gdb_base,
-    year(run_date),
-    DIR_CURRENT_INSIV
-  ) 
-  
-}
-
-
 
 # blastula/html wrappers --------------------------------------------------
 
@@ -257,7 +234,7 @@ add_image_custom <- function(
     float = c("none", "left", "right")
 ) {
   # get default blastula image HTML
-  html <- blastula::add_image(
+  html <- blastula$add_image(
     file = file,
     alt = alt,
     width = width,
@@ -300,12 +277,12 @@ add_ggplot_custom <- function(
 
 
 custom_html <- function(html, width) {
-  img_html <- stringr::str_extract(
+  img_html <- stringr$str_extract(
     html,
     "(<img src.*px;\"/>)",
     group = 1
   )
-  img_html_styled <- stringr::str_replace(
+  img_html_styled <- stringr$str_replace(
     img_html,
     "(?<=style=\")(.*)(?=\"/>)",
     "display:block;width:100%"
@@ -322,66 +299,3 @@ custom_html <- function(html, width) {
     )
   )
 }
-
-add_tmap <- function (plot_object,
-                      width = 5,
-                      height = 5,
-                      alt = NULL,
-                      align = c("center",
-                                "left",
-                                "right",
-                                "inline"),
-                      float = c("none", "left", "right")
-)
-{
-  tmpfile <- tempfile("tmap", fileext = ".png")
-  if (requireNamespace("tmap", quietly = TRUE)) {
-    tmap::tmap_save(tm = plot_object,
-                    # device = "png",
-                    filename = tmpfile,
-                    dpi = 200,
-                    width = width,
-                    height = height)
-  }
-  else {
-    stop("Please ensure that the `tmap` package is installed before using `add_tmap()`.",
-         call. = FALSE)
-  }
-  on.exit(file.remove(tmpfile), add = TRUE)
-  alt_text <- alt
-  image_html <- add_image(file = tmpfile,
-                          alt = alt_text,
-                          width = width * 100,
-                          align = align,
-                          float = float)
-  image_html
-}
-
-
-add_tmap_custom <-  function(
-    plot_object,
-    width = 5,
-    height = 5,
-    html_width = 1000,
-    alt = NULL,
-    align = c("center", "left", "right", "inline"),
-    float = c("none", "left", "right")
-){
-  html <- add_tmap(
-    plot_object = plot_object,
-    width = width,
-    height = height,
-    alt = alt,
-    align = align,
-    float = float
-  )
-  # return(html)
-  custom_html(
-    html = html,
-    width = html_width
-  )
-}
-
-
-
-

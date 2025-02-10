@@ -190,6 +190,8 @@ AOI_GTM <- df_new_aoi_meta |>
   filter(iso3=="GTM") |> 
   pull(name)
 
+
+
 dir_insivumeh <- file.path(
   Sys.getenv("AA_DATA_DIR_NEW"),
   "private",
@@ -215,11 +217,18 @@ r_new <- insivumeh$load_ncdf_insivumeh(gdb = dir_new,wrap=F)
 
 gdf_adm1 <- cumulus$download_fieldmaps_sf(iso = "gtm",layer = "gtm_adm1")$gtm_adm1
 
+# if more admins added to Guatemala we need to dissolve them before running 
+# zonal stats.
 gdf_gtm_aoi <- gdf_adm1 |> 
   filter(
-    ADM1_ES == AOI_GTM
+    ADM1_ES %in% AOI_GTM
+  ) |> 
+  group_by( 
+    ADM0_ES
+    ) |> 
+  summarise(
+    do_union = TRUE
   )
-
 
 lr <- list(
   "old" = r_old,
@@ -238,10 +247,10 @@ ldf <- map(lr,\(x){
     separate(name, into = c("stat", "issued_date", "lt_chr"), sep = "\\.") %>%
     mutate(
       adm0_es = "Guatemala",
-      adm1_es = AOI_GTM,
       issued_date = as_date(issued_date),
       leadtime = parse_number(lt_chr),
-      valid_date = issued_date + months(leadtime)
+      valid_date = issued_date + months(leadtime),
+      adm1_es = glue_collapse(AOI_GTM,sep =",")
     )
 }
 )
@@ -257,7 +266,7 @@ df_primera_insiv <- cumulus$seas5_aggregate_forecast(
   dfz,
   value ="value",
   valid_months = c(5:8),
-  by = c("adm0_es","adm1_es","issued_date")
+  by = c("adm0_es","issued_date")
 )
 
 
@@ -265,7 +274,7 @@ df_postrera_insiv <- cumulus$seas5_aggregate_forecast(
   dfz,
   value ="value",
   valid_months = c(9:11),
-  by = c("adm0_es","adm1_es","issued_date")
+  by = c("adm0_es","issued_date")
 )
 
 ldf_insiv <- list(
@@ -283,7 +292,7 @@ ldf_thresholded_1981_2022 <- ldf_insiv |>
         ) |> 
         utils$threshold_var(
           var= "value",
-          by = c("adm0_es","adm1_es","leadtime"),
+          by = c("adm0_es","leadtime"),
           rp_threshold = 4,
           direction =-1
         ) 
@@ -295,7 +304,7 @@ rp_linear_funcs <- ldf_thresholded_1981_2022 |>
   map(
     \(dft){
       dft |> 
-        group_by(adm0_es,adm1_es,issued_month_label = month(issued_date,abbr=T,label = T),leadtime) |> 
+        group_by(adm0_es,issued_month_label = month(issued_date,abbr=T,label = T),leadtime) |> 
         summarise(
           calc_empirical_rp_level = list(approxfun(rp_emp, value,method = "linear", rule =2,yright =Inf)),
           calc_empirical_rp = list(approxfun( value,rp_emp,method = "linear",rule =2))
@@ -307,7 +316,7 @@ rp_linear_funcs <- ldf_thresholded_1981_2022 |>
 ldf_rp4_by_lt <- rp_linear_funcs |> 
   map(\(dft){
     dft |> 
-      group_by(adm0_es,adm1_es, leadtime,issued_month_label) |> 
+      group_by(adm0_es, leadtime,issued_month_label) |> 
       reframe(
         RP_empirical = 4,
         value_empirical = map_dbl(RP_empirical,calc_empirical_rp_level),
@@ -328,14 +337,12 @@ df_insiv_thresholds <- ldf_rp4_by_lt |>
     forecast_source = "INSIVUMEH",
     AOI = AOI_SET_NAME,
     iso3 = "GTM"
-  ) |> 
-  select(-adm1_es)
+  ) 
 
 df_combined_thresholds <- bind_rows(
   df_seas5_thresholds,
   df_insiv_thresholds
 )
-
 
 if(OVERWRITE){
   cumulus$blob_write(

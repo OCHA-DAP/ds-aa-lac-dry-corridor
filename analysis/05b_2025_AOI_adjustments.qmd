@@ -208,8 +208,6 @@ gdf_adm0_cadc <- cumulus$blob_read(
 
 ```
 
-
-
 ```{r}
 gdf_aoi <- gdf_adm1_cadc |> 
   filter(
@@ -331,8 +329,6 @@ df_historical_aa_classified <- df_historical_aa_adm0 |>
   ) 
 ```
 
-
-
 Plot historical time series of minimum rainfall per season/yr for both Primera and Postrera. In this plot the threshold is calculated form the entire historical record using all available data
 
 ```{r}
@@ -374,7 +370,7 @@ df_max_rp_forecast_per_year_window |>
 
 ```
 
--   Below we plot the same thing, but to be more exact on the question of what would have happened in 2024 with the same method we calculate the thresholds using the same set of baseline years used to the 2024 monitoring (1984-2022) 
+-   Below we plot the same thing, but to be more exact on the question of what would have happened in 2024 with the same method we calculate the thresholds using the same set of baseline years used to the 2024 monitoring (1984-2022)
 -   results unchanged
 
 ```{r}
@@ -622,6 +618,7 @@ ldf_thresholds_wide$postrera %>%
 ## Joint RPs
 
 Next we want to look at how the joint return periods/activation rates could theoretically change using the refined AOI methodology
+
 ```{r}
 
 # bind together all 
@@ -652,7 +649,6 @@ df_all_historical_forecasts_classified <- df_all_forecasts |>
   )
 ```
 
-
 ```{r}
 #| eval: false
 #| echo: false # dont need to show this in rendered doc
@@ -667,8 +663,6 @@ df_all_historical_forecasts_classified |>
     ar = mean(flag)
   )
 ```
-
-
 
 ```{r}
 # now filter to only relevant  forecast sources for monitoring
@@ -730,7 +724,6 @@ df_jrp_both_windows_wide <- df_jrp_both_windows |>
   )
 ```
 
-
 ```{r}
 bind_rows(df_jrp_per_window_wide,
           df_jrp_both_windows_wide
@@ -772,7 +765,6 @@ bind_rows(df_jrp_per_window_wide,
 
 ```
 
-
 ```{r 2025_season}
 #| eval: false
 #| echo: false
@@ -813,7 +805,7 @@ df_primera_feb |>
   scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
   scale_x_continuous(breaks = 1981:2025) |> 
   labs(
-    title = "CADC: Primera (MJJA) & Postrera (SON) Seasonal Precipitation Forecasts",
+    title = "CADC: Primera (MJJA) Seasonal Precipitation Forecasts",
     subtitle = "February publications: Selected admin 1 units in CADC",
     caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
           Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
@@ -830,4 +822,3 @@ df_primera_feb |>
     legend.position = "none"
   )
 ```
-
