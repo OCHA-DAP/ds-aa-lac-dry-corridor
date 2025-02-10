@@ -8,6 +8,7 @@
 box::use(dplyr[...],
          lubridate[...],
          glue[...],
+         stringr,
          blastula)
 
 #' Title
@@ -26,7 +27,6 @@ box::use(dplyr[...],
 #'   )}
 
 email_text_list <- function(df=df_activation_status,
-                            season = "Primera",
                             run_date= run_date,
                             insiumeh_forecast_available
 ){
@@ -36,6 +36,8 @@ email_text_list <- function(df=df_activation_status,
     filter(
       status_lgl
     )
+  
+  season <- stringr$str_to_title(unique(df$window))
   
   
   description_ending <-  gen_description_end(run_date = run_date,insiumeh_forecast_available = insiumeh_forecast_available)

@@ -92,6 +92,11 @@ gt_threshold_table
 
 ```
 
+
+```{r tblAOI}
+gt_aoi
+```
+
 <!-- **Methodology Update:** -->
 <!-- *`r email_txt$methodology_update`* -->
     

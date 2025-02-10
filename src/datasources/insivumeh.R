@@ -11,6 +11,7 @@ box::use(
   cumulus,
   tidyr,
   readr,
+  logger,
   exactextractr
   
 )
@@ -51,23 +52,23 @@ load_zonal_insivumeh <-  function(run_date = Sys.Date(),
 #' @export
 load_ncdf_blob_insiv <- function(
     run_date = Sys.Date(),
-    container = "global",
-    dir = "raster/raw",
+    container = "raster",
+    dir = "insivumeh/raw",
     stage = "dev"
     ){
   
   run_mo = month(run_date,label = TRUE, abbr = TRUE)
   run_yr = year(run_date)
   
-  prefix<- paste0("insivumeh_pronos_deterministic")
+  # prefix<- paste0("insivumeh_pronos_deterministic")
   suffix<- paste0("start",run_mo,run_yr,".nc")
-  rgx <- glue$glue("^{dir}/{prefix}.*{suffix}$")
+  rgx <- glue$glue("^{dir}/.*{suffix}$")
   
-  blob_container <- cumulus$blob_containers()$global
+  blob_container <- cumulus$blob_containers()$raster
   
 
-  blob_contents <- AzureStor$list_blobs(container = blob_container,dir = "raster/raw")
-  blob_names <- stringr::str_subset(blob_contents$name,pattern = rgx)
+  blob_contents <- AzureStor$list_blobs(container = blob_container,dir = "insivumeh/raw")
+  blob_names <- str_subset(blob_contents$name,pattern = rgx)
   # Check if blob_names is empty
   if (length(blob_names) == 0) {
     stop("No matching files found for the specified criteria. Check the run_date, container, and dir arguments.")
@@ -79,9 +80,9 @@ load_ncdf_blob_insiv <- function(
 
   
   blob_names |> 
-    purrr::map(
+    walk(
       \(b){
-        
+        blob_basename <- basename(b)
         tf <- file.path(td,basename(b))
         
         AzureStor$download_blob(
@@ -129,7 +130,7 @@ load_ncdf_insivumeh <- function(gdb,wrap=F) {
       lt <- lead_time_diff %/% months(1)
       bname <- paste0(start_date, ".lt_", lt)
       
-      # Now we open the each file and turn it into a terra::rast()
+      # Now we open the each file and turn it into a terra$rast()
       cat(bname, "\n")
       dat <- RNetCDF$open.nc(fp_nc)
       dat_extent <- r_extent(nc_ob= dat)

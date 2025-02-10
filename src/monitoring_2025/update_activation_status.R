@@ -42,7 +42,7 @@ box::use(
 )
 
 
-run_date <- lubridate$as_date("2024-07-01") #DELETE LATER OR INCORPORATE TEST FUNC
+run_date <- lubridate$as_date("2024-04-05") #DELETE LATER OR INCORPORATE TEST FUNC
 current_moment <-  lubridate$floor_date(run_date, "month")
 
 
@@ -77,6 +77,7 @@ gdf_adm1_aoi <-  gdf_adm1 |>
     adm1_pcode %in% df_aoi$pcode
   ) 
 
+
 gdf_aoi_country <- gdf_adm1_aoi |> 
   group_by(adm0_es) |> 
   summarise()
@@ -92,8 +93,8 @@ gdf_aoi_gtm <- gdf_adm1 |>
 # Loading forecasts -------------------------------------------------------
 
 logger$log_info("Getting lastest SEAS5 forecast from Postgres")
-# box::reload(insivumeh)
-# box::reload(utils)
+box::reload(insivumeh)
+box::reload(utils)
 
 df_forecast <-  utils$load_relevant_forecasts(
   df = df_relevant_thresholds,
@@ -105,6 +106,7 @@ df_forecast <-  utils$load_relevant_forecasts(
 # Assessing activation ####
 
 df_forecast_status <- df_forecast |> 
+  # inner_join() will only keep the INSIVUMEH when needed
   inner_join(df_relevant_thresholds) |> 
   mutate(
     status_lgl = value<= RP_empirical,
@@ -118,13 +120,11 @@ df_forecast_status <- df_forecast |>
 
 email_txt <- eu$email_text_list(
   df = df_forecast_status,
-  season = "Postrera",
   run_date = run_date,
   insiumeh_forecast_available = insiv_received
 )
 
 
-# box::reload(gt)
 gt_threshold_table <- df_forecast_status |> 
   select(
     adm0_es,value,value_empirical,status
@@ -145,10 +145,38 @@ gt_threshold_table <- df_forecast_status |>
   ) |> 
   gt$tab_options(
     table.font.size = 14,
+    heading.background.color = "#55b284ff",
     # table.width = px(500)
     table.width = gt$pct(80)
   )
 
+gt_aoi <- gdf_adm1_aoi |> 
+  sf$st_drop_geometry() |> 
+  group_by(
+    adm0_es
+  ) |> 
+  summarise(
+    admin_1 = glue_collapse(adm1_es, sep = ", ")
+  ) |> 
+  gt$gt() |> 
+  gt$cols_label(
+    adm0_es = "Country",
+    admin_1 = "Admin 1"
+  ) |> 
+  gt$tab_header(
+    title = "Admin 1 units included in monitoring by country"
+  ) |> 
+  gt$cols_align(
+    align = "left"
+  ) |> 
+  gt$tab_options(
+    heading.background.color = "#55b284ff",
+    column_labels.background.color = hdx_hex("mint-ultra-light"),
+    
+    table.font.size = 14,
+    table.width = gt$pct(80)
+  )
+  
 
 
 gdf_adm0_status <- gdf_aoi_country %>%
@@ -250,10 +278,12 @@ if(is_test_email) {
 #   send_to <- df_email_receps$Email
 # }
 
-render_email(
+knitted_email <- render_email(
   input = email_rmd_fp,
   envir = parent.frame()
-) %>%
+)
+
+knitted_email |> 
   smtp_send(
     from = "data.science@humdata.org",
     to = "zachary.arno@un.org",
