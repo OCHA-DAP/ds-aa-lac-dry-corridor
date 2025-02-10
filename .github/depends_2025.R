@@ -16,7 +16,6 @@ required_pkgs <- c(
   "glue",
   "rlang", 
   "purrr",
-  "gghdx",
   "forcats",
   "readr",
   "gt", 
@@ -32,7 +31,7 @@ required_pkgs <- c(
   "box"
 )
 install.packages(required_pkgs)
-
+install.packages("gghdx")
 # once we have `{remotes}` should be able to install_github
 remotes::install_github(
   repo = "OCHA-DAP/cumulus"
