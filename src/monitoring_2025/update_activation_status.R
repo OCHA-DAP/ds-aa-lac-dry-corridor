@@ -39,13 +39,13 @@ box::use(
   ../utils/map
 )
 
-box::reload(eu)
-Sys.setenv("EMAIL_WHO"= "test")
-
-EMAIL_WHO <- (
+EMAIL_LIST <- (
   Sys.getenv("EMAIL_WHO", unset = "test")
-  )
-df_email_receps <- eu$load_email_recipients(email_list = EMAIL_WHO)
+)
+
+
+df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
+
 
 
 
@@ -282,11 +282,11 @@ knitted_email <- render_email(
   envir = parent.frame()
 )
 
+
 knitted_email |> 
   smtp_send(
     from = "data.science@humdata.org",
-    to = "zachary.arno@un.org",
-    # to = df_email_receps$Email,
-    subject = paste0("TEST ",email_txt$subj),
+    to = df_email_receps$email,
+    subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
     credentials = email_creds
   )
