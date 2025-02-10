@@ -590,7 +590,7 @@ ldf_thresholds_wide$primera %>%
       rows = 3
     )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
-  tab_header(title = "Primera (MJJA 2024) Rainfall (mm) Monitoring Thresholds",
+  tab_header(title = "Primera (MJJA 2025) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_legend
   )
 
@@ -609,7 +609,7 @@ ldf_thresholds_wide$postrera %>%
       rows = 1:3
     )) %>% 
   tab_footnote(footnote = html(txt_footnote)) %>% 
-   tab_header(title = "Postrera (SON 2024) Rainfall (mm) Monitoring Thresholds",
+   tab_header(title = "Postrera (SON 2025) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_legend
   )
 
