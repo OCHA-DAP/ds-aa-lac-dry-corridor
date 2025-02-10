@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.R_LIBS_USER }}
-          key: R-dependency-cache-${{ hashFiles('.github/depends.R') }}
+          key: R-dependency-cache-${{ hashFiles('.github/depends_2025.R') }}
       
       - name: Install R dependencies
         if: steps.cache-r-deps.outputs.cache-hit != 'true'
