@@ -219,14 +219,14 @@ insivumeh_availability <- function(run_date){
   # INSIVUMEH Forecast currenlty stored in global container on dev
   # when I set it up i thought we were goign to put all rasters in one location
   # and use STAC for cataloguing
-  blob_container <- cumulus$blob_containers()$global 
-  DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
+  blob_container <- cumulus$blob_containers()$raster 
+  # DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
   blob_name_rgx <- paste0("start",format(run_date,"%b%Y"),".nc$")
   
   
   container_contents <- AzureStor$list_blobs(
     blob_container, 
-    dir = "raster/raw"
+    dir = "insivumeh/raw/"
   )
   fps_blob <- str_subset(container_contents$name,blob_name_rgx)
   cat("checking global/raster/raw for 6 new forecast files\n")
