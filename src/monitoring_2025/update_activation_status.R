@@ -28,28 +28,42 @@ box::use(
   sf,
   gt,
   ggplot2[...],
-  gghdx[...]
+  gghdx[...],
+  blastula[...]
 )
+
 
 gghdx()
 box::use(
   utils = ../utils/gen_utils,
-  # blob = ../email/email_utils/blob_utils,
+  eu=../utils/email_utils,
   ../datasources/insivumeh,
-  eu=../utils/email_utils
+  ../utils/map
 )
-box::use(eu=../utils/email_utils)
-box::reload(utils)
-box::reload(insivumeh)
+
 
 run_date <- lubridate$as_date("2024-07-01") #DELETE LATER OR INCORPORATE TEST FUNC
 current_moment <-  lubridate$floor_date(run_date, "month")
 
+
+
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
+
+
+# Loading base data -------------------------------------------------------
+
+# this function can/should be edited to reflect changes in monitoring AOI
+df_aoi <- utils$load_aoi_df()
+gdf_adm1 <- utils$load_adm1_sf()
+
 df_admin_name_lookup <- cumulus$blob_load_admin_lookup()
+
 # this threshold table dictates which thresholds and forecast source we use.
 df_thresholds <- utils$load_threshold_table(file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet")
 
+
+
+# Minor filtering/wrangling -----------------------------------------------
 
 
 df_relevant_thresholds <- df_thresholds |> 
@@ -57,13 +71,6 @@ df_relevant_thresholds <- df_thresholds |>
     issued_month_label == lubridate$month(current_moment, abbr= T, label =T)
   )
 
-
-# this function can/should be edited to reflect changes in monitoring AOI
-df_aoi <- utils$load_aoi_df()
-gdf_adm1 <- utils$load_adm1_sf()
-
-
-# box::reload(utils)
 
 gdf_adm1_aoi <-  gdf_adm1 |> 
   filter(
@@ -81,10 +88,13 @@ gdf_aoi_gtm <- gdf_adm1 |>
     adm1_pcode %in% df_aoi[df_aoi$iso3=="GTM","pcode"]
   ) 
 
+
+# Loading forecasts -------------------------------------------------------
+
 logger$log_info("Getting lastest SEAS5 forecast from Postgres")
 # box::reload(insivumeh)
 # box::reload(utils)
-# debugonce(utils$load_relevant_forecasts)
+
 df_forecast <-  utils$load_relevant_forecasts(
   df = df_relevant_thresholds,
   activation_moment = current_moment,
@@ -92,6 +102,7 @@ df_forecast <-  utils$load_relevant_forecasts(
   gdf_zone= gdf_aoi_gtm
 )
 
+# Assessing activation ####
 
 df_forecast_status <- df_forecast |> 
   inner_join(df_relevant_thresholds) |> 
@@ -103,14 +114,16 @@ df_forecast_status <- df_forecast |>
 
 
 
+# Preparing email content -------------------------------------------------
+
 email_txt <- eu$email_text_list(
   df = df_forecast_status,
   season = "Postrera",
   run_date = run_date,
-  insiumeh_forecast_available = T
+  insiumeh_forecast_available = insiv_received
 )
 
-box::use(gt)
+
 # box::reload(gt)
 gt_threshold_table <- df_forecast_status |> 
   select(
@@ -135,7 +148,7 @@ gt_threshold_table <- df_forecast_status |>
     # table.width = px(500)
     table.width = gt$pct(80)
   )
-gt_threshold_table
+
 
 
 gdf_adm0_status <- gdf_aoi_country %>%
@@ -147,8 +160,7 @@ gdf_adm0_status <- gdf_aoi_country %>%
 
 
 
-box::use(../utils/map)
-# box::reload(map)
+
 
 l_gdf_simple <-  map$load_simplified_map_layers()
 
@@ -220,7 +232,7 @@ p_rainfall <- df_forecast_status %>%
 
 
 email_rmd_fp <- "email_cadc_drought_monitoring_2025.Rmd"
-box::use(blastula[...])
+
 # Load in e-mail credentials
 email_creds <- creds_envvar(
   user = Sys.getenv("CHD_DS_EMAIL_USERNAME"),

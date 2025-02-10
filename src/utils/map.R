@@ -66,7 +66,8 @@ trigger_status_choropleth <- function(
     scale_fill_manual(
       values = c(
         "Not Available" = hdx_hex("gray-medium"),
-        "No Activation"=hdx_hex("mint-ultra-light"),
+        
+        "No Activation"= "#55b284ff",#"#00ad78ff", # hdx_hex("mint-ultra-light"),
         "Activation"=hdx_hex("tomato-light")
         
       ),
