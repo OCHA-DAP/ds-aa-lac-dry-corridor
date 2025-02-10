@@ -28,7 +28,8 @@ required_pkgs <- c(
   "blastula",
   "tibble",
   "showtext",
-  "remotes"
+  "remotes",
+  "box"
 )
 install.packages(required_pkgs)
 

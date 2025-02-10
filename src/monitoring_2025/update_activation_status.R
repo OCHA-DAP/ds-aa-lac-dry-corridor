@@ -39,7 +39,19 @@ box::use(
   ../utils/map
 )
 
-gghdx()
+box::reload(eu)
+Sys.setenv("EMAIL_WHO"= "test")
+
+EMAIL_WHO <- (
+  Sys.getenv("EMAIL_WHO", unset = "test")
+  )
+df_email_receps <- eu$load_email_recipients(email_list = EMAIL_WHO)
+
+
+
+df_email_receps |> 
+  filter_recepients(run_mode = RUN_MODE)
+
 
 run_date <- lubridate$as_date("2024-06-05") #DELETE LATER OR INCORPORATE TEST FUNC
 current_moment <-  lubridate$floor_date(run_date, "month")

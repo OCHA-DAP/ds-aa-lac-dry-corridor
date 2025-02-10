@@ -1,15 +1,50 @@
 
+box::use(
+  dplyr[...],
+  # dplyr,
+  lubridate[...],
+  glue[...],
+  stringr,
+  blastula,
+  cumulus,
+  janitor,
+  rlang
+)
+
+
+#' @export
+load_email_recipients <- function(email_list){
+  load_raw_email_recipients() |> 
+    filter_recepients(
+      email = email_list
+    )
+}
+
+filter_recepients <-  function(df,email_list){
+  df |> 
+    select(
+    all_of(c(
+        "name", "organization", "role", "email",email_list
+      )
+      )
+    ) |> 
+    filter(!is.na(!!rlang$sym(email_list)))
+}
+
+load_raw_email_recipients <- function(){
+  df_email_receps <- cumulus$blob_read(
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/email_recepients_cadc_trigger_2025.csv",
+    container = "projects",
+    stage = "dev"
+  ) |> 
+    janitor$clean_names()
+}
 
 
 
 
 # Email Text --------------------------------------------------------------
 
-box::use(dplyr[...],
-         lubridate[...],
-         glue[...],
-         stringr,
-         blastula)
 
 #' Title
 #'

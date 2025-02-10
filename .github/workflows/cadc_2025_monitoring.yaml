@@ -6,13 +6,14 @@ name: cadc-2025-trigger-monitoring
 on:
   workflow_dispatch:
       inputs:
-        TEST_EMAIL:
+        RUN_MODE: # COULD MAKE RUN_MODE
           required: true
           type: choice
-          default: "TRUE"
+          default: "test"
           options:
-            - "TRUE"
-            - "FALSE" 
+            - "internal_chd"
+            - "internal_ocha"
+            - "full_list"
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -48,6 +49,18 @@ jobs:
         if: steps.cache-r-deps.outputs.cache-hit != 'true'
         run: |
           Rscript .github/depends_2025.R
+          
+       - name: Cache additional R dependencies
+        id: cache-r-deps-additional
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: R-dependency-cache-${{ hashFiles('.github/depends_additional_2025.R') }}
+      
+      - name: Install additonal R dependencies
+        if: steps.cache-r-deps-additional.outputs.cache-hit != 'true'
+        run: |
+          Rscript .github/depends_additional_2025.R
 
       # - name: Run R-script-cadc-2025-trigger-monitoring
       #   run: |
@@ -62,4 +75,4 @@ jobs:
       #     DS_AZ_DB_PROD_UID_WRITE: ${{ secrets.DS_AZ_DB_DEV_UID_WRITE }}
       #     DS_AZ_DB_PROD_HOST: ${{ secrets.DS_AZ_DB_PROD_HOST }}
       #     DS_AZ_DB_PROD_PW_WRITET: ${{ secrets.DS_AZ_DB_PROD_PW_WRITET }}
-      #     TEST_EMAIL: ${{ inputs.TEST_EMAIL || 'FALSE' }}
+      #     RUN_MODE: ${{ inputs.RUN_MODE || 'test' }}
