@@ -40,7 +40,5 @@ install.packages(c(
 
 # install.packages("gghdx")
 # # once we have `{remotes}` should be able to install_github
-remotes::install_github(
-  repo = "OCHA-DAP/cumulus"
-  )
+
 
