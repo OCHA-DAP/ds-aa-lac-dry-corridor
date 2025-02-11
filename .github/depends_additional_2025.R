@@ -1,5 +1,4 @@
 install.packages(c(
-  "gghdx",
-  "Rpostgres"
+  "dbplyr"
   )
 )

@@ -75,18 +75,17 @@ jobs:
         run: |
           Rscript .github/depends_2025.R
           
-      # - name: Cache additional R dependencies
-      #   id: cache-r-deps-additional
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ${{ env.R_LIBS_USER }}
-      #     key: R-dependency-cache-${{ hashFiles('.github/depends_additional_2025.R') }}
-      # 
-      # - name: Install additonal R dependencies
-      #   if: steps.cache-r-deps-additional.outputs.cache-hit != 'true'
-      #   run: |
-      #     Rscript .github/depends_additional_2025.R
-      #     
+      - name: Cache additional R dependencies
+        id: cache-r-deps-additional
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: R-dependency-cache-${{ hashFiles('.github/depends_additional_2025.R') }}
+
+      - name: Install additonal R dependencies
+        if: steps.cache-r-deps-additional.outputs.cache-hit != 'true'
+        run: |
+          Rscript .github/depends_additional_2025.R
 
       - name: Run R-script-test-env-vars
         shell: bash
