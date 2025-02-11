@@ -34,12 +34,13 @@ install.packages(required_pkgs)
 
 install.packages(c(
   "gghdx",
-  "Rpostgres"
+  "RPostgres"
 )
 )
+
 # install.packages("gghdx")
 # # once we have `{remotes}` should be able to install_github
-# remotes::install_github(
-#   repo = "OCHA-DAP/cumulus"
-#   )
+remotes::install_github(
+  repo = "OCHA-DAP/cumulus"
+  )
 
