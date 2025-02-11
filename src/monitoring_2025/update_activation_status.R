@@ -43,10 +43,19 @@ EMAIL_LIST <- (
   Sys.getenv("EMAIL_WHO", unset = "test")
 )
 
+
+get_run_date <-  function(){
+  run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
+  lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
+}
+
+
+
+
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 
-run_date <- lubridate$as_date("2024-06-05") #DELETE LATER OR INCORPORATE TEST FUNC
+run_date <- get_run_date()
 current_moment <-  lubridate$floor_date(run_date, "month")
 
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
@@ -121,7 +130,7 @@ email_txt <- eu$email_text_list(
   insivumeh_forecast_available = insiv_received 
 )
 
-
+logger$log_info("Making threshold table")
 gt_threshold_table <- df_forecast_status |> 
   select(
     adm0_es,value,value_empirical,status
@@ -147,6 +156,7 @@ gt_threshold_table <- df_forecast_status |>
     table.width = gt$pct(80)
   )
 
+logger$log_info("Making admin AOI table")
 gt_aoi <- gdf_adm1_aoi |> 
   sf$st_drop_geometry() |> 
   group_by(
@@ -176,16 +186,20 @@ gt_aoi <- gdf_adm1_aoi |>
   
 
 
+
+
 gdf_adm0_status <- gdf_aoi_country %>%
   left_join(
     df_forecast_status |> 
       select(adm0_es,status)
   )
 
+logger$log_info("Loading Map layers from blob")
 l_gdf_simple <-  map$load_simplified_map_layers()
-
+l_gdf_simple$AOI_ADM0
 # box::reload(map)
 # ## 6d. Generate Map - Choropleth ####
+logger$log_info("Making Map")
 m_choro <- map$trigger_status_choropleth(
   gdf_aoi = gdf_adm0_status, # dissolved admin file
   gdf_adm1 = l_gdf_simple$AOI_ADM1, # full country admin 1

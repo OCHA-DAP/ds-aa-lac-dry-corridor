@@ -15,6 +15,14 @@ on:
             - "internal_chd"
             - "internal_ocha"
             - "full_list"
+        RUN_DATE_USE: 
+          required: true
+          type: choice
+          default: "2024-04-05"
+          options:
+            - "2024-04-05" # primera last year
+            - "2024-07-05" # postrera last year
+            - "current" # realtime
 jobs:
   monitor:
     runs-on: ubuntu-latest
