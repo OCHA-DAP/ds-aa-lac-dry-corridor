@@ -29,6 +29,20 @@ jobs:
       DS_AZ_DB_PROD_HOST: ${{ secrets.DS_AZ_DB_PROD_HOST }}
       DS_AZ_DB_PROD_PW_WRITE: ${{ secrets.DS_AZ_DB_PROD_PW_WRITE }}
       EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'test' }}
+      
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: ${{ secrets.DS_AZ_DB_PROD_UID_WRITE }}
+          POSTGRES_PASSWORD: ${{ secrets.DS_AZ_DB_PROD_PW_WRITE }}
+          POSTGRES_DB: ${{ secrets.DS_AZ_DB_PROD_NAME }}
+          POSTGRES_HOST: localhost
+        ports:
+          - 5432:5432
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up R
