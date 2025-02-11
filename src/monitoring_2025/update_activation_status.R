@@ -278,9 +278,9 @@ email_creds <- creds_envvar(
 )
 
 
-if(is_test_email) {
-  send_to <- "zachary.arno@un.org"
-}
+# if(is_test_email) {
+#   send_to <- "zachary.arno@un.org"
+# }
 # if(!is_test_email) {
 #   send_to <- df_email_receps$Email
 # }
