@@ -31,9 +31,15 @@ required_pkgs <- c(
   "box"
 )
 install.packages(required_pkgs)
-install.packages("gghdx")
-# once we have `{remotes}` should be able to install_github
-remotes::install_github(
-  repo = "OCHA-DAP/cumulus"
-  )
+
+install.packages(c(
+  "gghdx",
+  "Rpostgres"
+)
+)
+# install.packages("gghdx")
+# # once we have `{remotes}` should be able to install_github
+# remotes::install_github(
+#   repo = "OCHA-DAP/cumulus"
+#   )
 
