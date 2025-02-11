@@ -1,5 +1,1 @@
-
-remotes::install_github(
-  repo = "OCHA-DAP/gghdx"
-  )
-
+install.packages("gghdx")
