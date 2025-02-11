@@ -66,12 +66,12 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.R_LIBS_USER }}
-          key: R-dependency-cache-${{ hashFiles('.github/depends_2025_additional.R') }}
+          key: R-dependency-cache-${{ hashFiles('.github/depends_additional_2025.R') }}
       
       - name: Install additonal R dependencies
         if: steps.cache-r-deps-additional.outputs.cache-hit != 'true'
         run: |
-          Rscript .github/depends_2025_additional.R
+          Rscript .github/depends_additional_2025.R
           
 
       - name: Run R-script-test-env-vars
