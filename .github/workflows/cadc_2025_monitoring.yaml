@@ -46,7 +46,8 @@ jobs:
             libproj-dev \
             libgeos-dev \
             libudunits2-dev \
-            libsodium-dev
+            libsodium-dev \
+            libfreetype6-dev
       
       - name: Cache R dependencies
         id: cache-r-deps
