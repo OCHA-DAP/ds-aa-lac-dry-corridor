@@ -51,7 +51,7 @@ jobs:
       
       - name: Cache R dependencies
         id: cache-r-deps
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
           key: R-dependency-cache-${{ hashFiles('.github/depends_2025.R') }}
@@ -63,7 +63,7 @@ jobs:
           
       - name: Cache additional R dependencies
         id: cache-r-deps-additional
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
           key: R-dependency-cache-${{ hashFiles('.github/depends_additional_2025.R') }}
@@ -77,8 +77,8 @@ jobs:
       - name: Run R-script-test-env-vars
         shell: bash
         run: Rscript ./src/monitoring_2025/test_gha_settings.R
-
-      - name: Run R-script-cadc-2025-trigger-monitoring
-        shell: bash
-        run: Rscript ./src/monitoring_2025/update_activation_status.R
+# 
+#       - name: Run R-script-cadc-2025-trigger-monitoring
+#         shell: bash
+#         run: Rscript ./src/monitoring_2025/update_activation_status.R
 
