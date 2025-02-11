@@ -1,1 +1,5 @@
-install.packages("gghdx")
+install.packages(c(
+  "gghdx",
+  "Rpostgres"
+  )
+)
