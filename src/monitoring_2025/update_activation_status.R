@@ -29,7 +29,8 @@ box::use(
   gt,
   ggplot2[...],
   gghdx[...],
-  blastula[...]
+  blastula[...],
+  geoarrow[...]
 )
 
 box::use(
@@ -196,7 +197,7 @@ gdf_adm0_status <- gdf_aoi_country %>%
 
 logger$log_info("Loading Map layers from blob")
 l_gdf_simple <-  map$load_simplified_map_layers()
-l_gdf_simple$AOI_ADM0
+l_gdf_simple
 # box::reload(map)
 # ## 6d. Generate Map - Choropleth ####
 logger$log_info("Making Map")
