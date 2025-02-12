@@ -39,6 +39,7 @@ box::use(
   ../datasources/insivumeh,
   ../utils/map
 )
+gghdx()
 
 EMAIL_LIST <- (
   Sys.getenv("EMAIL_WHO", unset = "test")
