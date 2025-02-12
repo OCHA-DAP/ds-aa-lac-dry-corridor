@@ -30,7 +30,8 @@ required_pkgs <- c(
   "remotes",
   "box",
   "dbplyr",
-  "RPostgres"
+  "RPostgres",
+  "curl"
 )
 install.packages(required_pkgs)
 
