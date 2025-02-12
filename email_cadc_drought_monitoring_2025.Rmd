@@ -26,23 +26,20 @@ knitr::opts_chunk$set(
   fig.align='center',
   fig.cap = "" 
 )
+box::use(
+  gghdx[...]
+)
+gghdx()
 ```
 
-```{r}
-# gghdx()
-# source("src/email/email_utils.R")
-```
 
 ```{r, class.output = "banner"}
-# box::use(cumulus)
-# box::use(blastula[...])
 tfp_banner <- cumulus$blob_read(
-  container = "projects",name = "ds-aa-lac-dry-corridor/framework_update_2025/email_logos/centre_banner.png" , return_path = T,progress_show = F
+  container = "projects",
+  name = "ds-aa-lac-dry-corridor/framework_update_2025/email_logos/centre_banner.png" , 
+  return_path = T,
+  progress_show = F
 )
-# cumulus$blob_read()
-# banner_drib <- drive_dribble %>%
-#   filter(name == "centre_banner.png")
-# drive_download(banner_drib, path = banner_path <- tempfile(fileext = ".png"))
 
 add_image(
   file = tfp_banner,
@@ -114,11 +111,6 @@ Data accessed `r trimws(format(lubridate$as_date(Sys.Date()), "%B %Y"))`.
 
 ```{r FooterLogo}
 
-
-# logo_drib <- drive_dribble %>%
-#   filter(name == "ocha_logo_wide.png")
-# 
-# drive_download(logo_drib, path = logo_path <- tempfile(fileext = ".png"))
 tfp_logo <- cumulus$blob_read(
   container = "projects",
   name = "ds-aa-lac-dry-corridor/framework_update_2025/email_logos/ocha_logo_wide.png" , 
