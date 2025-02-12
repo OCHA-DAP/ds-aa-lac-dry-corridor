@@ -71,8 +71,8 @@ jobs:
             libsodium-dev \
             libfreetype6-dev
       
-      - name: Clear Cache
-        run: rm -rf ~/.cache      
+      # - name: Clear Cache # shouldnt' be necessary
+      #   run: rm -rf ~/.cache      
       
       - name: Cache R dependencies
         id: cache-r-deps
@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: Rscript ./src/monitoring_2025/test_gha_settings.R
 
-      # - name: Run R-script-cadc-2025-trigger-monitoring
-      #   shell: bash
-      #   run: Rscript ./src/monitoring_2025/update_activation_status.R
+      - name: Run R-script-cadc-2025-trigger-monitoring
+        shell: bash
+        run: Rscript ./src/monitoring_2025/update_activation_status.R
 
