@@ -69,7 +69,8 @@ jobs:
             libgeos-dev \
             libudunits2-dev \
             libsodium-dev \
-            libfreetype6-dev
+            libfreetype6-dev \
+            libcurl4-openssl-dev
       
       # - name: Clear Cache # shouldnt' be necessary
       #   run: rm -rf ~/.cache      
