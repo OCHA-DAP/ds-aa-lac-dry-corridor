@@ -100,11 +100,11 @@ jobs:
       #   run: |
       #     Rscript .github/depends_additional_2025.R
 
-      # - name: Run R-script-test-env-vars
-      #   shell: bash
-      #   run: Rscript ./src/monitoring_2025/test_gha_settings.R
-      # 
-      # - name: Run R-script-cadc-2025-trigger-monitoring
-      #   shell: bash
-      #   run: Rscript ./src/monitoring_2025/update_activation_status.R
+      - name: Run R-script-test-env-vars
+        shell: bash
+        run: Rscript ./src/monitoring_2025/test_gha_settings.R
+      
+      - name: Run R-script-cadc-2025-trigger-monitoring
+        shell: bash
+        run: Rscript ./src/monitoring_2025/update_activation_status.R
 
