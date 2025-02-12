@@ -71,6 +71,9 @@ jobs:
             libsodium-dev \
             libfreetype6-dev
       
+      - name: Clear Cache
+        run: rm -rf ~/.cache      
+      
       - name: Cache R dependencies
         id: cache-r-deps
         uses: actions/cache@v4
@@ -82,6 +85,7 @@ jobs:
         if: steps.cache-r-deps.outputs.cache-hit != 'true'
         run: |
           Rscript .github/depends_2025.R
+
           
       # - name: Cache additional R dependencies
       #   id: cache-r-deps-additional
@@ -99,7 +103,7 @@ jobs:
         shell: bash
         run: Rscript ./src/monitoring_2025/test_gha_settings.R
 
-      - name: Run R-script-cadc-2025-trigger-monitoring
-        shell: bash
-        run: Rscript ./src/monitoring_2025/update_activation_status.R
+      # - name: Run R-script-cadc-2025-trigger-monitoring
+      #   shell: bash
+      #   run: Rscript ./src/monitoring_2025/update_activation_status.R
 
