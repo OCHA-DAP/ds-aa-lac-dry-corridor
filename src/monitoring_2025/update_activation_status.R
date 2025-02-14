@@ -39,12 +39,14 @@ box::use(
   ../datasources/insivumeh,
   ../utils/map
 )
-
+logger$log_info("RUN_DATE_USE"=Sys.getenv("RUN_DATE_USE"))
+logger$log_info("EMAIL_WHO"=Sys.getenv("EMAIL_WHO"))
 
 EMAIL_LIST <- (
   Sys.getenv("EMAIL_WHO", unset = "test")
 )
 
+logger$log_info("EMAIL_LIST"=Sys.getenv("EMAIL_LIST"))
 
 get_run_date <-  function(){
   run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
@@ -285,10 +287,11 @@ knitted_email <- render_email(
 )
 
 
-knitted_email |> 
-  smtp_send(
-    from = "data.science@humdata.org",
-    to = df_email_receps$email,
-    subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
-    credentials = email_creds
-  )
+
+smtp_send(
+  email = knitted_email,
+  from = "data.science@humdata.org",
+  to = df_email_receps$email[1],
+  subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
+  credentials = email_creds
+)
