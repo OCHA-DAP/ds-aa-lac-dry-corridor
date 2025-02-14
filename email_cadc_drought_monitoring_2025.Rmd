@@ -57,15 +57,7 @@ add_image(
 
 ```{r}
 # m_choro
-m_choro <- map$trigger_status_choropleth(
-  gdf_aoi = gdf_adm0_status, # dissolved admin file
-  gdf_adm1 = l_gdf_simple$AOI_ADM1, # full country admin 1
-  gdf_adm0_surrounding = l_gdf_simple$AOI_SURROUNDING, # surrounding 
-  gdf_adm0 = l_gdf_simple$AOI_ADM0, # full country admin 0,
-  insivumeh_data_available = insiv_received, # automate
-  aoi_txt_label_size = 8,
-  run_date = run_date_set
-)
+
 # blastula::add_ggplot()
 eu$add_ggplot_custom(
   plot_object = m_choro,
