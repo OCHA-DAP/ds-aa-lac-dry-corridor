@@ -288,7 +288,7 @@ email_creds <- creds_envvar(
   pass_envvar = "CHD_DS_EMAIL_PASSWORD",
   host = Sys.getenv("CHD_DS_HOST"),
   port = Sys.getenv("CHD_DS_PORT"),
-  use_ssl = FALSE
+  use_ssl = TRUE
 )
 
 logger$log_info("knitting email")
