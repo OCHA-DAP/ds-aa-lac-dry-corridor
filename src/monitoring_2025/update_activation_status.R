@@ -45,17 +45,17 @@ logger$log_info(paste0("RUN_DATE_USE = ", Sys.getenv("RUN_DATE_USE")))
 EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "test")
 
 logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
-
+Sys.setenv("RUN_DATE_USE" = "2024-07-05")
 get_run_date <-  function(){
   run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
   lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
 }
 
 
-
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 run_date <- get_run_date()
+class(run_date)
 
 logger$log_info(paste0("Run date set = ", run_date))
 
@@ -73,7 +73,10 @@ gdf_adm1 <- utils$load_adm1_sf()
 df_admin_name_lookup <- cumulus$blob_load_admin_lookup()
 
 # this threshold table dictates which thresholds and forecast source we use.
-df_thresholds <- utils$load_threshold_table(file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", fallback_to_seas5 = FALSE)
+df_thresholds <- utils$load_threshold_table(
+  file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", 
+  fallback_to_seas5 = FALSE
+  )
 
 
 # Minor filtering/wrangling -----------------------------------------------
@@ -212,7 +215,8 @@ m_choro <- map$trigger_status_choropleth(
   aoi_txt_label_size = 8,
   run_date = run_date
 )
-# m_choro
+
+logger$log_info("make rainfall plot")
 ## 6e. Generate plot ####
 p_rainfall <- df_forecast_status %>% 
   ggplot(
@@ -279,14 +283,14 @@ email_creds <- creds_envvar(
   use_ssl = TRUE
 )
 
-
+logger$log_info("knitting email")
 knitted_email <- render_email(
   input = email_rmd_fp,
   envir = parent.frame()
 )
 
 
-
+logger$log_info("Sending email")
 smtp_send(
   email = knitted_email,
   from = "data.science@humdata.org",
