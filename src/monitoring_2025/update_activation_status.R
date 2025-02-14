@@ -42,7 +42,7 @@ box::use(
 
 box::use(gghdx)
 
-
+WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[2]
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
 logger$log_info(paste0("WHEN_TO_MONITOR = ", Sys.getenv("WHEN_TO_MONITOR")))
 
@@ -73,7 +73,7 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
-monitoring_when <-   Sys.getenv("WHEN_TO_MONITOR", unset = "last_primera")
+monitoring_when <-   Sys.getenv("WHEN_TO_MONITOR", unset = WHEN_TO_MONITOR_LOCAL_DEFAULT)
 
 run_date_set <- case_when(
   monitoring_when == "last_primera" ~ lubridate$as_date("2024-04-05"),
