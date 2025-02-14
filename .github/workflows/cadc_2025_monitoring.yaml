@@ -2,7 +2,7 @@
 # script.
 
 name: cadc-2025-trigger-monitoring
-
+RUN_DATE_USE
 on:
   workflow_dispatch:
       inputs:
@@ -37,6 +37,7 @@ jobs:
       DS_AZ_DB_PROD_HOST: ${{ secrets.DS_AZ_DB_PROD_HOST }}
       DS_AZ_DB_PROD_PW_WRITE: ${{ secrets.DS_AZ_DB_PROD_PW_WRITE }}
       EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'test' }}
+      RUN_DATE_USE: ${{ inputs.RUN_DATE_USE || 'current' }}
       
     services:
       postgres:

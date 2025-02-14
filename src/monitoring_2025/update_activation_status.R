@@ -43,9 +43,7 @@ box::use(
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
 logger$log_info(paste0("RUN_DATE_USE = ", Sys.getenv("RUN_DATE_USE")))
 
-EMAIL_LIST <- (
-  Sys.getenv("EMAIL_WHO", unset = "test")
-)
+EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "test")
 
 logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 
