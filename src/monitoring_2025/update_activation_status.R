@@ -26,6 +26,7 @@ box::use(
   logger,
   sf,
   gt,
+  gghdx,
   ggplot2[...],
   # gghdx,
   blastula[...],
@@ -240,6 +241,10 @@ m_choro <- map$trigger_status_choropleth(
   aoi_txt_label_size = 8,
   run_date = run_date_set
 )
+logger$log_info("load gghdx aesthetics")
+gghdx$gghdx() 
+logger$log_info("print plot")
+m_choro
 
 logger$log_info("make rainfall plot")
 ## 6e. Generate plot ####

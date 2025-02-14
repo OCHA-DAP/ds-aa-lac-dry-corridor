@@ -59,7 +59,8 @@ trigger_status_choropleth <- function(
     ) + 
     geom_sf(
       data= gdf_adm0 ,
-      fill = "white", color ="white"
+      fill = "white",
+      color ="white"
     )+
     geom_sf(
       data= gdf_aoi,

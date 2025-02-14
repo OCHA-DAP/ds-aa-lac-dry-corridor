@@ -62,8 +62,8 @@ load_raw_email_recipients <- function(){
 #'   run_date = Sys.Date()
 #'   )}
 
-email_text_list <- function(df=df_activation_status,
-                            run_date= run_date,
+email_text_list <- function(df,
+                            run_date,
                             insivumeh_forecast_available
 ){
   
