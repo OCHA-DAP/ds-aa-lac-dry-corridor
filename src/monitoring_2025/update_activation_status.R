@@ -59,15 +59,19 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 # Sys.setenv("RUN_DATE_USE"=Sys.Date()) and then the function will pick it up 
 # properly
 
-get_run_date <-  function(){
-  run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-07-05")
-  lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
-}
+# get_run_date <-  function(){
+#   run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-07-05")
+#   lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
+# }
+
+
 
 
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
-run_date <- get_run_date()
+run_date_raw <-   Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
+run_date <-  lubridate$as_date(ifelse(run_date_raw == "current", Sys.Date(), run_date_raw))
+# run_date <- get_run_date()
 class(run_date)
 
 logger$log_info(paste0("Run date set = ", run_date))
