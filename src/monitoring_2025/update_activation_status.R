@@ -184,8 +184,7 @@ gt_aoi <- gdf_adm1_aoi |>
   ) |> 
   gt$tab_options(
     heading.background.color = "#55b284ff",
-    column_labels.background.color = gghdx$hdx_hex("mint-ultra-light"),
-    
+    column_labels.background.color = "#D2F2F0",
     table.font.size = 14,
     table.width = gt$pct(80)
   )
@@ -232,7 +231,7 @@ p_rainfall <- df_forecast_status %>%
   scale_color_manual(
     values = c(
       `No Activation`="#55b284ff",
-      `Activation` =gghdx$hdx_hex("tomato-hdx")
+      `Activation` ="#F2645A"
     ),
     drop=F
   ) +
