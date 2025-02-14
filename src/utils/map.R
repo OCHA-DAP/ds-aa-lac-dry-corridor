@@ -4,7 +4,7 @@ box::use(
   dplyr[...],
   lubridate[...],
   forcats[...],
-  gghdx[...],
+  gghdx,
   cumulus,
   purrr
 )
@@ -52,7 +52,7 @@ trigger_status_choropleth <- function(
     geom_sf(
       data= gdf_adm0_surrounding,
       color="black",
-      fill=hdx_hex("gray-light")
+      fill=gghdx$hdx_hex("gray-light")
     ) + 
     geom_sf(
       data= gdf_adm0 ,
@@ -65,17 +65,17 @@ trigger_status_choropleth <- function(
     )+
     scale_fill_manual(
       values = c(
-        "Not Available" = hdx_hex("gray-medium"),
+        "Not Available" = gghdx$hdx_hex("gray-medium"),
         
-        "No Activation"= "#55b284ff",#"#00ad78ff", # hdx_hex("mint-ultra-light"),
-        "Activation"=hdx_hex("tomato-light")
+        "No Activation"= "#55b284ff",#"#00ad78ff", # gghdx$hdx_hex("mint-ultra-light"),
+        "Activation"=gghdx$hdx_hex("tomato-light")
         
       ),
       drop=FALSE
     )+
     geom_sf(
       data= gdf_adm1,
-      color = hdx_hex("gray-medium"),
+      color = gghdx$hdx_hex("gray-medium"),
       fill=NA, linewidth=0.2
     )+
     geom_sf(
@@ -109,7 +109,7 @@ trigger_status_choropleth <- function(
       panel.grid = element_blank(),
       axis.text = element_blank(),
       axis.title = element_blank(),
-      panel.background = element_rect(fill=hdx_hex("sapphire-ultra-light"))
+      panel.background = element_rect(fill=gghdx$hdx_hex("sapphire-ultra-light"))
     )
 }
 

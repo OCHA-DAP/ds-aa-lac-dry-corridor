@@ -28,7 +28,7 @@ box::use(
   sf,
   gt,
   ggplot2[...],
-  gghdx[...],
+  gghdx,
   blastula[...],
   geoarrow[...]
 )
@@ -182,7 +182,7 @@ gt_aoi <- gdf_adm1_aoi |>
   ) |> 
   gt$tab_options(
     heading.background.color = "#55b284ff",
-    column_labels.background.color = hdx_hex("mint-ultra-light"),
+    column_labels.background.color = gghdx$hdx_hex("mint-ultra-light"),
     
     table.font.size = 14,
     table.width = gt$pct(80)
@@ -229,13 +229,13 @@ p_rainfall <- df_forecast_status %>%
   scale_color_manual(
     values = c(
       `No Activation`="#55b284ff",
-      `Activation` =hdx_hex("tomato-hdx")
+      `Activation` =gghdx$hdx_hex("tomato-hdx")
     ),
     drop=F
   ) +
   geom_hline(
     aes(
-      yintercept= value_empirical), 
+    yintercept= value_empirical), 
     linetype="dashed",
     color="tomato"
   )+
