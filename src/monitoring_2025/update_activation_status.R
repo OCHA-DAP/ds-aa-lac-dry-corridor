@@ -39,14 +39,15 @@ box::use(
   ../datasources/insivumeh,
   ../utils/map
 )
-logger$log_info("RUN_DATE_USE"=Sys.getenv("RUN_DATE_USE"))
-logger$log_info("EMAIL_WHO"=Sys.getenv("EMAIL_WHO"))
+
+logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
+logger$log_info(paste0("RUN_DATE_USE = ", Sys.getenv("RUN_DATE_USE")))
 
 EMAIL_LIST <- (
   Sys.getenv("EMAIL_WHO", unset = "test")
 )
 
-logger$log_info("EMAIL_LIST"=Sys.getenv("EMAIL_LIST"))
+logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 
 get_run_date <-  function(){
   run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
@@ -55,11 +56,12 @@ get_run_date <-  function(){
 
 
 
-
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
-
 run_date <- get_run_date()
+
+logger$log_info(paste0("Run date set = ", run_date))
+
 current_moment <-  lubridate$floor_date(run_date, "month")
 
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
