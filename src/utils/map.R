@@ -36,7 +36,7 @@ trigger_status_choropleth <- function(
   run_mo_eq_lt0 <- run_mo %in% c(5,9)
   
   if(!insivumeh_data_available & !run_mo_eq_lt0){
-    gdf_aoi <- gdf_aoi %>% 
+    gdf_aoi <- gdf_aoi |> 
       mutate(
         status = if_else(
           adm0_es == "Guatemala",

@@ -40,6 +40,16 @@ box::use(
   ../utils/map
 )
 
+box::use(gghdx)
+# Before calling gghdx()
+sessionInfo()
+
+gghdx$gghdx()
+
+# After calling gghdx()
+sessionInfo()
+conflicts()
+
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
 logger$log_info(paste0("RUN_DATE_USE = ", Sys.getenv("RUN_DATE_USE")))
 
@@ -220,7 +230,7 @@ gt_aoi <- gdf_adm1_aoi |>
 
 
 
-gdf_adm0_status <- gdf_aoi_country %>%
+gdf_adm0_status <- gdf_aoi_country |>
   left_join(
     df_forecast_status |> 
       select(adm0_es,status)
@@ -248,7 +258,7 @@ m_choro
 
 logger$log_info("make rainfall plot")
 ## 6e. Generate plot ####
-p_rainfall <- df_forecast_status %>% 
+p_rainfall <- df_forecast_status |> 
   ggplot(
     aes(x= adm0_es, y= value), 
     width =0.2
