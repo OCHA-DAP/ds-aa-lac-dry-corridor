@@ -21,9 +21,9 @@ on:
           type: choice
           default: 'last_primera'
           options:
-            - last_primera # primera last year
-            - last_postrera # postrera last year
-            - current # realtime
+            - last_primera
+            - last_postrera
+            - current
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -38,7 +38,7 @@ jobs:
       DS_AZ_DB_PROD_HOST: ${{ secrets.DS_AZ_DB_PROD_HOST }}
       DS_AZ_DB_PROD_PW_WRITE: ${{ secrets.DS_AZ_DB_PROD_PW_WRITE }}
       DS_AZ_DB_PROD_NAME: ${{ secrets.DS_AZ_DB_PROD_NAME }}
-      EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'core_developer' }} #if this was on CRON we'd set it to full_list
+      EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'core_developer' }}
       WHEN_TO_MONITOR: ${{ inputs.WHEN_TO_MONITOR || 'current' }}
       
     services:
@@ -75,9 +75,6 @@ jobs:
             libfreetype6-dev \
             libcurl4-openssl-dev
       
-      # - name: Clear Cache # shouldnt' be necessary
-      #   run: rm -rf ~/.cache      
-      
       - name: Cache R dependencies
         id: cache-r-deps
         uses: actions/cache@v4
@@ -89,19 +86,6 @@ jobs:
         if: steps.cache-r-deps.outputs.cache-hit != 'true'
         run: |
           Rscript .github/depends_2025.R
-
-          
-      # - name: Cache additional R dependencies
-      #   id: cache-r-deps-additional
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ${{ env.R_LIBS_USER }}
-      #     key: R-dependency-cache-${{ hashFiles('.github/depends_additional_2025.R') }}
-      #
-      # - name: Install additonal R dependencies
-      #   if: steps.cache-r-deps-additional.outputs.cache-hit != 'true'
-      #   run: |
-      #     Rscript .github/depends_additional_2025.R
     
       - name: Run R-script-test-env-vars
         shell: bash
