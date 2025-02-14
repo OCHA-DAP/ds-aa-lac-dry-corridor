@@ -28,7 +28,7 @@ box::use(
   gt,
   gghdx,
   ggplot2[...],
-  # gghdx,
+  gghdx,
   blastula[...],
   geoarrow[...],
 
@@ -42,53 +42,29 @@ box::use(
   ../utils/map
 )
 
-box::use(gghdx)
+
 
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[2]
+EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","interna_chd","internal_ocha","full_list")[1]
+
+
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
 logger$log_info(paste0("WHEN_TO_MONITOR = ", Sys.getenv("WHEN_TO_MONITOR")))
 
-EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "core_developer")
-
-logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
-
-# when run locally:
-#  - you won't have the env var: RUN_DATE_USE so in this case the function
-#    sets it as "2024-04-05" for local testing
-#  - When running on the server the dispatch parameters allow you to set it in
-#  3 different ways: a.) "2024-04-05" (primera), b.) "2024-07-05" (postrear),
-#  and c.) "current". Options `a` and `b` are just for local testing and
-#  viewing changes to email. Option `c` is for real time monitoring
-#
-# If GHA is not running and you want to test different dates including latest
-# you can just set the env var here in the script w/ for example
-# Sys.setenv("RUN_DATE_USE"=Sys.Date()) and then the function will pick it up 
-# properly
-
-# get_run_date <-  function(){
-#   run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-07-05")
-#   lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
-# }
-
-
-
-
-df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
+EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = EMAIL_WHO_LOCAL_DEFAULT)
 
 monitoring_when <-   Sys.getenv("WHEN_TO_MONITOR", unset = WHEN_TO_MONITOR_LOCAL_DEFAULT)
-
 run_date_set <- case_when(
   monitoring_when == "last_primera" ~ lubridate$as_date("2024-04-05"),
   monitoring_when == "last_postrera" ~ lubridate$as_date("2024-06-05"),
   monitoring_when == "current" ~ Sys.Date(),
-  )
+)
 
 
-
+logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 logger$log_info(paste0("Run date set = ", run_date_set))
-# run_date <- get_run_date()
-class(run_date_set)
 
+df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 
 current_moment <-  lubridate$floor_date(run_date_set, "month")
@@ -328,5 +304,6 @@ smtp_send(
   from = "data.science@humdata.org",
   to = df_email_receps$email,
   subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
-  credentials = email_creds
+  credentials = email_creds,
+  verbose = TRUE
 )
