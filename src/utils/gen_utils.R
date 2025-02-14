@@ -19,9 +19,9 @@ box::use(
 
 #' @export
 load_relevant_forecasts <- function(
-    df = df_relevant_thresholds, 
-    activation_moment = current_moment,
-    pcodes = df_aoi$pcode,
+    df , 
+    activation_moment ,
+    pcodes,
     gdf_zone
 ){
   
@@ -85,9 +85,9 @@ load_relevant_forecasts <- function(
 
 #' @export
 load_seas5_forecast_window_weighted <- function(
-    df = df_relevant_thresholds, 
-    activation_moment = current_moment,
-    pcodes = df_aoi$pcode
+    df, 
+    activation_moment,
+    pcodes
 ){
   df_seas5 <- load_seas5_forecast_window(
     df = df,
@@ -125,9 +125,9 @@ load_seas5_forecast_weights <- function(pcodes){
   
 }
 
-load_seas5_forecast_window <- function(    df = df_relevant_thresholds, 
-                                           activation_moment = current_moment,
-                                           pcodes = df_aoi$pcode
+load_seas5_forecast_window <- function(    df , 
+                                           activation_moment,
+                                           pcodes
 ){
   season <- unique(df$window)
   
