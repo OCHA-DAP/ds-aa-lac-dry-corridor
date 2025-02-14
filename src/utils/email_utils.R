@@ -1,7 +1,8 @@
 
 box::use(
   dplyr[...],
-  # dplyr,
+  dplyr,
+  gghdx, 
   lubridate[...],
   glue[...],
   stringr,
@@ -10,7 +11,7 @@ box::use(
   janitor,
   rlang
 )
-
+gghdx$gghdx()
 
 #' @export
 load_email_recipients <- function(email_list){

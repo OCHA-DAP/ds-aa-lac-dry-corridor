@@ -27,6 +27,7 @@ knitr::opts_chunk$set(
   fig.cap = "" 
 )
 # library(blastula)
+box::use(gghdx)
 gghdx$gghdx()
 ```
 
