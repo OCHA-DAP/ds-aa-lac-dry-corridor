@@ -100,11 +100,6 @@ jobs:
       #   if: steps.cache-r-deps-additional.outputs.cache-hit != 'true'
       #   run: |
       #     Rscript .github/depends_additional_2025.R
-      
-      - name: Debug with gdb
-        run: |
-          sudo apt-get install -y gdb
-          gdb -batch -ex "run" -ex "bt" Rscript ./src/monitoring_2025/update_activation_status.R
     
       - name: Run R-script-test-env-vars
         shell: bash
