@@ -60,7 +60,7 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 # properly
 
 get_run_date <-  function(){
-  run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
+  run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-07-05")
   lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
 }
 
