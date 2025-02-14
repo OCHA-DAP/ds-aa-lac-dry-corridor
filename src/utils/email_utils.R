@@ -11,7 +11,7 @@ box::use(
   janitor,
   rlang
 )
-gghdx$gghdx()
+# gghdx$gghdx()
 
 #' @export
 load_email_recipients <- function(email_list){

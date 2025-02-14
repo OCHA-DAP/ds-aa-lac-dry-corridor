@@ -9,8 +9,6 @@ box::use(
   purrr
 )
 
-gghdx$gghdx()
-
 #' Title
 #'
 #' @param gdf_adm0 
@@ -24,9 +22,9 @@ trigger_status_choropleth <- function(
     gdf_aoi,
     gdf_adm0,
     gdf_adm1,
-    gdf_adm0_surrounding= gdf_adm0_surrounding_simp,
+    gdf_adm0_surrounding,
     insivumeh_data_available,
-    aoi_txt_label_size = 5,
+    aoi_txt_label_size,
     run_date
 ){
   
