@@ -295,6 +295,7 @@ smtp_send(
   email = knitted_email,
   from = "data.science@humdata.org",
   to = df_email_receps$email[1],
-  subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
+  # subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
+  subject = "test",
   credentials = email_creds
 )
