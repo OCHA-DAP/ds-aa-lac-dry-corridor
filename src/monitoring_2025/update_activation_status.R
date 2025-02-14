@@ -288,10 +288,13 @@ email_creds <- creds_envvar(
   pass_envvar = "CHD_DS_EMAIL_PASSWORD",
   host = Sys.getenv("CHD_DS_HOST"),
   port = Sys.getenv("CHD_DS_PORT"),
-  use_ssl = TRUE
+  use_ssl = FALSE
 )
 
 logger$log_info("knitting email")
+# in worse case that this won't send in next step - you can print this 
+# object and click `export` in Rstudio to get the .html which can be shred
+
 knitted_email <- render_email(
   input = email_rmd_fp,
   envir = parent.frame()
