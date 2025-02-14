@@ -26,8 +26,8 @@ knitr::opts_chunk$set(
   fig.align='center',
   fig.cap = "" 
 )
-library(blastula)
-gghdx$gghdx()
+# library(blastula)
+# gghdx$gghdx()
 ```
 
 
@@ -57,13 +57,13 @@ add_image(
 ```{r}
 # m_choro
 
-# eu$add_ggplot_custom(
-#   plot_object = m_choro,
-#   alt = "Alert Map",
-#   height = 3.75,
-#   width = 5.5,
-#   html_width = 650
-# )
+eu$add_ggplot_custom(
+  plot_object = m_choro,
+  alt = "Alert Map",
+  height = 3.75,
+  width = 5.5,
+  html_width = 650
+)
 ```
 
 

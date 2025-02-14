@@ -27,7 +27,7 @@ box::use(
   sf,
   gt,
   ggplot2[...],
-  gghdx,
+  # gghdx,
   blastula[...],
   geoarrow[...]
 )

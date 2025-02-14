@@ -8,6 +8,9 @@ box::use(
   cumulus,
   purrr
 )
+
+gghdx$gghdx()
+
 #' Title
 #'
 #' @param gdf_adm0 
