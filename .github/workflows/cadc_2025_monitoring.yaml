@@ -2,7 +2,7 @@
 # script.
 
 name: cadc-2025-trigger-monitoring
-RUN_DATE_USE
+
 on:
   workflow_dispatch:
       inputs:
