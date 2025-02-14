@@ -70,11 +70,20 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 run_date_raw <-   Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
-run_date <-  lubridate$as_date(ifelse(run_date_raw == "current", Sys.Date(), run_date_raw))
+# run_date <-  lubridate$as_date(ifelse(run_date_raw == "current", Sys.Date(), run_date_raw))
+
+# Handle "current" case separately
+if (run_date_raw == "current") {
+  run_date <- Sys.Date()
+} else {
+  run_date <- lubridate$as_date(run_date_raw)
+}
+
+logger$log_info(paste0("Run date set = ", run_date))
 # run_date <- get_run_date()
 class(run_date)
 
-logger$log_info(paste0("Run date set = ", run_date))
+
 
 current_moment <-  lubridate$floor_date(run_date, "month")
 
