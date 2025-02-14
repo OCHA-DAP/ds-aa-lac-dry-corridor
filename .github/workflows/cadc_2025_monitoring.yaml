@@ -9,20 +9,21 @@ on:
         EMAIL_WHO: 
           required: true
           type: choice
-          default: "test"
+          default: 'core_developer'
           options:
-            - "test"
-            - "internal_chd"
-            - "internal_ocha"
-            - "full_list"
-        RUN_DATE_USE: 
+            - core_developer
+            - developers
+            - internal_chd
+            - internal_ocha
+            - full_list
+        WHEN_TO_MONITOR: 
           required: true
           type: choice
-          default: "2024-04-05"
+          default: 'last_primera'
           options:
-            - "2024-04-05" # primera last year
-            - "2024-07-05" # postrera last year
-            - "current" # realtime
+            - last_primera # primera last year
+            - last_postrera # postrera last year
+            - current # realtime
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -36,8 +37,9 @@ jobs:
       DS_AZ_DB_PROD_UID_WRITE: ${{ secrets.DS_AZ_DB_PROD_UID_WRITE }}
       DS_AZ_DB_PROD_HOST: ${{ secrets.DS_AZ_DB_PROD_HOST }}
       DS_AZ_DB_PROD_PW_WRITE: ${{ secrets.DS_AZ_DB_PROD_PW_WRITE }}
-      EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'test' }}
-      RUN_DATE_USE: ${{ inputs.RUN_DATE_USE || 'current' }}
+      DS_AZ_DB_PROD_NAME: ${{ secrets.DS_AZ_DB_PROD_NAME }}
+      EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'core_developer' }} #if this was on CRON we'd set it to full_list
+      WHEN_TO_MONITOR: ${{ inputs.WHEN_TO_MONITOR || 'current' }}
       
     services:
       postgres:

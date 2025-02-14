@@ -41,19 +41,12 @@ box::use(
 )
 
 box::use(gghdx)
-# Before calling gghdx()
-sessionInfo()
 
-gghdx$gghdx()
-
-# After calling gghdx()
-sessionInfo()
-conflicts()
 
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
-logger$log_info(paste0("RUN_DATE_USE = ", Sys.getenv("RUN_DATE_USE")))
+logger$log_info(paste0("WHEN_TO_MONITOR = ", Sys.getenv("WHEN_TO_MONITOR")))
 
-EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "test")
+EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "core_developer")
 
 logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 
@@ -80,15 +73,15 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 
 df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
-run_date_raw <-   Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
-# run_date <-  lubridate$as_date(ifelse(run_date_raw == "current", Sys.Date(), run_date_raw))
+monitoring_when <-   Sys.getenv("WHEN_TO_MONITOR", unset = "last_primera")
 
-# Handle "current" case separately
-if (run_date_raw == "current") {
-  run_date_set <- Sys.Date()
-} else {
-  run_date_set <- lubridate$as_date(run_date_raw)
-}
+run_date_set <- case_when(
+  monitoring_when == "last_primera" ~ lubridate$as_date("2024-04-05"),
+  monitoring_when == "last_postrera" ~ lubridate$as_date("2024-06-05"),
+  monitoring_when == "current" ~ Sys.Date(),
+  )
+
+
 
 logger$log_info(paste0("Run date set = ", run_date_set))
 # run_date <- get_run_date()
