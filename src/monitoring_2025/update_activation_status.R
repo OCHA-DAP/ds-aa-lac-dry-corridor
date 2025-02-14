@@ -30,8 +30,10 @@ box::use(
   ggplot2[...],
   # gghdx,
   blastula[...],
-  geoarrow[...]
+  geoarrow[...],
+  sysfonts
 )
+sysfonts$font_add_google("Source Sans 3")
 
 box::use(
   utils = ../utils/gen_utils,
