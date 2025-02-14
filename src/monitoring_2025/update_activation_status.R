@@ -18,7 +18,6 @@ box::use(
   dplyr[...],
   forcats[...],
   glue[...],
-  ggplot2,
   readr,
   stringr,
   tidyr,
