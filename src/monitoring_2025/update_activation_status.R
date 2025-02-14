@@ -74,18 +74,18 @@ run_date_raw <-   Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
 
 # Handle "current" case separately
 if (run_date_raw == "current") {
-  run_date <- Sys.Date()
+  run_date_set <- Sys.Date()
 } else {
-  run_date <- lubridate$as_date(run_date_raw)
+  run_date_set <- lubridate$as_date(run_date_raw)
 }
 
-logger$log_info(paste0("Run date set = ", run_date))
+logger$log_info(paste0("Run date set = ", run_date_set))
 # run_date <- get_run_date()
-class(run_date)
+class(run_date_set)
 
 
 
-current_moment <-  lubridate$floor_date(run_date, "month")
+current_moment <-  lubridate$floor_date(run_date_set, "month")
 
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
 
@@ -158,7 +158,7 @@ df_forecast_status <- df_forecast |>
 # box::reload(eu)
 email_txt <- eu$email_text_list(
   df = df_forecast_status,
-  run_date = run_date,
+  run_date = run_date_set,
   insivumeh_forecast_available = insiv_received 
 )
 
@@ -238,7 +238,7 @@ m_choro <- map$trigger_status_choropleth(
   gdf_adm0 = l_gdf_simple$AOI_ADM0, # full country admin 0,
   insivumeh_data_available = insiv_received, # automate
   aoi_txt_label_size = 8,
-  run_date = run_date
+  run_date = run_date_set
 )
 
 logger$log_info("make rainfall plot")
