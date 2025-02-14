@@ -31,9 +31,9 @@ box::use(
   # gghdx,
   blastula[...],
   geoarrow[...],
-  sysfonts
+
 )
-sysfonts$font_add_google("Source Sans 3")
+
 
 box::use(
   utils = ../utils/gen_utils,
@@ -237,16 +237,15 @@ l_gdf_simple <-  map$load_simplified_map_layers()
 # box::reload(map)
 # ## 6d. Generate Map - Choropleth ####
 logger$log_info("Making Map")
-m_choro <- map$trigger_status_choropleth(
-  gdf_aoi = gdf_adm0_status, # dissolved admin file
-  gdf_adm1 = l_gdf_simple$AOI_ADM1, # full country admin 1
-  gdf_adm0_surrounding = l_gdf_simple$AOI_SURROUNDING, # surrounding 
-  gdf_adm0 = l_gdf_simple$AOI_ADM0, # full country admin 0,
-  insivumeh_data_available = insiv_received, # automate
-  aoi_txt_label_size = 8,
-  run_date = run_date_set
-) +
-  gghdx$theme_hdx()
+# m_choro <- map$trigger_status_choropleth(
+#   gdf_aoi = gdf_adm0_status, # dissolved admin file
+#   gdf_adm1 = l_gdf_simple$AOI_ADM1, # full country admin 1
+#   gdf_adm0_surrounding = l_gdf_simple$AOI_SURROUNDING, # surrounding 
+#   gdf_adm0 = l_gdf_simple$AOI_ADM0, # full country admin 0,
+#   insivumeh_data_available = insiv_received, # automate
+#   aoi_txt_label_size = 8,
+#   run_date = run_date_set
+# )
 
 
 logger$log_info("make rainfall plot")
@@ -300,7 +299,7 @@ p_rainfall <- df_forecast_status |>
     strip.text = element_text(size= 16),
     axis.text.x = element_blank(),
     plot.caption = element_text(hjust=0, size =14)
-  )+ gghdx$theme_hdx()
+  )
 
 
 

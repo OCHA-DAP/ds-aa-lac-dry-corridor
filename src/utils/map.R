@@ -9,10 +9,15 @@ box::use(
   purrr
 )
 
-#' Title
+#' trigger_status_choropleth
 #'
 #' @param gdf_adm0 
 #' @param gdf_adm1 
+#' @param gdf_aoi 
+#' @param gdf_adm0_surrounding 
+#' @param insivumeh_data_available 
+#' @param aoi_txt_label_size 
+#' @param run_date 
 #'
 #' @return
 #' @export
