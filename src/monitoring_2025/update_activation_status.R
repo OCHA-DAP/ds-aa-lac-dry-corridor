@@ -243,11 +243,9 @@ m_choro <- map$trigger_status_choropleth(
   insivumeh_data_available = insiv_received, # automate
   aoi_txt_label_size = 8,
   run_date = run_date_set
-)
-logger$log_info("load gghdx aesthetics")
-gghdx$gghdx() 
-logger$log_info("print plot")
-m_choro
+) +
+  gghdx$theme_hdx()
+
 
 logger$log_info("make rainfall plot")
 ## 6e. Generate plot ####
@@ -300,7 +298,7 @@ p_rainfall <- df_forecast_status |>
     strip.text = element_text(size= 16),
     axis.text.x = element_blank(),
     plot.caption = element_text(hjust=0, size =14)
-  )
+  )+ gghdx$theme_hdx()
 
 
 
