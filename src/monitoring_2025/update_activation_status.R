@@ -45,7 +45,20 @@ logger$log_info(paste0("RUN_DATE_USE = ", Sys.getenv("RUN_DATE_USE")))
 EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "test")
 
 logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
-# Sys.setenv("RUN_DATE_USE" = "2024-07-05")
+
+# when run locally:
+#  - you won't have the env var: RUN_DATE_USE so in this case the function
+#    sets it as "2024-04-05" for local testing
+#  - When running on the server the dispatch parameters allow you to set it in
+#  3 different ways: a.) "2024-04-05" (primera), b.) "2024-07-05" (postrear),
+#  and c.) "current". Options `a` and `b` are just for local testing and
+#  viewing changes to email. Option `c` is for real time monitoring
+#
+# If GHA is not running and you want to test different dates including latest
+# you can just set the env var here in the script w/ for example
+# Sys.setenv("RUN_DATE_USE"=Sys.Date()) and then the function will pick it up 
+# properly
+
 get_run_date <-  function(){
   run_date_chr <- Sys.getenv("RUN_DATE_USE", unset = "2024-04-05")
   lubridate$as_date(ifelse(run_date_chr=="current",Sys.Date(), run_date_chr))
