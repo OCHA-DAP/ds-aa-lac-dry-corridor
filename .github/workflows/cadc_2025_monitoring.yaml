@@ -86,6 +86,9 @@ jobs:
         if: steps.cache-r-deps.outputs.cache-hit != 'true'
         run: |
           Rscript .github/depends_2025.R
+      
+      - name: Install potentially problematic R packages
+        run: Rscript -e 'install.packages(c("curl", "httr"))'
     
       - name: Run R-script-test-env-vars
         shell: bash
