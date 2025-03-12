@@ -44,7 +44,7 @@ box::use(
 
 
 
-WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[2]
+WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[3]
 EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","interna_chd","internal_ocha","full_list")[1]
 
 
@@ -261,7 +261,7 @@ p_rainfall <- df_forecast_status |>
   )+
   labs(
     title = email_txt$plot_title,
-    subtitle= glue("Forecast Published: 2024 {email_txt$month_chr}") ,
+    subtitle= glue("Forecast Published: 2025 {email_txt$month_chr}") ,
     y= "Rainfall (mm)",
     caption = "Horizonal red dashed lines indicate trigger threshold level."
   )+

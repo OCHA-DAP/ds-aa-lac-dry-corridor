@@ -86,8 +86,8 @@ email_text_list <- function(df,
   monitored_range <- ifelse(season == "Primera","May-August","September-November")
   
   plot_title <- ifelse(season=="Primera",
-                       "CADC Drought Monitoring- Forecasted Primera Rainfall (MJJA 2024)",
-                       "CADC Drought Monitoring- Forecasted Postrera Rainfall (SON 2024)")
+                       "CADC Drought Monitoring- Forecasted Primera Rainfall (MJJA 2025)",
+                       "CADC Drought Monitoring- Forecasted Postrera Rainfall (SON 2025)")
   # subj_month <- ifelse(!insivumeh_forecast_available,glue("Preliminary {month_chr}"),month_chr)
   
   
@@ -95,7 +95,7 @@ email_text_list <- function(df,
   date_header <- glue("{format(run_date,'%e %B %Y')} - Trigger status:")
   if(nrow(df_filt_activations)==0){
     
-    description_contents_txt= glue("The AA framework has not triggered in any country. The total rainfall forecast over the 2024 {season} season ({monitored_range}) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
+    description_contents_txt= glue("The AA framework has not triggered in any country. The total rainfall forecast over the 2025 {season} season ({monitored_range}) is not predicted to be below the 1 in 4 year drought levels. {description_ending}")
     # subj_status <-  "No Activations"
     trigger_status_txt= "<span style='color: #55b284ff;'>Not Activated</span>"
   }
@@ -103,14 +103,14 @@ email_text_list <- function(df,
   if(nrow(df_filt_activations)>0){ 
     # subj_status <- "Activated"
     countries_activated_txt <- glue_collapse(df_filt_activations$adm0_es,sep = ",",last = " & ")
-    description_contents_txt= glue("The AA framework has been triggered in {countries_activated_txt} where the combined rainfall forecast over the 2024 {season} season ({monitored_range}) is predicted to below the 1 in 4 year drought levels. {description_ending}")
+    description_contents_txt= glue("The AA framework has been triggered in {countries_activated_txt} where the combined rainfall forecast over the 2025 {season} season ({monitored_range}) is predicted to below the 1 in 4 year drought levels. {description_ending}")
     trigger_status_txt = "<span style='color: #F2645A;'>Activated</span>"
   }
   list(
     month_chr = month_chr,
     subj = gen_subject(df = df,run_date = run_date,insivumeh_forecast_available=insivumeh_forecast_available),
     title = "Anticipatory Action- Central American Dry Corridor",
-    subtitle = glue("2024 {season} Drought Monitoring - {month_chr} Update"),
+    subtitle = glue("2025 {season} Drought Monitoring - {month_chr} Update"),
     plot_title = plot_title,
     gt_table_header = glue("Predicted {stringr$str_to_title(season)} Rainfall and Trigger Thresholds"),
     date_header = date_header,
