@@ -210,6 +210,18 @@ gdf_adm0_status <- gdf_aoi_country |>
 logger$log_info("Loading Map layers from blob")
 l_gdf_simple <-  map$load_simplified_map_layers()
 
+# Move the row where adm0_pcode is "NI" from AOI_ADM0 to AOI_SURROUNDING
+ni_row <- l_gdf_simple$AOI_ADM0 %>%
+  filter(adm0_pcode == "NI")
+
+# Remove the row from AOI_ADM0
+l_gdf_simple$AOI_ADM0 <- l_gdf_simple$AOI_ADM0 %>%
+  filter(adm0_pcode != "NI")
+
+# Add the row to AOI_SURROUNDING
+l_gdf_simple$AOI_SURROUNDING <- bind_rows(l_gdf_simple$AOI_SURROUNDING, ni_row)
+
+
 # box::reload(map)
 # ## 6d. Generate Map - Choropleth ####
 logger$log_info("Making Map")

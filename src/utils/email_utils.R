@@ -120,7 +120,7 @@ email_text_list <- function(df,
     contact_info= "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
     tbl_footnote = table_footnote,
     data_source = ifelse(insivumeh_forecast_available,"ECMWF SEAS5 & INSIVUMEH","ECMWF SEAS5"),
-    ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor) and [Technical note](https://data.humdata.org/dataset/2048a947-5714-4220-905b-e662cbcd14c8/resource/35031e9a-37eb-4566-915c-cff18b3cc3d9/download/chd_cadc_drought_trigger_technical_note_2024.pdf)"
+    ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor)."
   )
 }
 
@@ -143,7 +143,7 @@ gen_description_end <- function(run_date,insivumeh_forecast_available){
   else if (run_mo!=5){
     ret <-  ifelse(!insivumeh_forecast_available,
                    "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently. <br><br><i>As indicated in the Dry Corridor AA framework, for Guatemala, the final trigger status is determined using the forecast of the national meteorological service INSIVUMEH. Therefore, the trigger status for Guatemala will be provided when the INSIVUMEH forecast is received which is estimated to be between the 5th and 10th of the month.</i>",
-                   "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for Nicarauga, El Salvador, and Honduras independently. For Guatemala the thresholds and trigger as based on the official national forecast and historical forecasts obtained from INSIVUMEH.")
+                   "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for El Salvador and Honduras independently. For Guatemala the thresholds and trigger as based on the official national forecast and historical forecasts obtained from INSIVUMEH.")
     
   }
   return(ret)
@@ -170,7 +170,7 @@ gen_table_footnote <- function(run_date,insivumeh_forecast_available){
     ret <- ifelse(
       !insivumeh_forecast_available ,
       glue("Thresholds for all countries have been calculated from historical ECMWF (1981-2022) to approximate 4 year return period drought level. An update will be provided for Guatemala when the national forecast data are received."),
-      "Thresholds calculated to approximate a 4 year return period drought level. For Guatemala, these calculations were based on the official national historical forecasts from INSIVUMEH (1981-2022), For the remaining 3 countries the calculations were based on historical seasonal ECMWF Forecasts (1981-2022)"
+      "Thresholds calculated to approximate a 4 year return period drought level. For Guatemala, these calculations were based on the official national historical forecasts from INSIVUMEH (1981-2022), For the remaining 2 countries the calculations were based on historical seasonal ECMWF Forecasts (1981-2022)"
     )
   }
   return(ret)
@@ -194,11 +194,11 @@ gen_subject <- function(df,
   subj_status <- ifelse(nrow(df_filt)>0,"Activated","No Activations")
   
   if(run_mo==5|insivumeh_forecast_available){
-    subj_ending <- "(NIC, HND, SLV, GTM)"
+    subj_ending <- "(HND, SLV, GTM)"
     subj_month <- month_chr
   }
   else if(!insivumeh_forecast_available){
-    subj_ending <- "(NIC, HND, SLV)"
+    subj_ending <- "(HND, SLV)"
     subj_month <- glue("Preliminary {month_chr}")
   }
   ret <- glue("AA Central America Dry Corridor - Drought Monitoring - {subj_month} update - {subj_status} {subj_ending}")

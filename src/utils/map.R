@@ -134,7 +134,8 @@ surrounding_country_labels <- function(){
     ~adm0_es_label,         ~X,        ~Y, ~txt_angle,
     "Mexico", -91.45,  16.29313, 0,
     "Belize", -88.80, 16.75, 90,
-    "Costa Rica", -84.8, 10.65,0
+    "Costa Rica", -84.8, 10.65,0,
+    "Nicaragua", -85, 13.5, 0
   )
   st_as_sf(x = df_pt, coords=c("X","Y"),crs=4326)
   

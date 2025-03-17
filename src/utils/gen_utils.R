@@ -271,10 +271,10 @@ load_aoi_df <- function(version = "2025_v1"){
       "GT20", "GTM",        "Chiquimula",
       "HN07", "HND",        "El Paraiso",
       "HN08", "HND", "Francisco Morazan",
-      "NI20", "NIC",            "Madriz",
-      "NI25", "NIC",            "Estelí",
-      "NI05", "NIC",     "Nueva Segovia",
-      "NI40", "NIC",         "Matagalpa",
+      # "NI20", "NIC",            "Madriz",
+      # "NI25", "NIC",            "Estelí",
+      # "NI05", "NIC",     "Nueva Segovia",
+      # "NI40", "NIC",         "Matagalpa",
       "SV11", "SLV",       "San Vicente"
     )  
   }
