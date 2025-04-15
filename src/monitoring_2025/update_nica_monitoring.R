@@ -1,18 +1,12 @@
-#' Monitoring of SEAS5 & INSIVUMEH forecasts fore CADC AA Framework monitoring
-#' In the 2025 framework we go from a national to a sub-national monitoring.
+#' Nicaragua was removed from AA framework, but we are still monitoring
+#' it informally. We are not sending any framework emails, but 
+#' rather we can create customized tables.
 #' 
-#' Key points to understand the script
-#' 
-#' 1. The thresholds parquet parquet serves two purposes: 
-#'    a. provides the thresholds at each activation moment
-#'    b. is a type of config file which automatically tells the rest of the 
-#'       code which forecast source to use (SEAS5 and or INSIVUMEH)
-#' 2. Raster stats for INSIVUMEH data (when applicable) are done on the fly
-#'   as part of this code. Therefore they are run on country level dissolved
-#'   polygon. The SEAS5 data comes from admin 1 level postgres zonal stats. 
-#'   Therefore, the SEAS5 postgres/tabular data gets aggregated through a 
-#'   weighted mean (using `n_upsampled_pixels`) from the "polygon' table in 
-#'   postgres
+#' I just basically copied the script from src/monoitorin_2025/update_activation_status.R
+#' and modified it slightly... Will leave in some of the email generation
+#' code in case we decide to spruce this into a real email. Currently
+#' we just share w/ screenshots of tables w/ AA focal point for further
+#' communication
 
 box::use(
   dplyr[...],
@@ -43,47 +37,6 @@ box::use(
   ../datasources/insivumeh,
   ../utils/map
 )
-### Func to manipulate email receps
-# df_email_recep <- readxl::read_xlsx("email_recepients_cadc_trigger_202504.xlsx")
-# 
-# df_email_recep_processed <- df_email_recep |>
-#   mutate(
-#     
-#     country_extract1 = case_when(
-#       stringr$str_detect(tolower(Role), "salvador|slv")~ "El Salvador",
-#       stringr$str_detect(tolower(Role), "guat|gtm")~ "Guatemala",
-#       stringr$str_detect(tolower(Role), "hondura|hnd")~ "Honduras",
-#       stringr$str_detect(tolower(Role), "nica|nicaragua")~ "Nicaragua"
-#     ),
-#     country_extract2 = case_when(
-#       stringr$str_detect(tolower(Organization), "salvador|slv")~ "El Salvador",
-#       stringr$str_detect(tolower(Organization), "guat|gtm")~ "Guatemala",
-#       stringr$str_detect(tolower(Organization), "hondura|hnd")~ "Honduras",
-#       stringr$str_detect(tolower(Organization), "nica|nicaragua")~ "Nicaragua"
-#     ),
-#     country_extract3= ifelse(is.na(country_extract1),country_extract2,country_extract1),
-#     country_extract4 = case_when(
-#       Organization == "Start Network"~ "Guatemala",
-#       .default = country_extract3
-#     ), 
-#     email_group = case_when(
-#       country_extract4 == "Guatemala"~"A",
-#       country_extract4 != "Guatemala"~"B",
-#       Group == "both" ~"Both",
-#       is.na(country_extract4)~"A",
-#       .default = NA_character_
-#       
-#       
-#     )
-#     
-#   )
-# ldf_email_split_raw <- split(df_email_recep_processed,df_email_recep_processed$email_group) 
-# ldf_email_use <- list(
-#   group_a = bind_rows(ldf_email_split_raw$A,ldf_email_recep$Both),
-#   group_b = bind_rows(ldf_email_split_raw$B,ldf_email_recep$Both)
-# )
-
-
 
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[3]
 EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","interna_chd","internal_ocha","full_list")[1]
@@ -116,6 +69,7 @@ insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
 # Loading base data -------------------------------------------------------
 
 # this function can/should be edited to reflect changes in monitoring AOI
+# version is the critical parameter to monitor nica
 df_aoi <- utils$load_aoi_df(version = "2025_v1")
 gdf_adm1 <- utils$load_adm1_sf()
 
@@ -219,7 +173,7 @@ gt_threshold_table <- df_forecast_status |>
     table.width = gt$pct(80)
   )
 gt_threshold_table
-email_txt$tbl_footnote
+
 logger$log_info("Making admin AOI table")
 gt_aoi <- gdf_adm1_aoi |> 
   
@@ -342,43 +296,43 @@ p_rainfall <- df_forecast_status |>
   )
 
 
-
-
-email_rmd_fp <- "email_cadc_drought_monitoring_2025.Rmd"
-
-# Load in e-mail credentials
-email_creds <- creds_envvar(
-  user = Sys.getenv("CHD_DS_EMAIL_USERNAME"),
-  pass_envvar = "CHD_DS_EMAIL_PASSWORD",
-  host = Sys.getenv("CHD_DS_HOST"),
-  port = Sys.getenv("CHD_DS_PORT"),
-  use_ssl = TRUE
-)
-
-logger$log_info("knitting email")
-# in worse case that this won't send in next step - you can print this 
-# object and click `export` in Rstudio to get the .html which can be shred
-
-knitted_email <- render_email(
-  input = email_rmd_fp,
-  envir = parent.frame()
-)
-
-
-logger$log_info("Sending email")
-
-ldf_email_use |> 
-  map(\(dfet){
-    dfet$Email
-    smtp_send(
-      email = knitted_email,
-      from = "data.science@humdata.org",
-      to = dfet$Email,
-      # to = "zachary.arno@un.org",
-      # subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
-      subject = email_txt$subj,
-      credentials = email_creds,
-      verbose = TRUE
-    )
-    
-  })
+# 
+# 
+# email_rmd_fp <- "email_cadc_drought_monitoring_2025.Rmd"
+# 
+# # Load in e-mail credentials
+# email_creds <- creds_envvar(
+#   user = Sys.getenv("CHD_DS_EMAIL_USERNAME"),
+#   pass_envvar = "CHD_DS_EMAIL_PASSWORD",
+#   host = Sys.getenv("CHD_DS_HOST"),
+#   port = Sys.getenv("CHD_DS_PORT"),
+#   use_ssl = TRUE
+# )
+# 
+# logger$log_info("knitting email")
+# # in worse case that this won't send in next step - you can print this 
+# # object and click `export` in Rstudio to get the .html which can be shred
+# 
+# knitted_email <- render_email(
+#   input = email_rmd_fp,
+#   envir = parent.frame()
+# )
+# 
+# 
+# logger$log_info("Sending email")
+# 
+# ldf_email_use |> 
+#   map(\(dfet){
+#     dfet$Email
+#     smtp_send(
+#       email = knitted_email,
+#       from = "data.science@humdata.org",
+#       to = dfet$Email,
+#       # to = "zachary.arno@un.org",
+#       # subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
+#       subject = email_txt$subj,
+#       credentials = email_creds,
+#       verbose = TRUE
+#     )
+#     
+#   })
