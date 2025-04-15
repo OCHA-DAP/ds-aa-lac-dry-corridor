@@ -263,9 +263,24 @@ threshold_var <-  function(df,var, by,rp_threshold,direction=1){
 }
 
 #' @export
-load_aoi_df <- function(version = "2025_v1"){
+load_aoi_df <- function(version = c("2025_v2","2025_v1")){
   version <- arg_match(version)
+  
   if(version=="2025_v1"){
+    ret <- tribble(
+      ~pcode, ~iso3,               ~name,
+      "GT20", "GTM",        "Chiquimula",
+      "HN07", "HND",        "El Paraiso",
+      "HN08", "HND", "Francisco Morazan",
+      "NI20", "NIC",            "Madriz",
+      "NI25", "NIC",            "Estelí",
+      "NI05", "NIC",     "Nueva Segovia",
+      "NI40", "NIC",         "Matagalpa",
+      "SV11", "SLV",       "San Vicente"
+    )  
+  }
+  
+  if(version=="2025_v2"){
     ret <- tribble(
       ~pcode, ~iso3,               ~name,
       "GT20", "GTM",        "Chiquimula",

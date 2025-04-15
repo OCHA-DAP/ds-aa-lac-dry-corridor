@@ -15,17 +15,25 @@ box::use(
 
 #' @export
 load_email_recipients <- function(email_list){
-  load_raw_email_recipients() |> 
+  ret <- load_raw_email_recipients() |> 
     filter_recepients(
       email = email_list
     )
+  if(email_list == "full_list"){
+    ldf_email_split_raw <- split(ret,ret$email_group) 
+    ret <- list(
+      group_a = bind_rows(ldf_email_split_raw$A,ldf_email_split_raw$Both),
+      group_b = bind_rows(ldf_email_split_raw$B,ldf_email_split_raw$Both)
+    )  
+  }
+  ret
 }
 
 filter_recepients <-  function(df,email_list){
   df |> 
     select(
     all_of(c(
-        "name", "organization", "role", "email",email_list
+        "name", "organization", "role", "email","email_group",email_list
       )
       )
     ) |> 
@@ -34,7 +42,8 @@ filter_recepients <-  function(df,email_list){
 
 load_raw_email_recipients <- function(){
   df_email_receps <- cumulus$blob_read(
-    name = "ds-aa-lac-dry-corridor/framework_update_2025/email_recepients_cadc_trigger_2025.csv",
+    # name = "ds-aa-lac-dry-corridor/framework_update_2025/email_recepients_cadc_trigger_2025.csv",
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/202504_email_recepients_cadc_trigger_2025.csv",
     container = "projects",
     stage = "dev"
   ) |> 

@@ -32,7 +32,7 @@ box::use(
   gghdx,
   blastula[...],
   geoarrow[...],
-
+  
 )
 
 gghdx$gghdx()
@@ -43,10 +43,50 @@ box::use(
   ../datasources/insivumeh,
   ../utils/map
 )
+### Func to manipulate email receps
+# df_email_recep <- readxl::read_xlsx("email_recepients_cadc_trigger_202504.xlsx")
+# 
+# df_email_recep_processed <- df_email_recep |>
+#   mutate(
+#     
+#     country_extract1 = case_when(
+#       stringr$str_detect(tolower(Role), "salvador|slv")~ "El Salvador",
+#       stringr$str_detect(tolower(Role), "guat|gtm")~ "Guatemala",
+#       stringr$str_detect(tolower(Role), "hondura|hnd")~ "Honduras",
+#       stringr$str_detect(tolower(Role), "nica|nicaragua")~ "Nicaragua"
+#     ),
+#     country_extract2 = case_when(
+#       stringr$str_detect(tolower(Organization), "salvador|slv")~ "El Salvador",
+#       stringr$str_detect(tolower(Organization), "guat|gtm")~ "Guatemala",
+#       stringr$str_detect(tolower(Organization), "hondura|hnd")~ "Honduras",
+#       stringr$str_detect(tolower(Organization), "nica|nicaragua")~ "Nicaragua"
+#     ),
+#     country_extract3= ifelse(is.na(country_extract1),country_extract2,country_extract1),
+#     country_extract4 = case_when(
+#       Organization == "Start Network"~ "Guatemala",
+#       .default = country_extract3
+#     ), 
+#     email_group = case_when(
+#       country_extract4 == "Guatemala"~"A",
+#       country_extract4 != "Guatemala"~"B",
+#       Group == "both" ~"Both",
+#       is.na(country_extract4)~"A",
+#       .default = NA_character_
+#       
+#       
+#     )
+#     
+#   )
+# ldf_email_split_raw <- split(df_email_recep_processed,df_email_recep_processed$email_group) 
+# ldf_email_use <- list(
+#   group_a = bind_rows(ldf_email_split_raw$A,ldf_email_recep$Both),
+#   group_b = bind_rows(ldf_email_split_raw$B,ldf_email_recep$Both)
+# )
+
 
 
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[3]
-EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","interna_chd","internal_ocha","full_list")[5]
+EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","interna_chd","internal_ocha","full_list")[1]
 
 
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
@@ -65,8 +105,7 @@ run_date_set <- case_when(
 logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 logger$log_info(paste0("Run date set = ", run_date_set))
 
-
-df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
+# df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 
 current_moment <-  lubridate$floor_date(run_date_set, "month")
@@ -77,7 +116,7 @@ insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
 # Loading base data -------------------------------------------------------
 
 # this function can/should be edited to reflect changes in monitoring AOI
-df_aoi <- utils$load_aoi_df(version = "2025_v2")
+df_aoi <- utils$load_aoi_df(version = "2025_v1")
 gdf_adm1 <- utils$load_adm1_sf()
 
 df_admin_name_lookup <- cumulus$blob_load_admin_lookup()
@@ -86,7 +125,7 @@ df_admin_name_lookup <- cumulus$blob_load_admin_lookup()
 df_thresholds <- utils$load_threshold_table(
   file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", 
   fallback_to_seas5 = FALSE
-  )
+)
 
 
 # Minor filtering/wrangling -----------------------------------------------
@@ -154,10 +193,12 @@ email_txt <- eu$email_text_list(
 
 logger$log_info("Making threshold table")
 gt_threshold_table <- df_forecast_status |> 
+  filter(adm0_es == "Nicaragua") |> 
   select(
     adm0_es,value,value_empirical,status
   ) |> 
   gt$gt() |> 
+  gt$cols_hide(columns = "status") |> 
   gt$cols_label(
     adm0_es="Country",
     value= "Rainfall (mm)",
@@ -169,7 +210,7 @@ gt_threshold_table <- df_forecast_status |>
     email_txt$gt_table_header
   ) |> 
   gt$tab_footnote(
-    footnote = email_txt$tbl_footnote
+    footnote = "Thresholds have been calculated from historical ECMWF (1981-2022) to approximate 4 year return period drought level."
   ) |> 
   gt$tab_options(
     table.font.size = 14,
@@ -177,10 +218,13 @@ gt_threshold_table <- df_forecast_status |>
     # table.width = px(500)
     table.width = gt$pct(80)
   )
-
+gt_threshold_table
+email_txt$tbl_footnote
 logger$log_info("Making admin AOI table")
 gt_aoi <- gdf_adm1_aoi |> 
+  
   sf$st_drop_geometry() |> 
+  filter(adm0_es == "Nicaragua") |> 
   group_by(
     adm0_es
   ) |> 
@@ -204,7 +248,7 @@ gt_aoi <- gdf_adm1_aoi |>
     table.font.size = 14,
     table.width = gt$pct(80)
   )
-  
+
 
 
 
@@ -219,15 +263,15 @@ logger$log_info("Loading Map layers from blob")
 l_gdf_simple <-  map$load_simplified_map_layers()
 
 # Move the row where adm0_pcode is "NI" from AOI_ADM0 to AOI_SURROUNDING
-ni_row <- l_gdf_simple$AOI_ADM0 %>%
-  filter(adm0_pcode == "NI")
-
-# Remove the row from AOI_ADM0
-l_gdf_simple$AOI_ADM0 <- l_gdf_simple$AOI_ADM0 %>%
-  filter(adm0_pcode != "NI")
+# ni_row <- l_gdf_simple$AOI_ADM0 %>%
+#   filter(adm0_pcode == "NI")
+# 
+# # Remove the row from AOI_ADM0
+# l_gdf_simple$AOI_ADM0 <- l_gdf_simple$AOI_ADM0 %>%
+#   filter(adm0_pcode != "NI")
 
 # Add the row to AOI_SURROUNDING
-l_gdf_simple$AOI_SURROUNDING <- bind_rows(l_gdf_simple$AOI_SURROUNDING, ni_row)
+# l_gdf_simple$AOI_SURROUNDING <- bind_rows(l_gdf_simple$AOI_SURROUNDING, ni_row)
 
 
 # box::reload(map)
@@ -266,7 +310,7 @@ p_rainfall <- df_forecast_status |>
   ) +
   geom_hline(
     aes(
-    yintercept= value_empirical), 
+      yintercept= value_empirical), 
     linetype="dashed",
     color="tomato"
   )+
