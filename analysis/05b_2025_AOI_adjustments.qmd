@@ -568,8 +568,10 @@ gt_legend <- data.frame(
     column_labels.hidden = T
   ) %>% 
   as_raw_html()
+```
 
-
+```{R}
+# with Nicaragua
 ldf_thresholds_wide$primera %>% 
   gt() %>% 
   fmt_number(decimals = 0) %>% 
@@ -593,14 +595,73 @@ ldf_thresholds_wide$primera %>%
   tab_header(title = "Primera (MJJA 2025) Rainfall (mm) Monitoring Thresholds",
              subtitle = gt_legend
   )
+```
+
+```{r}
+# without Nicaragua
+ldf_thresholds_wide$primera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  cols_hide(
+    columns = "Nicaragua"
+  ) %>%
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+  tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Primera (MJJA 2025) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+```
 
 
+```{r}
+
+# with Nicaragua
 ldf_thresholds_wide$postrera %>% 
   gt() %>% 
   fmt_number(decimals = 0) %>% 
   cols_label(
     pub_month_lt = html("Publication Month<br>(leadtime)")
   ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+   tab_header(title = "Postrera (SON 2025) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+
+```
+
+```{r}
+# without Nicaragua
+ldf_thresholds_wide$postrera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  cols_hide(
+    columns = "Nicaragua"
+  ) %>%
   data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
   tab_style(
     style = cell_fill(color = insuv_color),
@@ -688,6 +749,10 @@ df_jrp_window <- df_historical_forecasts_classified_filtered |>
   ) |> 
   group_by(iso3,adm0_es,window) |> 
   summarise(
+    n = n(),
+    nevents = sum(flag),
+    ar_weibull = nevents / (n + 1),
+    rp_weibull = 1 / ar_weibull,
     ar = mean(flag),
     rp = 1/ar,
     .groups="drop"
@@ -700,24 +765,33 @@ df_jrp_both_windows <- df_historical_forecasts_classified_filtered |>
     flag = any(flag)
   ) |> 
   group_by(iso3,adm0_es) |> 
-  summarise(
+    summarise(
+    n = n(),
+    nevents = sum(flag),
+    ar_weibull = nevents / (n + 1),
+    rp_weibull = 1 / ar_weibull,
     ar = mean(flag),
-    rp = 1/ar,.groups="drop"
-  )
+    rp = 1/ar,
+    .groups = "drop"
+    )
 
+ 
 
 df_jrp_per_window_wide <- df_jrp_window |> 
   select(-iso3) |> 
   pivot_wider(
+    
+    id_cols = "window",
     names_from= adm0_es,
-    values_from = ar:rp
+    values_from = ar_weibull:rp_weibull
   ) 
 
 df_jrp_both_windows_wide <- df_jrp_both_windows |> 
-    select(-iso3) |> 
+  select(-iso3,-n,-nevents,-ar,-rp) |> 
   pivot_wider(
+    # id_cols = "window",
     names_from= adm0_es,
-    values_from = ar:rp
+    values_from = ar_weibull:rp_weibull
   ) |> 
   mutate(
     window = "Combined"
@@ -728,31 +802,35 @@ df_jrp_both_windows_wide <- df_jrp_both_windows |>
 bind_rows(df_jrp_per_window_wide,
           df_jrp_both_windows_wide
           ) |> 
+  mutate(
+    window = str_to_title(window)
+  ) |> 
   
   gt() |> 
   fmt_percent(starts_with("ar"),decimals = 0) |> 
   fmt_number(starts_with("rp"), decimals=1) |> 
      cols_merge(
-    columns = c(`rp_El Salvador`, `ar_El Salvador`),
+    columns = c(`rp_weibull_El Salvador`, `ar_weibull_El Salvador`),
+    pattern = "{1} ({2})"
+  ) %>% 
+  #  cols_merge(
+  #   columns = c(`rp_Nicaragua`, `ar_Nicaragua`),
+  #   pattern = "{1} ({2})"
+  # ) %>% 
+   cols_merge(
+    columns = c(`rp_weibull_Honduras`, `ar_weibull_Honduras`),
     pattern = "{1} ({2})"
   ) %>% 
    cols_merge(
-    columns = c(`rp_Nicaragua`, `ar_Nicaragua`),
-    pattern = "{1} ({2})"
-  ) %>% 
-   cols_merge(
-    columns = c(`rp_Honduras`, `ar_Honduras`),
-    pattern = "{1} ({2})"
-  ) %>% 
-   cols_merge(
-    columns = c(`rp_Guatemala`, `ar_Guatemala`),
+    columns = c(`rp_weibull_Guatemala`, `ar_weibull_Guatemala`),
     pattern = "{1} ({2})"
   ) %>% 
   cols_label(
-    "rp_El Salvador" = "El Salvador",
-    "rp_Guatemala" = "Guatemala",
-    "rp_Nicaragua" = "Nicaragua",
-    "rp_Honduras" = "Honduras",
+    "window" = "Window",
+    "rp_weibull_El Salvador" = "El Salvador",
+    "rp_weibull_Guatemala" = "Guatemala",
+    # "rp_Nicaragua" = "Nicaragua",
+    "rp_weibull_Honduras" = "Honduras",
   ) |> 
   tab_header(
     title=  "Joint Return Periods/Activation Rate (selected admin 1 AOI)",
