@@ -715,6 +715,7 @@ df_all_historical_forecasts_classified <- df_all_forecasts |>
 #| echo: false # dont need to show this in rendered doc
 
 
+df_all_historical_forecasts_classified$issued_date |> range()
 # nice verification -- activation rates approximate 0.25% 1
 df_all_historical_forecasts_classified |> 
   group_by(
@@ -730,6 +731,7 @@ df_all_historical_forecasts_classified |>
 
 df_historical_forecasts_classified_filtered <- df_all_historical_forecasts_classified |> 
   filter(
+    year(issued_date) %in% 1981:2024,
     !(iso3 =="GTM" & leadtime>0 & forecast_source=="SEAS5")
   ) |> 
   mutate(
@@ -835,10 +837,10 @@ bind_rows(df_jrp_per_window_wide,
   tab_header(
     title=  "Joint Return Periods/Activation Rate (selected admin 1 AOI)",
     subtitle = "Across all monitored leadtimes and windows"
-  ) |> 
+  ) |> tab_footnote(footnote = "Analysis years: 1981-2024") |> 
   tab_options(
-    heading.background.color = "#00ad78ff",
-    column_labels.background.color = hdx_hex("mint-ultra-light")
+    heading.background.color = "#00ad78ff",table.font.size = 14,
+    column_labels.background.color = hdx_hex("mint-ultra-light"),
   )
 
 ```
