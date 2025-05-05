@@ -46,7 +46,7 @@ box::use(
 
 
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[3]
-EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","interna_chd","internal_ocha","full_list")[5]
+EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[4]
 
 
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
@@ -131,6 +131,7 @@ df_forecast <-  utils$load_relevant_forecasts(
   gdf_zone= gdf_aoi_gtm # this is only used for INSIVUMEH
 )
 
+
 # Assessing activation ####
 
 df_forecast_status <- df_forecast |> 
@@ -141,7 +142,8 @@ df_forecast_status <- df_forecast |>
     status = if_else(status_lgl, "Activation","No Activation"),
     status = fct_expand(factor(status),"Activation","No Activation")
   )
-
+df_forecast_status |> 
+  glimpse()
 
 
 # Preparing email content -------------------------------------------------
@@ -322,19 +324,29 @@ knitted_email <- render_email(
 
 
 logger$log_info("Sending email")
+if(EMAIL_LIST == "full_list"){
+  df_email_receps |> 
+    map(\(dfet){
+      
+      smtp_send(
+        email = knitted_email,
+        from = "data.science@humdata.org",
+        to = dfet$email,
+        subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
+        # subject = email_txt$subj,
+        credentials = email_creds,
+        verbose = TRUE
+      )
+    })
+}
+if(EMAIL_LIST!= "full_list"){
+  smtp_send(
+    email = knitted_email,
+    from = "data.science@humdata.org",
+    to = df_email_receps$email,
+    subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
+    credentials = email_creds,
+    verbose = TRUE
+  )
+}
 
-ldf_email_use |> 
-  map(\(dfet){
-    dfet$Email
-    smtp_send(
-      email = knitted_email,
-      from = "data.science@humdata.org",
-      to = dfet$Email,
-      # to = "zachary.arno@un.org",
-      # subject = ifelse(EMAIL_LIST!="full_list",paste0("TEST: ",email_txt$subj),email_txt$subj),
-      subject = email_txt$subj,
-      credentials = email_creds,
-      verbose = TRUE
-    )
-    
-  })
