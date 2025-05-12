@@ -1,0 +1,142 @@
+---
+title: "CADC AA Activities"
+output: html_document
+date: "2024-01-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,results="asis", eval=T)
+```
+
+
+```{r libs, include=F}
+library(ggiraph)
+library(tidyverse)
+library(readxl)
+library(gghdx)
+gghdx()
+```
+
+
+```{r code}
+
+fp <- file.path(Sys.getenv("AA_DATA_DIR"),
+          "private",
+          "processed",
+          "lac",
+          "cadc_partner_activity_matrix.xlsx")
+
+dfa <- read_excel(fp) %>% 
+    arrange(
+    window,agency,adm0_es
+  )
+```
+
+
+```{r}
+p_activities <- dfa %>% 
+      pivot_longer(cols = latest_mo:implement_mo
+      ) %>% 
+  arrange(adm0_es) %>% 
+      mutate(
+        activity = trimws(activity),
+        month = month(value,label=T, abbr= T),
+        agency = case_when (
+          str_detect(agency,"PAHO|WHO")~"PAHO/WHO",
+          .default = agency),
+        agency = fct_relevel(agency,"FAO","WFP","PAHO/WHO","UNICEF"),
+        window = ifelse(window=="A","Window A (Primera)\nMJJJAS","Window B (Postrera)\nSON")
+      ) %>% 
+  mutate(
+    activity = as_factor(activity),
+    # activity = fct_reorder(activity,adm0_es)
+  ) %>% 
+      ggplot(
+        aes(x=  activity,y = month, color = adm0_es, group=activity)
+      )+
+      geom_line()+
+  scale_color_brewer(palette = "Spectral")+
+      geom_point_interactive(
+        aes(tooltip= str_wrap(activity,80))
+      )+
+      facet_grid(cols= vars(window),
+                 rows= vars(agency),
+                 scales = "free"
+                 )+
+      coord_flip()+
+  scale_x_discrete(expand = c(0.1,0.1))+
+     labs(title = "Proposed AA Activities",
+          subtitle = "Central American Dry Corridor")+
+      theme(
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle=90),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_rect(fill=NA,color="grey"),
+        
+      )
+
+girafe(ggobj = p_activities)
+# pg <- girafe(ggobj=p_activities,
+#              width_svg = 3,
+#              height_svg = 6,
+#              pointsize = 8) %>%
+#   girafe_options(
+#     opts_sizing(width = 1,rescale=F)
+#   )
+  
+```
+
+```{r}
+p_activities_nica_removed <- dfa %>% 
+  filter(
+    adm0_es!= "Nicaragua"
+  ) |> 
+      pivot_longer(cols = latest_mo:implement_mo
+      ) %>% 
+  arrange(adm0_es) %>% 
+      mutate(
+        activity = trimws(activity),
+        month = month(value,label=T, abbr= T),
+        agency = case_when (
+          str_detect(agency,"PAHO|WHO")~"PAHO/WHO",
+          .default = agency),
+        agency = fct_relevel(agency,"FAO","WFP","PAHO/WHO","UNICEF"),
+        window = ifelse(window=="A","Window A (Primera)\nMJJJAS","Window B (Postrera)\nSON")
+      ) %>% 
+  mutate(
+    activity = as_factor(activity),
+    # activity = fct_reorder(activity,adm0_es)
+  ) %>% 
+      ggplot(
+        aes(x=  activity,y = month, color = adm0_es, group=activity)
+      )+
+      geom_line()+
+  scale_color_brewer(palette = "Set1")+
+      geom_point_interactive(
+        aes(tooltip= str_wrap(activity,80))
+      )+
+      facet_grid(cols= vars(window),
+                 rows= vars(agency),
+                 scales = "free"
+                 )+
+      coord_flip()+
+  scale_x_discrete(expand = c(0.1,0.1))+
+     labs(title = "Proposed AA Activities",
+          subtitle = "Central American Dry Corridor",
+          caption= "Time frame provided by agencies to implement activities. Plot represents the time frame provided in the 2024 framework design process")+
+      theme(
+        legend.title = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle=90),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_rect(fill=NA,color="grey"),
+        
+      )
+
+p_activities_nica_removed
+```
+
