@@ -222,8 +222,11 @@ insivumeh_availability <- function(run_date){
   # and use STAC for cataloguing
   blob_container <- cumulus$blob_containers()$raster 
   # DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
-  blob_name_rgx <- paste0("start",format(run_date,"%b%Y"),".nc$")
-  
+  blob_name_rgx <- ifelse(
+    as_date(run_date)< as_date("2025-06-01"),
+    paste0("start",format(run_date,"%b%Y"),".nc$"),
+    paste0("_",format(run_date,"%b%Y"),"_L\\d+.nc$")
+  )
   
   container_contents <- AzureStor$list_blobs(
     blob_container, 
@@ -236,7 +239,8 @@ insivumeh_availability <- function(run_date){
   
   ret_lgl <- num_unique_files==6
   if(ret_lgl){
-    cat("6 unique INSIVUMEH files found for current run month")
+    cat("6 unique INSIVUMEH files found for current run month\n")
+    cat(glue$glue_collapse(filenames_unique, "\n"))
   }else{
     cat("6 unique INSIVUMEH files NOT FOUND for current month")
   }
