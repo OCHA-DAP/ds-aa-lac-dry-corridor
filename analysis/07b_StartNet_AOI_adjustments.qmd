@@ -32,9 +32,6 @@ Monitoring Specs:
 
 
 ```{r}
-# rendered doc stored here: https://rpubs.com/zackarno/1268712
-#' analysis script to understand implication of changing AOI to select admin 1's
-
 box::use(
   dplyr[...],
   tidyr[...],
@@ -48,7 +45,6 @@ box::use(
   forcats[...],
   sf[...],
   readr[...],
-  
   lubridate[...],
   ggrepel[...],
   gt[...],
