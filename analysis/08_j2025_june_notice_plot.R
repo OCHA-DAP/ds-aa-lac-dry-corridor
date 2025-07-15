@@ -32,20 +32,20 @@ box::use(
   gghdx,
   blastula[...],
   geoarrow[...],
-
+  
 )
 
 gghdx$gghdx()
 
 box::use(
-  utils = ../utils/gen_utils,
-  eu=../utils/email_utils,
-  ../datasources/insivumeh,
-  ../utils/map
+  utils = ../src/utils/gen_utils,
+  eu=../src/utils/email_utils,
+  ../src/datasources/insivumeh,
+  ../src/utils/map
 )
 
 
-WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[3]
+WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current","june_2025")[4]
 EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[1]
 
 
@@ -58,6 +58,7 @@ monitoring_when <-   Sys.getenv("WHEN_TO_MONITOR", unset = WHEN_TO_MONITOR_LOCAL
 run_date_set <- case_when(
   monitoring_when == "last_primera" ~ lubridate$as_date("2024-04-05"),
   monitoring_when == "last_postrera" ~ lubridate$as_date("2024-06-05"),
+  monitoring_when == "june_2025" ~ lubridate$as_date("2025-06-05"),
   monitoring_when == "current" ~ Sys.Date(),
 )
 
@@ -71,10 +72,9 @@ df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 current_moment <-  lubridate$floor_date(run_date_set, "month")
 
-box::reload(insivumeh)
 
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
-
+insiv_received <- FALSE # overwrite for june 2025 ECMWF table
 
 # Loading base data -------------------------------------------------------
 
@@ -86,10 +86,9 @@ df_admin_name_lookup <- cumulus$blob_load_admin_lookup()
 
 # this threshold table dictates which thresholds and forecast source we use.
 df_thresholds <- utils$load_threshold_table(
-  file_name = "df_thresholds_seas5_insivumeh_adm1_refined_insiv_update_202507.parquet",
-  # file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", 
-  fallback_to_seas5 = FALSE
-  )
+  file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", 
+  fallback_to_seas5 = TRUE
+)
 
 
 # Minor filtering/wrangling -----------------------------------------------
@@ -128,8 +127,7 @@ if(!insiv_received){
     )
 }
 
-box::reload(insivumeh)
-box::reload(utils)
+
 df_forecast <-  utils$load_relevant_forecasts(
   df = df_relevant_thresholds,
   activation_moment = current_moment,
@@ -186,6 +184,56 @@ gt_threshold_table <- df_forecast_status |>
     table.width = gt$pct(80)
   )
 
+gtable_june_notice <- df_forecast_status |> 
+  select(
+    adm0_es,value,value_empirical,status
+  ) |> 
+  mutate(
+    status = if_else(adm0_es =="Guatemala","Pending update", status)
+  ) |> 
+  gt$gt() |> 
+  gt$cols_label(
+    adm0_es="Country",
+    value= "Rainfall (mm)",
+    status = "Status",
+    value_empirical = "Threshold"
+  ) |> 
+  gt$fmt_number(columns= c("value","value_empirical"),decimals=0) |> 
+  gt$tab_header(
+    email_txt$gt_table_header
+  ) |> 
+  gt$tab_footnote(
+    footnote = email_txt$tbl_footnote
+  ) |> 
+  gt$tab_options(
+    table.font.size = 14,
+    heading.background.color = "#55b284ff",
+    # table.width = px(500)
+    table.width = gt$pct(80)
+  )
+# Export with tight cropping
+
+gt$gtsave(
+  gtable_june_notice,
+  "gtable_june_notice.png",
+  vwidth = 600,    # Set specific width
+  vheight = NULL,
+  webshot_args = list(
+    args = c("--headless=new"),  # Use new headless mode
+    cliprect = "viewport"
+  ),# Let height auto-adjust
+  expand = 0       # Remove extra padding/whitespace
+)
+
+gtable_june_notice |> 
+  gt$gtsave(
+    "forecast_table.pdf",
+    vwidth = 600,
+    expand = 0
+  )
+gt_threshold_table |> 
+  gt$cols_hide(c("status"))
+
 logger$log_info("Making admin AOI table")
 gt_aoi <- gdf_adm1_aoi |> 
   sf$st_drop_geometry() |> 
@@ -212,7 +260,7 @@ gt_aoi <- gdf_adm1_aoi |>
     table.font.size = 14,
     table.width = gt$pct(80)
   )
-  
+
 
 
 
@@ -274,7 +322,7 @@ p_rainfall <- df_forecast_status |>
   ) +
   geom_hline(
     aes(
-    yintercept= value_empirical), 
+      yintercept= value_empirical), 
     linetype="dashed",
     color="tomato"
   )+

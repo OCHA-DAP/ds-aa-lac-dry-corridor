@@ -33,17 +33,19 @@ filter_recepients <-  function(df,email_list){
   df |> 
     select(
     all_of(c(
-        "name", "organization", "role", "email","email_group",email_list
+        "name", "organization", "role", "email","email_group","remove",email_list
       )
       )
     ) |> 
-    filter(!is.na(!!rlang$sym(email_list)))
+    filter(!is.na(!!rlang$sym(email_list)),
+           remove != 1)
 }
 
 load_raw_email_recipients <- function(){
   df_email_receps <- cumulus$blob_read(
     # name = "ds-aa-lac-dry-corridor/framework_update_2025/email_recepients_cadc_trigger_2025.csv",
-    name = "ds-aa-lac-dry-corridor/framework_update_2025/202504_email_recepients_cadc_trigger_2025.csv",
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/202507_email_recepients_cadc_trigger_2025.csv",
+    # name = "ds-aa-lac-dry-corridor/framework_update_2025/202504_email_recepients_cadc_trigger_2025.csv",
     container = "projects",
     stage = "dev"
   ) |> 

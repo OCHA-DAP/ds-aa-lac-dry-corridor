@@ -68,6 +68,7 @@ load_relevant_forecasts <- function(
     dfz_insiv_aggregated <- cumulus$seas5_aggregate_forecast(
       dfz_insiv,
       value = "value",
+      
       valid_months = months_to_aggregate,
       by = c("iso3","issued_date","forecast_source")) 
     
