@@ -68,7 +68,7 @@ load_ncdf_blob_insiv <- function(
   rgx <- ifelse(
     as_date(run_date)< as_date("2025-06-01"),
     paste0("start",format(run_date,"%b%Y"),".nc$"),
-    paste0("v202507\\/.*star",format(run_date,"%b%Y"),".nc$")
+    paste0("v202506\\/.*star",format(run_date,"%b%Y"),".nc$")
     # paste0("_",format(run_date,"%b%Y"),"_L\\d+.nc$")
   )
   
@@ -242,7 +242,7 @@ insivumeh_availability <- function(run_date){
   blob_name_rgx <- ifelse(
     as_date(run_date)< as_date("2025-06-01"),
     paste0("start",format(run_date,"%b%Y"),".nc$"),
-    paste0("v202507\\/.*star",format(run_date,"%b%Y"),".nc$")
+    paste0("v202506\\/.*star",format(run_date,"%b%Y"),".nc$")
     # paste0("_",format(run_date,"%b%Y"),"_L\\d+.nc$")
   )
   
