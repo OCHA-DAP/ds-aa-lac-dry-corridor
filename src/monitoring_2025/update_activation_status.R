@@ -44,8 +44,11 @@ box::use(
   ../utils/map
 )
 
-
-WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera","last_postrera","current")[3]
+forecast_model_yyyymm <- "202506"
+WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera",
+                                   "last_postrera",
+                                   "june_2025",
+                                   "current")[3]
 EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[1]
 
 
@@ -58,6 +61,7 @@ monitoring_when <-   Sys.getenv("WHEN_TO_MONITOR", unset = WHEN_TO_MONITOR_LOCAL
 run_date_set <- case_when(
   monitoring_when == "last_primera" ~ lubridate$as_date("2024-04-05"),
   monitoring_when == "last_postrera" ~ lubridate$as_date("2024-06-05"),
+  monitoring_when == "june_2025" ~ lubridate$as_date("2025-06-05"),
   monitoring_when == "current" ~ Sys.Date(),
 )
 
@@ -86,7 +90,7 @@ df_admin_name_lookup <- cumulus$blob_load_admin_lookup()
 
 # this threshold table dictates which thresholds and forecast source we use.
 df_thresholds <- utils$load_threshold_table(
-  file_name = "df_thresholds_seas5_insivumeh_adm1_refined_insiv_update_202507.parquet",
+  file_name = glue("df_thresholds_seas5_insivumeh_adm1_refined_insiv_update_{forecast_model_yyyymm}.parquet"),
   # file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet", 
   fallback_to_seas5 = FALSE
   )
