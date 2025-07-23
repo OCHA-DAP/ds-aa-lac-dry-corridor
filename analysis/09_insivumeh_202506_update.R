@@ -17,7 +17,6 @@ box::use(
   readr[...],
   lubridate[...],
   janitor[...],
-  
   glue[...],
   rlang[...],
   ggplot2[...],
@@ -31,6 +30,8 @@ gghdx()
 LAST_BASELINE_YEAR <-  2022
 AOI_SET_NAME <- "Selected admin 1's"
 OVERWRITE <- FALSE
+
+forecast_model_yyyymm <- "202506"
 
 
 # Prep Meta Lookup --------------------------------------------------------
@@ -69,121 +70,6 @@ df_new_aoi_meta <- df_poly_meta |>
   )
 
 
-
-# Prep Seas5 --------------------------------------------------------------
-
-# df_seas5_adm1 <- tbl(con,"seas5") |> 
-#   filter(
-#     adm_level == 1,
-#     pcode %in% df_aoi$pcode,
-#     month(valid_date)%in% c(5:11) # just grabbing all relevant months for both windows
-#   ) |> 
-#   collect() # this actually loads data into memory so can take a 10s or so.
-# 
-# df_seas5 <- df_seas5_adm1 |> 
-#   mutate(
-#     precipitation = days_in_month(valid_date) * mean
-#   )
-# 
-# 
-# df_primera <- cumulus$seas5_aggregate_forecast(
-#   df_seas5,
-#   value = "precipitation",
-#   valid_months =c(5:8),
-#   by = c("iso3", "pcode","issued_date")
-# ) 
-# 
-# df_postrera <- cumulus$seas5_aggregate_forecast(
-#   df_seas5,
-#   valid_months =c(9:11),
-#   value = "precipitation",
-#   by = c("iso3", "pcode","issued_date")
-# )
-
-
-
-# Weighted Average of Forecast AOI ----------------------------------------
-
-# ldf_seas <- list(
-#   "primera"= df_primera,
-#   "postrera" = df_postrera
-# ) |> 
-#   map(
-#     \(dft){
-#       dft |> 
-#         left_join(df_new_aoi_meta, by =c("iso3", "pcode")) |> 
-#         group_by(iso3, issued_date, leadtime, valid_month_label) |> 
-#         summarise(
-#           mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),
-#           .groups="drop"
-#         )
-#     }
-#   )
-# 
-# 
-# ldf_thresholded_1981_2022 <- ldf_seas |> 
-#   map(
-#     \(dft){
-#       dft |> 
-#         mutate(
-#           issued_month_label = month(issued_date,label = TRUE, abbr=T)
-#         ) |> 
-#         filter(
-#           year(issued_date)<=LAST_BASELINE_YEAR
-#         ) |> 
-#         # this func classifies each record RP and creates a boolean of whether or not the threshold
-#         # is passed. We ignore the boolean and just grab the rp_empiricaal values for interpolation
-#         utils$threshold_var(
-#           var= "mm",
-#           by = c("iso3","leadtime",issued_month_label),
-#           rp_threshold = 4,
-#           direction =-1
-#         ) 
-#     }
-#   )
-# 
-# # now we can linearly interpolate:
-# rp_linear_funcs <- ldf_thresholded_1981_2022 |> 
-#   map(
-#     \(dft){
-#       dft |> 
-#         group_by(iso3,leadtime, issued_month_label) |> 
-#         summarise(
-#           calc_empirical_rp_level = list(approxfun(rp_emp, mm,method = "linear", rule =2,yright =Inf)),
-#           calc_empirical_rp = list(approxfun( mm,rp_emp,method = "linear",rule =2)),.groups="drop"
-#         )
-#     }
-#   )
-# 
-# # interpolate for RP 4
-# df_seas5_thresholds <- rp_linear_funcs |> 
-#   imap(\(dft,nmt){
-#     dft |> 
-#       group_by(iso3, leadtime, issued_month_label) |> 
-#       reframe(
-#         RP_empirical = 4,
-#         value_empirical = map_dbl(RP_empirical,calc_empirical_rp_level),
-#       ) |> 
-#       mutate(
-#         window = nmt
-#       )
-#   }
-#   ) |> 
-#   list_rbind() |> 
-#   mutate(
-#     forecast_source = "SEAS5",
-#     AOI = AOI_SET_NAME,
-#     adm0_es = case_when(
-#       iso3 == "GTM"~ "Guatemala",
-#       iso3== "NIC"~"Nicaragua",
-#       iso3== "HND"~"Honduras",
-#       iso3=="SLV" ~ "El Salvador"
-#     )
-#   )
-
-
-
-
 # Insivumeh ---------------------------------------------------------------
 
 AOI_GTM <- df_new_aoi_meta |> 
@@ -202,12 +88,14 @@ dir_insivumeh <- file.path(
 
 dir_update <-  file.path(
   dir_insivumeh,
-  "202507_format"
+  "202506_format"
 )
 
 
-r_update <- insivumeh$load_ncdf_insivumeh(gdb = dir_update,wrap=F,file_rgx_pattern = "^pronos_deterministic_forecast_")
-# r_new <- insivumeh$load_ncdf_insivumeh(gdb = dir_new,wrap=F)
+r_update <- insivumeh$load_ncdf_insivumeh(
+  gdb = dir_update,wrap=F,
+  file_rgx_pattern = "^pronos_deterministic_forecast_"
+  )
 
 
 gdf_adm1 <- cumulus$download_fieldmaps_sf(iso = "gtm",layer = "gtm_adm1")$gtm_adm1
@@ -226,7 +114,7 @@ gdf_gtm_aoi <- gdf_adm1 |>
   )
 
 
-dfz$issued_date |> range()
+
 dfz <- exact_extract(
   x = r_update,
   y = gdf_gtm_aoi,
@@ -242,8 +130,7 @@ dfz <- exact_extract(
     adm1_es = glue_collapse(AOI_GTM,sep =",")
   )
 
-
-
+dfz$issued_date |> range()
 
 
 
@@ -329,10 +216,12 @@ df_insiv_thresholds <- ldf_rp4_by_lt |>
   ) 
 
 
+# quick check
 df_primera_insiv$issued_date |> range()
 df_postrera_insiv |> 
   filter(
-    issued_date == as_date("2025-07-01")
+    issued_date == as_date("2025-07-01")|
+    issued_date == as_date("2025-06-01")
   )
   
 
@@ -349,9 +238,6 @@ df_combined_thresholds <- bind_rows(
 )
 
 
-df_thresholds_old <- cumulus$blob_read(
-  name = 
-)
 
 containers<- cumulus$blob_containers(stage = "dev",write_access = TRUE)
 if(OVERWRITE){
@@ -359,6 +245,8 @@ if(OVERWRITE){
     df = df_combined_thresholds,
     container = containers$projects,
     stage = "dev",
-    name = "ds-aa-lac-dry-corridor/framework_update_2025/df_thresholds_seas5_insivumeh_adm1_refined_insiv_update_202507.parquet"
+    name = glue(
+      "ds-aa-lac-dry-corridor/framework_update_2025/df_thresholds_seas5_insivumeh_adm1_refined_insiv_update_{forecast_model_yyyymm}.parquet"
+    )
   )  
 }
