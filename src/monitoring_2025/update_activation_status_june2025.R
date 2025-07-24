@@ -48,8 +48,8 @@ forecast_model_yyyymm <- "202506"
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera",
                                    "last_postrera",
                                    "june_2025",
-                                   "current")[4]
-EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[1]
+                                   "current")[3]
+EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[4]
 
 
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
@@ -74,8 +74,6 @@ df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 
 current_moment <-  lubridate$floor_date(run_date_set, "month")
-
-box::reload(insivumeh)
 
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
 
@@ -132,8 +130,7 @@ if(!insiv_received){
     )
 }
 
-box::reload(insivumeh)
-box::reload(utils)
+
 df_forecast <-  utils$load_relevant_forecasts(
   df = df_relevant_thresholds,
   activation_moment = current_moment,
@@ -163,6 +160,13 @@ email_txt <- eu$email_text_list(
   run_date = run_date_set,
   insivumeh_forecast_available = insiv_received 
 )
+
+email_txt$date_header <- "June 2025 Update - Trigger Status:"
+
+email_txt$data_accessed <- trimws(format(lubridate$as_date(current_moment), "%B %Y"))
+email_txt$data_accessed <- "June 2025 (ECMWF), July 2025 (INSIVUMEH)"
+email_txt$subj <- "AA Central America Dry Corridor - Drought Monitoring - June Update - Activation (GTM)"
+
 
 logger$log_info("Making threshold table")
 gt_threshold_table <- df_forecast_status |> 
@@ -217,10 +221,6 @@ gt_aoi <- gdf_adm1_aoi |>
     table.width = gt$pct(80)
   )
   
-
-
-
-
 gdf_adm0_status <- gdf_aoi_country |>
   left_join(
     df_forecast_status |> 

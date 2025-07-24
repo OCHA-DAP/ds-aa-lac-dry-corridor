@@ -44,8 +44,10 @@ filter_recepients <-  function(df,email_list){
 load_raw_email_recipients <- function(){
   df_email_receps <- cumulus$blob_read(
     # name = "ds-aa-lac-dry-corridor/framework_update_2025/email_recepients_cadc_trigger_2025.csv",
-    name = "ds-aa-lac-dry-corridor/framework_update_2025/202507_email_recepients_cadc_trigger_2025.csv",
+    # name = "ds-aa-lac-dry-corridor/framework_update_2025/202507_email_recepients_cadc_trigger_2025.csv",
     # name = "ds-aa-lac-dry-corridor/framework_update_2025/202504_email_recepients_cadc_trigger_2025.csv",
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/202507update_email_recepients_cadc_trigger_2025.csv",
+    
     container = "projects",
     stage = "dev"
   ) |> 

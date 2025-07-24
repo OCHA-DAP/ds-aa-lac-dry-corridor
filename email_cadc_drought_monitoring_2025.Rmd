@@ -97,7 +97,7 @@ gt_aoi
 
 **Forecast data source:** `r email_txt$data_source`
 
-Data accessed `r trimws(format(lubridate$as_date(Sys.Date()), "%B %Y"))`. 
+Data accessed: `r  email_txt$data_accessed`. 
 
 `r email_txt$ref_github`
 
