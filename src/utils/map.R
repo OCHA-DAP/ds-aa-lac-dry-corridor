@@ -37,12 +37,20 @@ trigger_status_choropleth <- function(
   
   # At leadtime 0 INSIVUMEH is used
   run_mo_eq_lt0 <- run_mo %in% c(5,9)
+
+  # Exception for August 25th, 2025 - Since Guatemala 
+  # has already activated we've changed the status to "Already activated"
+  # the code below injects "Not Available" as an empty factor level due
+  # to odd behaviour of if_else() - apparently this is intended. Therefore
+  # we can just skip this step altogether.
   
-  if(!insivumeh_data_available & !run_mo_eq_lt0){
+  aug25_exception <-  run_date == "2025-08-06"
+  
+  if(!insivumeh_data_available & !run_mo_eq_lt0 & !aug25_exception){
     gdf_aoi <- gdf_aoi |> 
       mutate(
         status = if_else(
-          adm0_es == "Guatemala",
+          adm0_es == "Guatemala" & status != "Already activated",
           as_factor("Not Available"),
           status)
         
@@ -73,9 +81,11 @@ trigger_status_choropleth <- function(
     scale_fill_manual(
       values = c(
         "Not Available" = gghdx$hdx_hex("gray-medium"),
+        "Already activated" = gghdx$hdx_hex("gray-medium"),
         
         "No Activation"= "#55b284ff",#"#00ad78ff", # gghdx$hdx_hex("mint-ultra-light"),
-        "Activation"=gghdx$hdx_hex("tomato-light")
+        "Activation"=gghdx$hdx_hex("tomato-light"),
+        "asdfa"="red"
         
       ),
       drop=FALSE

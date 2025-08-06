@@ -44,7 +44,11 @@ box::use(
   ../utils/map
 )
 
-forecast_model_yyyymm <- "202506"
+# this parameter only effects guatemala thresholds from insivumeh. 
+# I wrote different parquet files depending on which insivumeh run to use 
+# for calculating insivumeh thresholds, but the original ECMWF thresholds
+# for other countries never change.
+forecast_model_yyyymm <- "202506" 
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera",
                                    "last_postrera",
                                    "june_2025",
