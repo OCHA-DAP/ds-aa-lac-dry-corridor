@@ -1,3 +1,12 @@
+#' **NOTE on August 2025:** Given that it is the last activation moment of the 
+#' framework and there it's a new case where we have an activation in previous 
+#' month, I just copied this script from 
+#' `src/monitoring_2025/update_activation_status.R` and am doing
+#' updates/patching in this script to give make our email clearer. By splitting
+#' the script we also maintain clarity on exactly what was run, when, and in
+#' what state. This seems easier than creating a generalized automation process
+#' to handle this more elegantly, especially considering it's the last run
+
 #' Monitoring of SEAS5 & INSIVUMEH forecasts fore CADC AA Framework monitoring
 #' In the 2025 framework we go from a national to a sub-national monitoring.
 #' 
@@ -32,7 +41,7 @@ box::use(
   gghdx,
   blastula[...],
   geoarrow[...],
-
+  
 )
 
 gghdx$gghdx()
@@ -44,16 +53,16 @@ box::use(
   ../utils/map
 )
 
-# this parameter only effects guatemala thresholds from insivumeh. 
-# I wrote different parquet files depending on which insivumeh run to use 
-# for calculating insivumeh thresholds, but the original ECMWF thresholds
+# this parameter only effects Guatemala thresholds from INSIVUMEH. 
+# I wrote different parquet files depending on which INSIVUMEH run to use 
+# for calculating INSIVUMEH thresholds, but the original ECMWF thresholds
 # for other countries never change.
 forecast_model_yyyymm <- "202506" 
 WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("last_primera",
                                    "last_postrera",
                                    "june_2025",
                                    "current")[4]
-EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[1]
+EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer","developers","internal_chd","full_list")[4]
 
 
 logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
@@ -79,10 +88,15 @@ df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
 
 current_moment <-  lubridate$floor_date(run_date_set, "month")
 
-box::reload(insivumeh)
 
+
+# this FALSE at the time of running.
 insiv_received <- insivumeh$insivumeh_availability(run_date = current_moment)
 
+# I will just hardcode it as FALSE in case we get data later to reflect
+# the run state for activation moment. Even if we had the data we would not 
+# use it since Guatemala has already activated
+insiv_received <- FALSE
 
 # Loading base data -------------------------------------------------------
 
@@ -97,7 +111,7 @@ df_thresholds <- utils$load_threshold_table(
   file_name = glue("df_thresholds_seas5_insivumeh_adm1_refined_insiv_update_{forecast_model_yyyymm}.parquet"),
   # file_name="df_thresholds_seas5_insivumeh_adm1_refined.parquet",
   fallback_to_seas5 = FALSE
-  )
+)
 
 
 # Minor filtering/wrangling -----------------------------------------------
@@ -119,6 +133,7 @@ gdf_aoi_country <- gdf_adm1_aoi |>
   summarise(do_union = T)
 
 
+# this is used for zonal stats only when needed w/ INSIVUMEH data
 gdf_aoi_gtm <- gdf_aoi_country |> 
   filter(adm0_es == "Guatemala")
 
@@ -136,8 +151,7 @@ if(!insiv_received){
     )
 }
 
-box::reload(insivumeh)
-box::reload(utils)
+
 df_forecast <-  utils$load_relevant_forecasts(
   df = df_relevant_thresholds,
   activation_moment = current_moment,
@@ -147,7 +161,6 @@ df_forecast <-  utils$load_relevant_forecasts(
 
 
 # Assessing activation ####
-
 df_forecast_status <- df_forecast |> 
   # inner_join() will only keep the INSIVUMEH when needed
   inner_join(df_relevant_thresholds) |> 
@@ -168,6 +181,13 @@ email_txt <- eu$email_text_list(
   insivumeh_forecast_available = insiv_received 
 )
 
+email_txt$tbl_footnote <- "Thresholds for all countries have been calculated from historical ECMWF (1981-2022) to approximate 4 year return period drought level."
+email_txt$description_content <- "The AA framework has not triggered in Honduras or El Salvador. The total rainfall forecast over the 2025 Postrera season (September-November) is not predicted to be below the 1 in 4 year drought levels. The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently. <br><br><i>The framework was already activated previously in Guatemala based on the June 2025 forecast from INSIVUMEH.</i>"
+email_txt$subj <- "AA Central America Dry Corridor - Drought Monitoring - August Update - No New Activations (HND, SLV)"
+email_txt$data_accessed <- trimws(format(lubridate$as_date(current_moment), "%B %Y"))
+email_txt$status <- "<span style='color: #55b284ff;'>No New Activations</span>"
+
+email_txt
 logger$log_info("Making threshold table")
 gt_threshold_table <- df_forecast_status |> 
   select(
@@ -220,7 +240,7 @@ gt_aoi <- gdf_adm1_aoi |>
     table.font.size = 14,
     table.width = gt$pct(80)
   )
-  
+
 
 
 
@@ -228,7 +248,7 @@ gt_aoi <- gdf_adm1_aoi |>
 gdf_adm0_status <- gdf_aoi_country |>
   left_join(
     df_forecast_status |> 
-      select(adm0_es,status)
+      select(adm0_es,status) 
   )
 
 logger$log_info("Loading Map layers from blob")
@@ -246,9 +266,16 @@ l_gdf_simple$AOI_ADM0 <- l_gdf_simple$AOI_ADM0 %>%
 l_gdf_simple$AOI_SURROUNDING <- bind_rows(l_gdf_simple$AOI_SURROUNDING, ni_row)
 
 
+gdf_adm0_status <- gdf_adm0_status |> 
+  mutate(
+    status = if_else(adm0_es=="Guatemala","Already activated",status),
+    status = fct_expand(status, "Already activated","No Activation","Activation"),
+    status = fct_relevel(status,"No Activation","Activation","Already activated")
+  )
 # box::reload(map)
 # ## 6d. Generate Map - Choropleth ####
 logger$log_info("Making Map")
+box::reload(map)
 m_choro <- map$trigger_status_choropleth(
   gdf_aoi = gdf_adm0_status, # dissolved admin file
   gdf_adm1 = l_gdf_simple$AOI_ADM1, # full country admin 1
@@ -282,7 +309,7 @@ p_rainfall <- df_forecast_status |>
   ) +
   geom_hline(
     aes(
-    yintercept= value_empirical), 
+      yintercept= value_empirical), 
     linetype="dashed",
     color="tomato"
   )+

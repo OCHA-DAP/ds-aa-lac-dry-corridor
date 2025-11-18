@@ -33,17 +33,21 @@ filter_recepients <-  function(df,email_list){
   df |> 
     select(
     all_of(c(
-        "name", "organization", "role", "email","email_group",email_list
+        "name", "organization", "role", "email","email_group","remove",email_list
       )
       )
     ) |> 
-    filter(!is.na(!!rlang$sym(email_list)))
+    filter(!is.na(!!rlang$sym(email_list)),
+           remove != 1)
 }
 
 load_raw_email_recipients <- function(){
   df_email_receps <- cumulus$blob_read(
     # name = "ds-aa-lac-dry-corridor/framework_update_2025/email_recepients_cadc_trigger_2025.csv",
-    name = "ds-aa-lac-dry-corridor/framework_update_2025/202504_email_recepients_cadc_trigger_2025.csv",
+    # name = "ds-aa-lac-dry-corridor/framework_update_2025/202507_email_recepients_cadc_trigger_2025.csv",
+    # name = "ds-aa-lac-dry-corridor/framework_update_2025/202504_email_recepients_cadc_trigger_2025.csv",
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/202507update_email_recepients_cadc_trigger_2025.csv",
+    
     container = "projects",
     stage = "dev"
   ) |> 
@@ -151,7 +155,7 @@ gen_description_end <- function(run_date,insivumeh_forecast_available){
   }
   else if (run_mo!=5){
     ret <-  ifelse(!insivumeh_forecast_available,
-                   "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently. <br><br><i>As indicated in the Dry Corridor AA framework, for Guatemala, the final trigger status is determined using the forecast of the national meteorological service INSIVUMEH. Therefore, the trigger status for Guatemala will be provided when the INSIVUMEH forecast is received which is estimated to be between the 5th and 10th of the month.</i>",
+                   "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for each country independently. <br><br><i>As indicated in the Dry Corridor AA framework, for Guatemala, the final trigger status is determined using the forecast of the national meteorological service INSIVUMEH. Therefore, the trigger status for Guatemala will be provided when the INSIVUMEH forecast is received which is estimated to be between the 15th and 20th of the month.</i>",
                    "The trigger status and thresholds are based on the latest ECMWF Seasonal forecast and historical ECMWF Seasonal forecasts for El Salvador and Honduras independently. For Guatemala the thresholds and trigger are based on the official national forecast and historical forecasts obtained from INSIVUMEH.")
     
   }

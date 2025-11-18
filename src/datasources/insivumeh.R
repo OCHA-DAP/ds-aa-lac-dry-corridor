@@ -62,7 +62,15 @@ load_ncdf_blob_insiv <- function(
   
   # prefix<- paste0("insivumeh_pronos_deterministic")
   suffix<- paste0("start",run_mo,run_yr,".nc")
-  rgx <- glue$glue("^{dir}/.*{suffix}$")
+  # rgx <- glue$glue("^{dir}/.*{suffix}$")
+  
+  # pronos_deterministic_forecast_Aug_starJul2025.nc
+  rgx <- ifelse(
+    as_date(run_date)< as_date("2025-06-01"),
+    paste0("start",format(run_date,"%b%Y"),".nc$"),
+    paste0("v202506\\/.*star",format(run_date,"%b%Y"),".nc$")
+    # paste0("_",format(run_date,"%b%Y"),"_L\\d+.nc$")
+  )
   
   blob_container <- cumulus$blob_containers()$raster
   
@@ -94,7 +102,16 @@ load_ncdf_blob_insiv <- function(
         
       }
     )
-  r <- load_ncdf_insivumeh(gdb = td)
+  
+  # annoying hack
+  rgx_tmp_dir <- ifelse(
+    as_date(run_date)< as_date("2025-06-01"),
+    paste0("start",format(run_date,"%b%Y"),".nc$"),
+    paste0(".*star",format(run_date,"%b%Y"),".nc$")
+    # paste0("_",format(run_date,"%b%Y"),"_L\\d+.nc$")
+  )
+  
+  r <- load_ncdf_insivumeh(gdb = td,file_rgx_pattern = rgx_tmp_dir)
   on.exit({
     unlink(td, recursive = TRUE, force = TRUE)
     message("Temporary directory deleted: ", td)
@@ -112,11 +129,11 @@ load_ncdf_blob_insiv <- function(
 #' @export
 #'
 #' @examples
-load_ncdf_insivumeh <- function(gdb,wrap=F) {
+load_ncdf_insivumeh <- function(gdb,wrap=F,file_rgx_pattern) {
   fps <- list.files(gdb,
                     full.names = T,
                     recursive = T,
-                    pattern = "\\d{4}.nc$"
+                    pattern = file_rgx_pattern
   )
   
   lr <- fps |> 
@@ -222,8 +239,12 @@ insivumeh_availability <- function(run_date){
   # and use STAC for cataloguing
   blob_container <- cumulus$blob_containers()$raster 
   # DIR_CURRENT_INSIV <- paste0("start",month(run_date,abbr = T,label = T))
-  blob_name_rgx <- paste0("start",format(run_date,"%b%Y"),".nc$")
-  
+  blob_name_rgx <- ifelse(
+    as_date(run_date)< as_date("2025-06-01"),
+    paste0("start",format(run_date,"%b%Y"),".nc$"),
+    paste0("v202506\\/.*star",format(run_date,"%b%Y"),".nc$")
+    # paste0("_",format(run_date,"%b%Y"),"_L\\d+.nc$")
+  )
   
   container_contents <- AzureStor$list_blobs(
     blob_container, 
@@ -236,7 +257,8 @@ insivumeh_availability <- function(run_date){
   
   ret_lgl <- num_unique_files==6
   if(ret_lgl){
-    cat("6 unique INSIVUMEH files found for current run month")
+    cat("6 unique INSIVUMEH files found for current run month\n")
+    cat(glue$glue_collapse(filenames_unique, "\n"))
   }else{
     cat("6 unique INSIVUMEH files NOT FOUND for current month")
   }

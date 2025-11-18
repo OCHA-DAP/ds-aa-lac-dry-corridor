@@ -230,11 +230,9 @@ gt_primera_cds_set <- df_primera_table$CDS_SET %>%
 gt_primera_cds_set
 ```
 
-
 ```{r}
 gt_primera_mars_set
 ```
-
 
 ## Postera
 
@@ -355,4 +353,3 @@ gt_postrera_cds_set
 ```{r}
 gt_postrera_mars_set
 ```
-
