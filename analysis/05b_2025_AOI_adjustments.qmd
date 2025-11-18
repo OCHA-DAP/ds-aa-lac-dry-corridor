@@ -627,7 +627,6 @@ ldf_thresholds_wide$primera %>%
   )
 ```
 
-
 ```{r}
 
 # with Nicaragua
