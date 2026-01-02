@@ -363,3 +363,11 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+
+# Project-specific ignores
+*.aux.xml
+rsconnect/
+rpubs_upload/
+shinyAppData/
+*.xlsx
+ecmwf_gribs/
