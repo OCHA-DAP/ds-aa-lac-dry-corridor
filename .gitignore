@@ -365,6 +365,7 @@ $RECYCLE.BIN/
 .DS_Store
 
 # Project-specific ignores
+CLAUDE.md
 *.aux.xml
 rsconnect/
 rpubs_upload/
