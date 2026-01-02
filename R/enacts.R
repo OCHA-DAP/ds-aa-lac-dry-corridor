@@ -1,6 +1,12 @@
-library(tidyverse)
-library(terra)
-library(RNetCDF)
+box::use(
+dplyr[...],
+tidyr[...],
+stringr[...],
+lubridate[...],
+terra,
+RNetCDF[...],
+exactextractr[...]
+)
 
 #' load_precip_enacts
 #' @description
@@ -9,6 +15,7 @@ library(RNetCDF)
 #'
 #' @param wrap `logical` whether to wrap the raster for targets pipeline storage (default TRUE)
 #' @return terra SpatRaster object (wrapped if wrap=TRUE)
+#' @export
 #' @examples \dontrun{
 #' r_precip <- load_precip_enacts(wrap = FALSE)
 #' }
@@ -48,7 +55,7 @@ load_precip_enacts <- function(wrap = TRUE) {
   precip_array_fixed <- aperm(precip_array, c(2, 1, 3))
 
   # Create raster
-  r <- terra::rast(
+  r <- terra$rast(
     x = precip_array_fixed,
     ext = dat_extent,
     crs = "OGC:CRS84"
@@ -67,8 +74,60 @@ load_precip_enacts <- function(wrap = TRUE) {
 
   # Wrap for targets if requested
   if (wrap) {
-    r <- wrap(r)
+    r <- terra$wrap(r)
   }
 
   return(r)
+}
+
+#' monthly_zonal
+#' @description
+#' Calculate monthly zonal precipitation statistics from ENACTS daily raster.
+#'
+#' @param r terra SpatRaster with daily precipitation (band names as dates)
+#' @param zone sf polygon to extract zonal statistics for
+#' @param fun character aggregation function for exact_extract (default "mean")
+#' @return data.frame with columns: date, year, month, value (monthly total precip in mm)
+#' @export
+#' @examples \dontrun{
+#' r <- load_precip_enacts(wrap = FALSE)
+#' gdf_aoi <- sf::st_read("path/to/aoi.gpkg")
+#' df_monthly <- monthly_zonal(r, gdf_aoi)
+#' }
+monthly_zonal <- function(r, zone, fun = "mean") {
+  # Extract daily zonal means
+ df_daily <- exact_extract(
+    x = r,
+    y = zone,
+    fun = fun,
+    append_cols = FALSE
+  )
+
+  # Convert wide to long and parse dates from band names
+ df_long <- df_daily |>
+    pivot_longer(
+      cols = everything(),
+      names_to = "band",
+      values_to = "value"
+    ) |>
+    mutate(
+      # Remove "mean." prefix if present
+      date = as_date(str_remove(band, "^mean\\.")),
+      year = year(date),
+      month = month(date)
+    )
+
+  # Aggregate to monthly totals
+ df_monthly <- df_long |>
+    group_by(year, month) |>
+    summarise(
+      value = sum(value, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    mutate(
+      date = make_date(year, month, 1)
+    ) |>
+    arrange(date)
+
+ return(df_monthly)
 }
