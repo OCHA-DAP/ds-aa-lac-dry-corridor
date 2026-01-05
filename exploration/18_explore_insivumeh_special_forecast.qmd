@@ -1,0 +1,176 @@
+---
+title: "Explore INSIVUMEH Special Forecast 2026"
+format: html
+---
+
+## Objective
+
+Identify which PRCP.nc file to use as the forecast by listing available files and extracting model codes.
+
+```{r}
+library(tidyverse)
+
+# List all files in the special forecast directory
+forecast_dir <- file.path(
+  Sys.getenv("AA_DATA_DIR_NEW"),
+  "private/raw/lac/INSIVUMEH/special_forecast_2026"
+)
+
+files <- list.files(forecast_dir, full.names = FALSE)
+
+# Store in data.frame and extract model code from PRCP files
+df_files <- tibble(
+  filename = files
+) |>
+  mutate(
+    is_prcp = str_detect(filename, "_PRCP\\.nc$"),
+    model_code = if_else(
+      is_prcp,
+      str_extract(filename, "[A-Za-z0-9]+_PRCP\\.nc$"),
+      NA_character_
+    )
+  )
+
+df_files
+```
+
+```{r}
+# Filter to PRCP files, extract year, and count per year/model
+df_prcp <- df_files |>
+  filter(is_prcp) |>
+  mutate(
+    year = str_extract(filename, "\\d{4}") |> as.integer()
+  )
+
+df_prcp |>
+  count(year, model_code) |>
+  pivot_wider(names_from = model_code, values_from = n, values_fill = 0)
+```
+
+```{r}
+
+# look - Marzo is the correct spelling in the other variables, There are just no PRCP.nc files for Marzo
+df_files |>
+  mutate(
+    year = str_extract(filename, "\\d{4}") |> as.integer(),
+    month = str_extract(filename, "^[A-Za-z]+")
+  ) |> count(month)
+
+df_files |>
+  filter(str_detect(tolower(filename),"mar")) |> 
+  print(n=156)
+  
+
+```
+
+```{r}
+# Extract month from filename and check which are missing
+all_months <- c("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
+
+df_prcp <- df_prcp |>
+  mutate(
+    month = str_extract(filename, "^[A-Za-z]+")
+  )
+
+# Find missing months per year/model
+df_missing <- df_prcp |>
+  group_by(year, model_code) |>
+  summarise(
+    missing_months = list(setdiff(all_months, month)),
+    n_missing = length(setdiff(all_months, month)),
+    .groups = "drop"
+  ) |>
+  filter(n_missing > 0) |>
+  unnest(missing_months)
+
+# Create complete grid to show presence/absence
+month_abbr <- c("E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+names(month_abbr) <- all_months
+
+df_complete <- expand_grid(
+  year = unique(df_prcp$year),
+  model_code = unique(df_prcp$model_code),
+  month = all_months
+) |>
+  left_join(
+    df_prcp |> select(year, model_code, month) |> mutate(present = TRUE),
+    by = c("year", "model_code", "month")
+  ) |>
+
+  mutate(
+    present = replace_na(present, FALSE),
+    month = factor(month, levels = all_months)
+  )
+
+# Heatmap - compact visualization for email
+df_complete |>
+  mutate(model_code = str_remove(model_code, "_PRCP\\.nc$")) |>
+ggplot(aes(x = month, y = factor(year), fill = present)) +
+
+geom_tile(color = "white", linewidth = 0.5) +
+  facet_wrap(~model_code, ncol = 2) +
+  scale_fill_manual(
+    values = c("TRUE" = "#2E7D32", "FALSE" = "#C62828"),
+    labels = c("Faltante", "Disponible")
+  ) +
+  scale_x_discrete(labels = month_abbr) +
+  labs(
+    title = "Disponibilidad de Archivos PRCP de INSIVUMEH por Modelo",
+    x = "Mes", y = "Año", fill = ""
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 8),
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 9),
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# Compact summary table: count of available months per year/model
+df_complete |>
+  group_by(year, model_code) |>
+  summarise(n_available = sum(present), .groups = "drop") |>
+  pivot_wider(names_from = model_code, values_from = n_available) |>
+  arrange(year)
+```
+
+## Check leadtimes
+
+Each file should contain 6 leadtimes. Let's verify by extracting publication date (S) and valid date (T) from all PRCP files.
+
+```{r}
+library(ncmeta)
+library(lubridate)
+
+# Extract pub/valid dates and calculate leadtime for all PRCP files
+df_leadtimes <- df_prcp |>
+  mutate(fp = file.path(forecast_dir, filename)) |>
+  rowwise() |>
+  mutate(
+    t_units = nc_att(fp, "T", "units")$value[[1]],
+    s_units = nc_att(fp, "S", "units")$value[[1]],
+    valid_date = as.Date(str_extract(t_units, "\\d{4}-\\d{2}-\\d{2}")),
+    pub_date = as.Date(str_extract(s_units, "\\d{4}-\\d{2}-\\d{2}")),
+    lt = interval(pub_date, valid_date) %/% months(1)
+  ) |>
+  ungroup() |>
+  select(filename, model_code, pub_date, valid_date, lt)
+
+# Leadtime distribution
+df_leadtimes |>
+  count(lt, name = "n_files")
+
+df_leadtimes |> 
+  count(month(pub_date))
+```
+
+```{r}
+# Summary
+cat("Total PRCP files:", nrow(df_leadtimes), "\n")
+cat("Unique leadtimes:", paste(unique(df_leadtimes$lt), collapse = ", "), "\n")
+```
+
+**Finding:** All files contain only leadtime = 1 (1-month ahead forecasts). Filename indicates the target/valid month (e.g., "Abril2000" = forecast FOR April, published in March). No files with leadtimes 2-6 are present.
