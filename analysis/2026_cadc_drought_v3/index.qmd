@@ -1,0 +1,50 @@
+# Introduction {.unnumbered}
+
+This book evaluates the skill of seasonal precipitation forecasts for detecting drought conditions in **Chiquimula, Guatemala** - a key region in the Central American Dry Corridor. We compare two forecast sources:
+
+- **SEAS5**: ECMWF's global seasonal forecasting system
+- **INSIVUMEH**: Regional forecasts from Guatemala's national meteorological service (using CFSv2, CCSM4, and CESM1 models)
+
+## Agricultural Seasons
+
+Guatemala's dry corridor has two main agricultural seasons:
+
+| Season | Months | Typical Crops |
+|--------|--------|---------------|
+| **Primera** | May-August (MJJA) | First maize planting |
+| **Postrera** | September-November (SON) | Second maize planting |
+
+## Drought Definition
+
+We define drought using a **return period of 4 years (RP4)**, meaning:
+
+- Approximately 6 drought years expected over the 25-year baseline (2000-2024)
+- Threshold calculated separately for each forecast model and observation source
+- This aligns with typical anticipatory action trigger frameworks
+
+## Comparison Frameworks
+
+Throughout this analysis, we use two comparison frameworks:
+
+1. **Native Comparison**: Each forecast validated against its typical observation source
+   - SEAS5 vs ERA5 (global reanalysis)
+   - INSIVUMEH vs ENACTS (station-blended satellite product)
+
+2. **ENACTS-only Comparison**: All forecasts validated against ENACTS
+   - Allows direct model-to-model comparison
+   - ENACTS is the operational observation source for Guatemala
+
+## Book Structure
+
+**Chapter 1: Binary Classification Metrics**
+Traditional skill assessment using F1 score, precision, recall. Treats forecasts as binary predictions: drought vs no-drought.
+
+**Chapter 2: Continuous Metrics**
+A more nuanced view using correlation, error magnitude, and ROC-AUC. Binary metrics can be noisy with small samples; continuous metrics provide additional perspective on forecast skill. ROC-AUC is particularly interpretable - it directly answers whether forecasts can discriminate drought from non-drought years.
+
+## Key Questions
+
+1. Which forecast source should be used for Primera? For Postrera?
+2. At which leadtimes do forecasts show genuine skill?
+3. Do forecasts beat random guessing?
+4. When forecasts are wrong, how wrong are they?

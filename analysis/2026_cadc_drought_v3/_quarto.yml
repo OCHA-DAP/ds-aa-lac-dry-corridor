@@ -1,0 +1,28 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "Seasonal Forecast Skill Assessment"
+  subtitle: "INSIVUMEH vs SEAS5 | Chiquimula, Guatemala"
+  author: "OCHA Centre for Humanitarian Data"
+  date: today
+  chapters:
+    - index.qmd
+    - 01_binary_metrics.qmd
+    - 02_continuous_metrics.qmd
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    fig-width: 10
+    fig-height: 6
+    fig-dpi: 150
+
+execute:
+  warning: false
+  message: false
+  freeze: auto
