@@ -174,3 +174,108 @@ cat("Unique leadtimes:", paste(unique(df_leadtimes$lt), collapse = ", "), "\n")
 ```
 
 **Finding:** All files contain only leadtime = 1 (1-month ahead forecasts). Filename indicates the target/valid month (e.g., "Abril2000" = forecast FOR April, published in March). No files with leadtimes 2-6 are present.
+
+## Vizual for explaining issue
+
+
+```{r}
+# For a given target month, we expect 6 files (LT 1-6)
+# Example: For Mayo 2020, we expect:
+#   - LT1: published April 2020
+#   - LT2: published March 2020
+#   - LT3: published February 2020
+#   - LT4: published January 2020
+#   - LT5: published December 2019
+#   - LT6: published November 2019
+
+# Show what we have vs what we expect for a sample year
+sample_year <- 2020
+expected_leadtimes <- 1:6
+
+sample_model <- "CFSv2"
+
+df_lt_check <- df_leadtimes |>
+  filter(year(valid_date) == sample_year,
+         str_detect(model_code, sample_model)) |>
+  mutate(valid_month = month(valid_date, label = TRUE, abbr = FALSE)) |>
+  select(valid_month, lt) |>
+  distinct()
+
+# Create expected grid
+df_expected <- expand_grid(
+
+  valid_month = month(1:12, label = TRUE, abbr = FALSE),
+  lt_expected = expected_leadtimes
+) |>
+  left_join(
+    df_lt_check |> mutate(present = TRUE),
+    by = c("valid_month", "lt_expected" = "lt")
+  ) |>
+  mutate(present = replace_na(present, FALSE))
+
+# Heatmap: valid month vs leadtime
+ggplot(df_expected, aes(x = factor(lt_expected), y = valid_month, fill = present)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = if_else(present, "\u2714", "\u2718")), size = 5, family = "Arial Unicode MS") +
+  scale_fill_manual(
+    values = c("TRUE" = "#2E7D32", "FALSE" = "#FFCDD2"),
+    labels = c("Faltante", "Disponible")
+  ) +
+  labs(
+    title = paste0("Leadtimes disponibles por mes válido (", sample_year, ", modelo ", sample_model, ")"),
+    subtitle = "Solo tenemos leadtime = 1. Faltan leadtimes 2-6 para todos los meses.",
+    x = "Leadtime (meses de anticipación)",
+    y = "Mes válido (target)",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# Simple summary table to send to provider
+df_leadtimes |>
+  mutate(
+    valid_month = format(valid_date, "%B %Y"),
+    pub_month = format(pub_date, "%B %Y")
+  ) |>
+  count(lt, name = "n_archivos") |>
+  mutate(
+    explicacion = case_when(
+      lt == 1 ~ "Pronóstico publicado 1 mes antes del mes válido",
+      lt == 2 ~ "Pronóstico publicado 2 meses antes del mes válido",
+      TRUE ~ paste0("Pronóstico publicado ", lt, " meses antes")
+    )
+  ) |>
+  knitr::kable(
+    col.names = c("Leadtime", "N° Archivos", "Explicación"),
+    caption = "Resumen: Todos los 827 archivos PRCP tienen leadtime = 1"
+  )
+```
+
+```{r}
+# Concrete example for one target month and one model
+ejemplo <- df_leadtimes |>
+  filter(month(valid_date) == 5, year(valid_date) == 2020,
+         str_detect(model_code, "CFSv2")) # Mayo 2020, CFSv2
+
+cat("Ejemplo concreto: Pronósticos para Mayo 2020 (modelo CFSv2)\n")
+cat("=" |> rep(55) |> paste(collapse = ""), "\n\n")
+
+cat("Lo que TENEMOS:\n")
+ejemplo |>
+  mutate(info = paste0("  - ", filename, " (pub: ", pub_date, ", LT=", lt, ")")) |>
+  pull(info) |>
+  cat(sep = "\n")
+
+cat("\n\nLo que ESPERAMOS (6 leadtimes):\n")
+cat("  - LT1: publicado Abril 2020     [SI] (disponible)\n")
+cat("  - LT2: publicado Marzo 2020     [NO] (faltante)\n")
+cat("  - LT3: publicado Febrero 2020   [NO] (faltante)\n")
+cat("  - LT4: publicado Enero 2020     [NO] (faltante)\n")
+cat("  - LT5: publicado Diciembre 2019 [NO] (faltante)\n")
+cat("  - LT6: publicado Noviembre 2019 [NO] (faltante)\n")
+```

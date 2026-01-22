@@ -1,5 +1,5 @@
 # 11_enacts_monthly_zonal_chiquimula.R
-# Generate monthly zonal precipitation statistics from ENACTS for Chiquimula AOI
+# Generate monthly and seasonal zonal precipitation statistics from ENACTS for Chiquimula AOI
 # Output saved to blob storage as parquet
 
 box::use(
@@ -27,19 +27,36 @@ df_monthly <- enacts$monthly_zonal(
   zone = gdf_chiquimula
 )
 
+# Aggregate to seasonal totals (primera: May-Aug, postrera: Sep-Nov)
+df_seasonal <- enacts$aggregate_seasonal(df_monthly)
+
 # Add AOI metadata
 df_monthly <- df_monthly |>
   mutate(
-    iso3 = "GTM",
-    pcode = "GT20",
-    adm1_name = "Chiquimula"
+    aoi_pcode = "GT20",
+    aoi_name = "chiquimula",
+    obs_source = "ENACTS"
   )
 
-# Save to blob storage
+df_seasonal <- df_seasonal |>
+  mutate(
+    aoi_pcode = "GT20",
+    aoi_name = "chiquimula",
+    obs_source = "ENACTS"
+  )
+
+# Save monthly to blob storage
 cumulus$blob_write(
   df = df_monthly,
   container = "projects",
   name = "ds-aa-lac-dry-corridor/data/processed/enacts/enacts_monthly_zonal_chiquimula.parquet"
 )
+cat("Saved monthly to blob: ds-aa-lac-dry-corridor/data/processed/enacts/enacts_monthly_zonal_chiquimula.parquet\n")
 
-cat("Saved to blob: ds-aa-lac-dry-corridor/data/processed/enacts/enacts_monthly_zonal_chiquimula.parquet\n")
+# Save seasonal to blob storage
+cumulus$blob_write(
+  df = df_seasonal,
+  container = "projects",
+  name = "ds-aa-lac-dry-corridor/data/processed/enacts/enacts_seasonal_zonal_chiquimula.parquet"
+)
+cat("Saved seasonal to blob: ds-aa-lac-dry-corridor/data/processed/enacts/enacts_seasonal_zonal_chiquimula.parquet\n")
