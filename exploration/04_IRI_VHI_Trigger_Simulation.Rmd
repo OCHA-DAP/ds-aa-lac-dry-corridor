@@ -1,0 +1,416 @@
+---
+title: "Trigger Simulation"
+output: 
+    bookdown::html_document2:
+        toc: true
+        toc_float: true
+        toc_depth: 4
+date: "2023-09-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE, 
+  eval = TRUE,
+  results = "asis"
+)
+```
+
+## Intro
+
+In this document we simulate the trigger using historical IRI and historical VHI data.
+
+```{r libsData,include=F}
+library(targets)
+library(tidyverse)
+library(gghdx)
+library(gt)
+gghdx()
+tar_load(df_cropland_lte_vhi_threshold)
+tar_load(df_iri_adm0)
+
+thresh_vhi <- 0.35
+thresh_area <-  0.25
+thresh_iri_pbavg <- 0.425
+```
+
+
+Initial triggers:
+
+1. Average probability of below average rainfall is ≥ **`r round(thresh_iri_pbavg*100,1)`%***
+2. ≥ 25 % of cropland with VHI ≤ 0.25 - only monitored for Primera (phase 2) and Postera (phase 3)
+
+
+```{r}
+
+# tak max probability (bavg) across leadtimes
+df_iri_adm0_max <- df_iri_adm0 %>% 
+  group_by(
+    across(starts_with("adm")), 
+    predict_start_mo, seas
+  ) %>% 
+  summarise(
+    across(.cols= c("mean","median"), ~max(.x/100))
+  ) 
+
+# filter to just relevant seasons
+df_iri_adm0_max_relevant_season <- df_iri_adm0_max %>% 
+  ungroup() %>% 
+  filter(
+    str_detect(seas,"MJJ|JJA|SON")
+  ) 
+```
+
+
+## IRI
+
+```{r}
+df_iri_adm0_flag <- df_iri_adm0_max_relevant_season %>% 
+  group_by(across(starts_with("adm")),seas) %>% 
+  mutate(
+    flag_thresh = mean>=thresh_iri_pbavg
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    # for tile plots it will be better have equal interval breaks on x-axis rather than dates
+    # especially when we overlay the vhi data as a transparent tile
+    date_cat = dplyr::dense_rank(predict_start_mo)
+  )
+
+df_iri_adm0_flag %>% 
+  select(adm0_es,Season=seas,mean) %>% 
+  pivot_wider(
+    names_from = adm0_es,
+    values_from=mean
+  ) %>% 
+  gt() %>% 
+  fmt_number(decimals=2) %>% 
+  data_color(
+    columns= `Guatemala`,
+    rows = `Guatemala`>=thresh_iri_pbavg,
+    palette= c(hdx_hex("tomato-light"), hdx_hex("tomato-dark"))
+  ) %>% 
+  data_color(
+    columns= `El Salvador`,
+    rows =`El Salvador`>=thresh_iri_pbavg,
+    palette= c(hdx_hex("tomato-light"), hdx_hex("tomato-dark"))
+  ) %>% 
+  data_color(
+    columns= `Nicaragua`,
+    rows =`Nicaragua`>=thresh_iri_pbavg,
+    palette= c(hdx_hex("tomato-light"), hdx_hex("tomato-dark"))
+  ) %>% 
+  data_color(
+    columns= `Honduras`,
+    rows =`Honduras`>=thresh_iri_pbavg,
+    palette= c(hdx_hex("tomato-light"), hdx_hex("tomato-dark"))
+  )
+
+```
+
+```{r}
+
+fill_cols <- c("white",hdx_hex("mint-hdx"))
+
+
+df_iri_adm0_flag %>% 
+  mutate(
+    date_cat = dplyr::dense_rank(predict_start_mo)
+  ) %>% 
+  ggplot(
+    aes(x= date_cat,y=adm0_es,fill=mean)
+  )+
+  geom_tile(color="lightgrey")+
+  binned_scale(
+    aesthetics = "fill",
+    scale_name = "custom", 
+    palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
+               guide = "bins",
+               breaks = c(0,thresh_iri_pbavg,1), 
+    
+      )+
+  scale_x_continuous(
+    breaks= unique(df_iri_adm0_flag$date_cat),
+    labels= unique(df_iri_adm0_flag$seas)
+  )+
+    labs(
+    title = "Dry Corridor Central America",
+    subtitle= paste0("Green cells indicate where the average probability of a below average seasonal rainfall was ≥ ",thresh_iri_pbavg)
+  )+
+  theme(
+    axis.text.x = element_text(angle=90),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position="none",
+
+  )
+```
+
+## VHI
+
+```{r}
+df_vhi_season <- df_cropland_lte_vhi_threshold %>% 
+  mutate(
+    date= ym(date),
+    monitoring_window = case_when(
+      # Primera 2 is JJA- there fore monitoring MJJ
+      month(date) %in% c(5,6,7) ~ "Primera (phase 2) Monitoring",
+      
+      # Primera 3 is SON - therefore monitoring ASO
+      month(date) %in% c(8,9,10) ~ "Postera (phase 3) Monitoring",
+      .default=NA
+    )
+  ) %>% 
+  filter(!is.na(monitoring_window)) %>% 
+  mutate(
+    monitoring_window = fct_relevel(monitoring_window,
+                                    "Primera (phase 2) Monitoring",
+                                    "Postera (phase 3) Monitoring")
+  )
+
+
+ 
+ 
+ df_vhi_seas_flagged <- df_vhi_season %>% 
+   filter(
+     round(threshold,2) ==thresh_vhi
+   ) %>% 
+   mutate(
+     vhi_area_flagged = pct_crop_pixels_lte_thresh>= thresh_area
+   ) %>% 
+   filter(
+     vhi_area_flagged
+     ) %>% 
+   group_by(across(starts_with("adm")), yr= year(date),monitoring_window) %>% 
+   filter(date==min(date)) %>% 
+   ungroup()
+   
+
+ 
+ p_line_vhi_historical <- df_vhi_season %>% 
+   filter(
+     round(threshold,2) ==thresh_vhi
+   ) %>% 
+   mutate(
+     pt_color = pct_crop_pixels_lte_thresh>= thresh_area
+   ) %>% 
+   ggplot(aes(
+     x= date,
+     y=pct_crop_pixels_lte_thresh
+     
+   ))+
+   geom_vline(
+     data= df_vhi_seas_flagged,
+     aes(xintercept = date),linetype= "dashed",
+     color = hdx_hex("tomato-hdx"),
+     lwd=0.4,
+     alpha=0.5
+   )+
+   geom_point(
+     aes(
+       color=pt_color
+     )
+   )+
+   scale_x_date(
+     date_breaks = "1 year",
+     date_labels = "%y",
+     expand = c(0.01,0.01)
+   )+
+   geom_text(
+     data=  df_vhi_seas_flagged,
+     aes(
+       x= date,
+       y=0.6,
+       label = format(date, "%y"),
+       
+     ),angle=90,
+     color= hdx_hex("tomato-dark"),
+     size=3
+     
+   )+
+   labs(
+     y= "% Cropland",
+     title = paste0("Dry Corridor - Central America: % Cropland with VHI ≤ ",thresh_vhi),
+     subtitle = "Red lines indicate seasons where trigger would be activated (threshold = 25%)"
+   )+
+   # geom_hline(
+   #   yintercept = 0.25,
+   #   linetype= "dashed"
+   # )+
+   scale_y_continuous(
+     labels = scales::label_percent()
+   )+
+   
+   # facet_grid(rows=vars(monitoring_window), cols = vars(adm0_es))
+   facet_grid(cols=vars(monitoring_window), rows = vars(adm0_es))+
+   theme(
+     panel.border = element_rect(color="grey",fill = NA),
+     legend.position = "none",
+     axis.title.x = element_blank(),
+     axis.text.x = element_text(angle=90),
+   )
+ 
+ # i might have to play around with these parameters if I want to knit or export pngs
+ 
+  # theme(
+  #    panel.border = element_rect(color="grey",fill = NA),
+  #    legend.position = "none",
+  #    plot.title = element_text(size=24),
+  #    plot.subtitle  = element_text(size=20),
+  #    axis.title.x = element_blank(),
+  #    axis.title.y = element_text(size=20),
+  #    axis.text= element_text(size= 16),
+  #    
+  #    axis.text.x = element_text(angle=90),
+  #    strip.text = element_text(size=24)
+  #    
+  #  )
+
+ p_line_vhi_historical
+
+```
+
+```{r}
+df_vhi_thresh<- df_vhi_season %>% 
+  # glimpse() %>% 
+   ungroup() %>% 
+  mutate(
+    season_gen = case_when(
+      monitoring_window== "Primera (phase 2) Monitoring"~"JJA",
+      monitoring_window== "Postera (phase 3) Monitoring"~"SON",
+      .default = NA
+      ),
+    mo_start = ifelse(season_gen== "JJA","06","09"),
+    predict_start_mo = ym(paste0(year(date),"-",mo_start)),
+    # year = year(date),
+    # yr = format(year,"")
+    seas = paste0(season_gen, format(date,"%Y"))
+  ) %>% 
+  filter(
+    !is.na(season_gen),
+    round(threshold,2)==thresh_vhi
+    ) %>% 
+  group_by(adm0_es,yr=year(predict_start_mo),monitoring_window) %>% 
+  summarise(
+    pct_max= max(pct_crop_pixels_lte_thresh,na.rm = T),
+    .groups="drop"
+  ) 
+
+
+
+df_vhi_thresh %>% 
+  ggplot(
+    aes(x= yr,
+        y=adm0_es,
+        fill=pct_max)
+  )+
+  geom_tile(color="lightgrey")+
+  geom_tile(
+    data= df_vhi_thresh %>% 
+      # group_by(adm0_es, yr, monitoring_window) %>% 
+      filter(pct_max>=thresh_area),
+    color=hdx_hex("tomato-hdx"),
+    lwd=0.5,
+    fill=NA
+  )+
+  scale_fill_continuous(name= "% cropland",
+                        labels=scales::label_percent()
+                        )+
+  facet_wrap(~monitoring_window,nrow=2)+
+  scale_x_continuous(
+    breaks= unique(df_vhi_thresh$yr)
+  )+
+    labs(
+    title = "Dry Corridor Central America",
+    subtitle= "% Croplandwith VHI ≤ 0.35 - Years with ≥ 25 % highlighted in red"
+  )+
+  theme(
+    axis.text.x = element_text(angle=90),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    legend.text = element_text(angle=90)
+  )
+
+```
+
+
+## IRI + VHI
+
+```{r}
+fill_cols <- c("white",hdx_hex("mint-hdx"))
+# let's align vhi  to the IRI seasons (df_iri_adm0_flag) for vizualization
+
+df_vhi_seas_aligned <- df_vhi_seas_flagged %>% 
+  ungroup() %>% 
+  mutate(
+    season_gen = case_when(
+      monitoring_window== "Primera (phase 2) Monitoring"~"JJA",
+      monitoring_window== "Postera (phase 3) Monitoring"~"SON",
+      .default = NA
+      ),
+    mo_start = ifelse(season_gen== "JJA","06","09"),
+    predict_start_mo = ym(paste0(year(date),"-",mo_start)),
+    # year = year(date),
+    # yr = format(year,"")
+    seas = paste0(season_gen, format(date,"%y"))
+  ) %>% 
+  filter(
+    year(date)>= 2017
+  ) %>% 
+  select(starts_with("adm"),predict_start_mo,seas,threshold,pct_crop_pixels_lte_thresh)
+
+
+
+
+df_iri_adm0_flag %>% 
+  ggplot(
+    aes(x= date_cat,y=adm0_es,fill=mean)
+  )+
+  geom_tile(
+    color="lightgrey",lwd=0.1
+    )+
+  
+  geom_tile(
+    data= df_vhi_seas_aligned %>% 
+      # this join bring in the `date_cat` (dens_rank(date)) values in
+      left_join(
+        df_iri_adm0_flag
+      ),
+
+    fill=NA,
+    color=hdx_hex("tomato-hdx"),
+    alpha=0.5, lwd=0.5
+  )+
+  
+  binned_scale(
+    aesthetics = "fill",
+    scale_name = "custom", 
+    palette = ggplot2:::binned_pal(scales::manual_pal(values = fill_cols)),
+               guide = "bins",
+               breaks = c(0,thresh_iri_pbavg,1), 
+    
+      )+
+  labs(
+    title = "Dry Corridor Central America",
+    subtitle= paste0("Green cells indicate where probability of below average rainfall was ≥ ",
+                     round(thresh_iri_pbavg*100,1),
+                     " %\nRed outline indicates when ≥ ",
+                     round(thresh_area*100,0),
+                     " % of cropland had a VHI ≤ ",
+                     thresh_vhi)
+  )+
+  scale_x_continuous(
+    breaks= unique(df_iri_adm0_flag$date_cat),
+    labels= unique(df_iri_adm0_flag$seas)
+  )+
+  theme(
+    axis.text.x = element_text(angle=90),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position="none"
+  )
+
+```
+

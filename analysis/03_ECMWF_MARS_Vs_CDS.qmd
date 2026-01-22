@@ -1,0 +1,134 @@
+---
+title: "Explore ECMWF MARS vs CDs"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  echo: false
+  warning: false
+  message: false
+  eval: false
+  results: "asis"
+  out.width: "100%"
+editor: visual
+project:
+     execute-dir: project
+---
+
+**NOTE:** qmd format used for description purposes and not formatted for knitting.
+
+## Key Takeaways
+
+-   ECMWF Seasonal forecast data accessed from ECMWF MARS API & The Copernicus Data Store (CDs) API appear sufficiently comparable when aggregated to Admin 0 Boundaries in the Central American Dry Corridor (CADC)
+-   Therefore, we do no foresee any significant hurdles/limitations to adopting the MARS data to set the return period based thresholds for the CADC trigger
+-   **Doc Objective:**
+    -   Document comparison of MARS vs CDs for justification of final CADC AA trigger framework design
+    -   provide documentation on the ECMWF Seasonal forecast products that may be useful for other projects and scientists.
+-   **Update** - after developing framework using MARS in conjunction w/ data received from ECMWF directly via AWS bucket, as of **05 April 2024**, the AWS pipeline appears unstable. Therefore, as a contingency plan we may need to consider moving back to CDs.
+
+## Overview/Intro
+
+During the initial design phase of the CADC trigger the public CD API was used to access ECMWF SEAS51 data for historical analysis/trigger design. Later, data was downloaded via the MARS API using our WMO access. Since the historical analysis is based on monthly rainfall sums (aggregated by season), this document explores the comparability of MARS ECMWF data vs CDs ECMWF data. A quick overview of ECMWF Seasonal forecast products used in this analysis
+
+-   CDs - SEAS51
+    -   resolution: 1 degree
+    -   leadtimes: 6 available. Leadtime 1 = publication date
+    -   access: public
+    -   considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
+    -   publication date:
+    -   use: initial historical analysis/trigger design
+-   MARS - SEAS51
+    -   Resolution: 0.4 degree
+    -   Leadtimes: 7 available. Leadtime 1 = publication date
+    -   Access: WMO
+    -   Considered formats: 51 ensemble member monthly means, monthly mean of ensemble members
+    -   Publication date:
+    -   Use: evaluation in this document
+
+```{r}
+library(targets)
+library(gghdx)
+library(tidyverse)
+gghdx()
+
+# tar_load(df_ecmwf_mars)
+# tar_load(df_ecmwf_zonal_all) 
+tar_load(df_ecmwf_mars,store = here::here("_targets"))
+tar_load(df_ecmwf_cds,store = here::here("_targets"))
+
+ldf_ecmwf <- set_names(
+  list(df_ecmwf_cds, df_ecmwf_mars),
+  c("CDS","MARS")
+  )
+
+# bind CDs & MARS ECMWF data frames
+df_ecmwf <- imap(ldf_ecmwf,\(dft,nm_tmp){
+  dft %>% 
+    mutate(
+      dl_source = nm_tmp
+    ) %>% 
+    filter(stat=="mean")
+}) %>% 
+  list_rbind()
+
+adm_iter <- unique(df_ecmwf$adm0_es)  
+lps <- map(set_names(adm_iter,adm_iter),
+           ~df_ecmwf %>% 
+             # filter(lt!=6,adm0_es==.x) %>% 
+             mutate(
+               decade =year(pub_date) - year(pub_date) %% 10,
+               decade_abbr = paste0(decade,"'s")
+             ) %>% 
+             ggplot(
+               aes(x= valid_date,y= value, color= dl_source)
+             )+
+             geom_point(size=1, alpha=0.5)+
+             geom_line(alpha=0.5)+
+             scale_color_manual(values = c("MARS"=hdx_hex("tomato-hdx"),"CDS"=hdx_hex("sapphire-hdx")))+
+             labs(title = "MARS VS CDS: Average Precip Forecast by decade and leadtime",
+                  subtitle= .x, y= "mm")+
+             scale_x_date(date_breaks= "1 year", date_labels  = "%y")+
+             facet_grid(rows =vars(lt) , cols = vars(decade_abbr),scales="free")+
+             theme(
+               axis.text.x = element_text(angle = 90),
+               legend.title = element_blank()
+             )
+)
+```
+
+```{r}
+lps$Guatemala
+```
+
+```{r}
+lps$Honduras
+```
+
+```{r}
+lps$`El Salvador`
+```
+
+```{r}
+lps$`Nicaragua`
+```
+
+# Quick Correlation Experiment
+
+```{r}
+df_ecmwf_wide <- df_ecmwf %>% 
+  filter(lt!=6) %>% 
+  select(-adm0_pcode, - stat) %>% 
+  pivot_wider(names_from = dl_source, values_from = value) 
+
+df_ecmwf_wide %>% 
+  ggplot(
+    aes(x= MARS, y= CDS)
+  )+
+  geom_point(alpha=0.009)
+
+```

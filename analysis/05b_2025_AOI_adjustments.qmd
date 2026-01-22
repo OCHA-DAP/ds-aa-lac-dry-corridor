@@ -1,0 +1,903 @@
+---
+title-block-banner: "#00ad78ff"
+title-block-banner-color: "#ffffff"
+title: CADC - 2025 Monitoring - AOI Adjustment Evaluation
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    self-contained: true
+    embed-resoures: true
+    smooth-scroll: true
+execute:
+  include: true
+  echo: true
+  warning: false
+  message: false
+  eval: true
+  results: "asis"
+  out.width: "100%"
+  code-fold: true
+editor: visual
+project:
+  execute-dir: project
+---
+
+## AOI Refinement
+
+Analysis to assess potential to refine AOI for CADC
+
+```{r}
+# rendered doc stored here: https://rpubs.com/zackarno/1268712
+#' analysis script to understand implication of changing AOI to select admin 1's
+
+box::use(
+  dplyr[...],
+  tidyr[...],
+  janitor[...],
+  stringr[...],
+  glue[...],
+  rlang[...],
+  purrr[...],
+  gghdx[...],
+  ggplot2[...],
+  forcats[...],
+  sf[...],
+  readr[...],
+  
+  lubridate[...],
+  ggrepel[...],
+  gt[...],
+  geoarrow[...],
+  arrow[...],
+  cumulus
+)
+
+box::use(
+  utils = ../ src/utils/gen_utils
+)
+
+gghdx()
+txt_label_size <- 3
+
+
+df_combined_thresholds <- cumulus$blob_read(
+    container = "projects",
+    name = "ds-aa-lac-dry-corridor/framework_update_2025/df_thresholds_seas5_insivumeh_adm1_refined.parquet"
+  )
+
+
+# insivumeh zonal stats from parquet on blob - - not ecmwf comes from postgres in code below
+df_insivumeh_zonal <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/insivumeh_zonal_stats_seasonal_aoi_chiquimula.parquet"
+)
+
+
+df_aoi <- utils$load_aoi_df()
+```
+
+```{r}
+
+tibble::tribble(
+          ~Country,                                                                           ~Departments,
+     "El Salvador",                                                                          "San Vicente",
+        "Honduras", "El Paraíso (Texiguat, Vado Ancho) and Francisco Morazán (Curarén, Alubarén, Reitoca)",
+       "Nicaragua",                                          "Matagalpa, Estelí, Nueva Segovia and Madriz",
+       "Guatemala",                                 "Chiquimula (Jocotán, Camotán, and San José La Arada)"
+     ) |> 
+  gt() |> 
+  tab_header(
+    "Analysis filtered to admin 1's listed under departments"
+  ) |> 
+  tab_options(
+       heading.background.color = "#00ad78ff",
+    column_labels.background.color = hdx_hex("mint-ultra-light")
+  )
+```
+
+```{r}
+# Prep Meta Lookup --------------------------------------------------------
+con <- cumulus$pg_con()
+
+tbl_polys <- tbl(con,"polygon") |> 
+  filter(adm_level == 1)
+
+df_lookup <- cumulus$blob_load_admin_lookup() |> 
+  clean_names()
+
+df_polys <- tbl_polys |> 
+  filter(
+    iso3 %in% c("NIC","HND","SLV","GTM")
+  ) |> 
+  collect() |> 
+  clean_names()
+
+df_poly_meta <- df_polys |> 
+  left_join(
+    df_lookup |> 
+      select(iso3,matches("adm\\d"),matches("adm_level")) |> 
+      filter(adm_level ==1),
+    by = c("iso3" = "iso3","pcode"="adm1_pcode","adm_level")
+  )
+
+df_new_aoi_meta <- df_poly_meta |> 
+  filter(
+    # just lazy regex to detect names provided to me in a teams chat -- the returned data.frame
+    # is correct -- for an official pipeline - we would hardcode these more explicitly
+    str_detect(
+      adm1_name, 
+      "San Vicente|El Paraiso|Francisco Morazan|Matagalpa|Estel|Nueva Segovia|Madriz|Chiquimula")
+  )
+
+
+```
+
+## Map new AOI
+
+```{r}
+#| eval: false
+
+# the below doesn't need to be evaluated on render - as I save the outputs of this 
+# chunk to blob and load later. Nonetheless, we can keep the code in the notebook.
+
+lgdf_nic <- cumulus$download_fieldmaps_sf(iso3="nic",layer =c("nic_adm1","nic_adm0"))
+lgdf_hnd <- cumulus$download_fieldmaps_sf(iso3="hnd",layer=c("hnd_adm1","hnd_adm0"))
+lgdf_slv <- cumulus$download_fieldmaps_sf(iso3="slv",layer=c("slv_adm1","slv_adm0"))
+lgdf_gtm <- cumulus$download_fieldmaps_sf(iso3="gtm",layer=c("gtm_adm1","gtm_adm0"))
+
+
+gdf_adm1_cadc <- list_rbind(
+  list(
+    lgdf_nic$nic_adm1,
+    lgdf_hnd$hnd_adm1,
+    lgdf_slv$slv_adm1,
+    lgdf_gtm$gtm_adm1
+  )
+) |> 
+  rename(
+    geometry=geom
+  )
+
+gdf_adm0_cadc <- list_rbind(
+  list(
+    lgdf_nic$nic_adm0,
+    lgdf_hnd$hnd_adm0,
+    lgdf_slv$slv_adm0,
+    lgdf_gtm$gtm_adm0
+  )
+) |> 
+  rename(
+    geometry=geom
+  )
+
+
+cumulus$blob_write(
+  gdf_adm1_cadc,
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet"
+  )
+cumulus$blob_write(
+  gdf_adm0_cadc,
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet"
+  )
+
+```
+
+```{r}
+#| eval: true
+#| echo: false
+
+# read
+gdf_adm1_cadc <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm1.parquet",
+  as_data_frame =FALSE
+  ) |> 
+  st_as_sf()
+
+gdf_adm0_cadc <- cumulus$blob_read(
+  container = "projects",
+  name =  "ds-aa-lac-dry-corridor/framework_update_2025/gdf_cadc_adm0.parquet",
+  as_data_frame = FALSE
+  ) |> 
+  st_as_sf()
+
+
+```
+
+```{r}
+gdf_aoi <- gdf_adm1_cadc |> 
+  filter(
+    ADM1_PCODE %in% df_new_aoi_meta$pcode
+  )
+
+ggplot()+
+  geom_sf(data =gdf_adm0_cadc,aes(geometry= geometry), fill ="white")+
+  geom_sf(data= gdf_aoi,aes(geometry=geometry), fill = "red")+
+  theme_void()+
+  theme(
+    panel.background = element_rect(fill = "lightblue"),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = "lightblue")
+  )
+```
+
+Quickly checking the SEAS5 meta-data from our postgres DB to make sure the number of pixels per admin is adequate. Here are the pixels per admin
+
+```{r}
+# quick check on number of pixels.
+df_new_aoi_meta |> 
+  select(
+    pcode, iso3, name,starts_with("seas5")
+  ) |> 
+  gt() |> 
+  fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
+```
+
+At the end of the day we will be aggregating per `country`/`iso3` so let's sum across countries
+
+```{r}
+df_new_aoi_meta |> 
+  select(
+    pcode, iso3, name,starts_with("seas5")
+  ) |> 
+  group_by(iso3) |> 
+  summarise(
+    across(where(is.numeric),\(x) sum(x))
+  ) |> 
+  gt() |> 
+  fmt_number(columns ="seas5_frac_raw_pixels",decimals = 2)
+```
+
+## Aggreate/Analyze Forecast
+
+### ECMWF SEAS5
+
+First we just look at ECMWF - here we actually consider all leadtimes -- not just those considered for monitoring and we see no activations present in historical record. If we did see activation we would want to check on what lead times those occured.
+
+```{r}
+# Prep Seas5 --------------------------------------------------------------
+
+df_seas5 <- tbl(con,"seas5") |> 
+  filter(
+    adm_level == 1,
+    pcode %in% df_aoi$pcode,
+    month(valid_date)%in% c(5:11) # just grabbing all relevant months for both windows
+  ) |> 
+  collect() # this actually loads data into memory so can take a 10s or so.
+
+df_seas5 <- df_seas5 |> 
+  mutate(
+    precipitation = days_in_month(valid_date) * mean
+  )
+  
+filter_historical_to_moments <-  function(df,window_col){
+  df |> 
+    filter(
+      !(month(issued_date)==2 & !!sym(window_col)=="primera"),
+      !(month(issued_date) %in% c(5,9) & !!sym(window_col)=="postrera")
+    )
+    
+}
+df_primera <- cumulus$seas5_aggregate_forecast(
+    df_seas5,
+    value = "precipitation",
+  valid_months =c(5:8),
+  by = c("iso3", "pcode","issued_date")
+) |> 
+  mutate(
+    window = "primera"
+  )
+
+df_postrera <- cumulus$seas5_aggregate_forecast(
+  df_seas5,
+  valid_months =c(9:11),
+  value = "precipitation",
+  by = c("iso3", "pcode","issued_date")
+  ) |> 
+  mutate(
+    window = "postrera"
+  )
+df_historical <- bind_rows(
+  df_primera,
+  df_postrera
+)
+
+df_historical_aa <- df_historical |> 
+  filter_historical_to_moments(
+    window_col ="window"
+    )
+
+# Weighted Average of Forecast AOI ----------------------------------------
+
+df_historical_aa_adm0 <- df_historical_aa |> 
+  left_join(df_new_aoi_meta) |> 
+  group_by(iso3, issued_date, leadtime, valid_month_label,window) |> 
+  summarise(
+    mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),.groups="drop"
+  )
+
+df_historical_aa_classified <- df_historical_aa_adm0 |> 
+  utils$threshold_var(
+    var= "mm",
+    by = c("iso3","leadtime","window"),
+    rp_threshold = 4,
+    direction =-1
+  ) 
+```
+
+Plot historical time series of minimum rainfall per season/yr for both Primera and Postrera. In this plot the threshold is calculated form the entire historical record using all available data
+
+```{r}
+#| fig.height: 8
+
+df_max_rp_forecast_per_year_window <- df_historical_aa_classified |> 
+  # get min per issued date (across LTs)
+  group_by(iso3,year(issued_date),window) |> 
+  slice_max(
+    order_by = rp_emp, n= 1,with_ties = F
+  ) |> 
+  ungroup() |> 
+  mutate(
+    window = factor(window, levels =c("primera","postrera"))
+  )
+    
+df_max_rp_forecast_per_year_window |> 
+  ggplot(
+    aes(x= year(issued_date),y=mm, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_grid(rows = vars(iso3), cols = vars(window))+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  labs(
+    title = "CADC: Primera (MJJA) & Postrera (SON) Seasonal Precipitation Forecasts",
+    subtitle = "Selected admin 1 units in CADC",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_max_rp_forecast_per_year_window,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
+  )+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+
+```
+
+-   Below we plot the same thing, but to be more exact on the question of what would have happened in 2024 with the same method we calculate the thresholds using the same set of baseline years used to the 2024 monitoring (1984-2022)
+-   results unchanged
+
+```{r}
+#| fig.height: 8
+
+df_seas5_thresholds <- df_combined_thresholds |> 
+  filter(
+    forecast_source =="SEAS5"
+  )
+
+df_classified_2024_seas5_thresholds <- df_historical_aa_classified |> 
+  left_join(df_seas5_thresholds, by = c("iso3","leadtime","window")) |> 
+  mutate(
+    mm_flag = mm<=value_empirical
+  )
+
+
+df_max_rp_2024_seas5_thresholds <- df_classified_2024_seas5_thresholds |> 
+  # get min per issued date (across LTs)
+  group_by(iso3,year(issued_date),window) |> 
+  slice_max(
+    order_by = rp_emp, n= 1,with_ties = F
+  ) |> 
+  ungroup() |> 
+  mutate(
+    window = factor(window, levels =c("primera","postrera"))
+  )
+    
+
+df_max_rp_2024_seas5_thresholds |> 
+  ggplot(
+    aes(x= year(issued_date),y=mm, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_grid(rows = vars(iso3), cols = vars(window))+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  labs(
+    title = "CADC: Primera (MJJA) & Postrera (SON) Seasonal Precipitation Forecasts",
+    subtitle = "Selected admin 1 units in CADC",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_max_rp_2024_seas5_thresholds,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
+  )+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+
+```
+
+### INSIVUMEH
+
+Looking at just INSIVUMEH historical activation record - again, we see again no activations in 2024.
+
+```{r}
+#| fig.height: 8
+
+df_insivumeh_thresholds <- df_combined_thresholds |> 
+  filter(forecast_source == "INSIVUMEH")
+
+
+df_insivumeh_aa <- df_insivumeh_zonal |> 
+  # already done in parquet file -- but not bad to leav here
+  filter_historical_to_moments(window_col = "season") |> 
+  # rename to use same plotting code above
+  rename(
+    window = "season"
+  )
+
+df_insivumeh_zonal_min_per_year <- df_insivumeh_aa |> 
+  left_join(
+    df_insivumeh_thresholds
+  ) |> 
+  mutate(
+    mm_flag = value<=value_empirical,
+    window= fct_relevel(window, "primera","postrera")
+  ) |> 
+  group_by(adm0_es,adm1_es,window,year(issued_date)) |> 
+  slice_min(
+    # just plot the value closest to the threshold  per year/season
+    order_by = abs(value-value_empirical), n= 1
+  ) 
+  
+
+df_insivumeh_zonal_min_per_year |> 
+  ggplot(
+    aes(x= year(issued_date),y=value, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_wrap(~window)+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  labs(
+    title = glue("Guatemala - INSIVUMEH - Forecasts"),
+    subtitle = "Chiquimula",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_insivumeh_zonal_min_per_year,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"),size= txt_label_size
+  )+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+
+```
+
+## Threshold Tables
+
+Let's remake threshold tables in case we want to update technical note in 2025:
+
+```{r}
+
+
+df_thresholds_aa <- df_combined_thresholds |> 
+  filter(
+    # do not use SEAS5 for Guatemala -- only for leadtime 0
+      !(iso3 == "GTM" & leadtime %in% c(1:4) & forecast_source == "SEAS5"),
+      
+      # these 2 months not being moniored
+      !(issued_month_label %in% c("Feb","Sep")),
+      !(issued_month_label == "May" & window =="postrera")
+  )
+  
+
+df_thresholds_formatted <- df_thresholds_aa %>% 
+  arrange(
+    iso3, window
+  ) |> 
+  # print(n=15) |> 
+  mutate(
+    pub_month_int = ifelse(window == "primera",5- leadtime,9-leadtime),
+    pub_month_chr = month(pub_month_int, label =T, abb=T),
+    pub_month_lt = paste0(pub_month_chr," (", leadtime,")"),
+  ) %>% 
+  select(
+    adm0_es, 
+    pub_month_lt,
+    threshold = value_empirical,
+    window,
+    forecast_source
+  ) 
+
+ldf_thresholds_wide <- split(df_thresholds_formatted,df_thresholds_formatted$window) %>% 
+  map(\(dft){
+    dft |> 
+    arrange(adm0_es) %>% 
+        select(-forecast_source,-window) |> 
+        filter(
+          !str_detect(pub_month_lt, "^Feb")
+        ) %>% 
+        pivot_wider(names_from = adm0_es,
+                    values_from =threshold
+        ) |> 
+        select(
+          pub_month_lt,
+          `El Salvador`,
+          Honduras,
+          Nicaragua,
+          Guatemala
+        ) %>%
+        arrange(
+          desc(parse_number(pub_month_lt))
+        )
+    
+  })
+        
+
+txt_footnote <- "Threshold calculations are made based on analysis of historical forecast data (1981-2022) to approximate a 1 in 4 year return period drought levels for rainfall over the entire season. Thresholds are calculated per country, leadtime, and forecast data source to minimize potential biases. Where possible national forecasts were used for this analysis and monitoring. Where no national forecasts were readily available, ECMWF seasonal forecasts/historical forecasts were used. <br><br><b> Note:</b> The national forecast provided by INSIVUMEH in Guatemala does not provide a forecast estimate for the month of publication, therefore when that month is included as an activation moment, ECMWF is used."
+
+
+# set colors for table/legend
+ecmwf_cols <- c("El Salvador","Honduras","Nicaragua")
+ecmwf_color <- hdx_hex("mint-light")
+insuv_color <- hdx_hex("sapphire-light")
+
+
+# make legend for table MARS data
+gt_legend <- data.frame(
+  `Forecast Data Source` = "Forecast Data Source",
+  ecmwf = "ECMWF SEAS5" ,
+  insuv= "INSIVUMEH"
+  
+) %>% 
+  gt(rowname_col = "Forecast Data Source") %>%  
+  data_color(columns = "ecmwf", direction = "column",color=ecmwf_color) %>% 
+  data_color(columns = "insuv", direction = "column",color=insuv_color) %>% 
+  tab_options(
+    column_labels.hidden = T
+  ) %>% 
+  as_raw_html()
+```
+
+```{R}
+# with Nicaragua
+ldf_thresholds_wide$primera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+  tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Primera (MJJA 2025) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+```
+
+```{r}
+# without Nicaragua
+ldf_thresholds_wide$primera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  cols_hide(
+    columns = "Nicaragua"
+  ) %>%
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:2
+    )) %>% 
+  tab_style(
+    style = cell_fill(color = ecmwf_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+  tab_header(title = "Primera (MJJA 2025) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+```
+
+```{r}
+
+# with Nicaragua
+ldf_thresholds_wide$postrera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+   tab_header(title = "Postrera (SON 2025) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+
+```
+
+```{r}
+# without Nicaragua
+ldf_thresholds_wide$postrera %>% 
+  gt() %>% 
+  fmt_number(decimals = 0) %>% 
+  cols_label(
+    pub_month_lt = html("Publication Month<br>(leadtime)")
+  ) %>% 
+  cols_hide(
+    columns = "Nicaragua"
+  ) %>%
+  data_color(columns = ecmwf_cols, direction = "column",color=ecmwf_color) %>% 
+  tab_style(
+    style = cell_fill(color = insuv_color),
+    locations = cells_body(
+      columns = c("Guatemala"), 
+      rows = 1:3
+    )) %>% 
+  tab_footnote(footnote = html(txt_footnote)) %>% 
+   tab_header(title = "Postrera (SON 2025) Rainfall (mm) Monitoring Thresholds",
+             subtitle = gt_legend
+  )
+
+```
+
+## Joint RPs
+
+Next we want to look at how the joint return periods/activation rates could theoretically change using the refined AOI methodology
+
+```{r}
+
+# bind together all 
+df_all_forecasts <- bind_rows(
+  df_insivumeh_aa |> 
+    mutate(
+      forecast_source = "INSIVUMEH",
+      iso3 = "GTM"
+    ),
+  df_historical_aa_adm0 |> 
+    mutate(
+      forecast_source = "SEAS5"
+    ) |> 
+    rename(
+      value =mm
+    )
+) |> 
+  select(-adm0_es)
+
+
+# classify all forecasts as above or below threshold
+df_all_historical_forecasts_classified <- df_all_forecasts |> 
+  left_join(
+    df_combined_thresholds
+  ) |> 
+    mutate(
+    flag = value<= value_empirical
+  )
+```
+
+```{r}
+#| eval: false
+#| echo: false # dont need to show this in rendered doc
+
+
+df_all_historical_forecasts_classified$issued_date |> range()
+# nice verification -- activation rates approximate 0.25% 1
+df_all_historical_forecasts_classified |> 
+  group_by(
+    iso3, leadtime,forecast_source
+  ) |> 
+  summarise(
+    ar = mean(flag)
+  )
+```
+
+```{r}
+# now filter to only relevant  forecast sources for monitoring
+
+df_historical_forecasts_classified_filtered <- df_all_historical_forecasts_classified |> 
+  filter(
+    year(issued_date) %in% 1981:2024,
+    !(iso3 =="GTM" & leadtime>0 & forecast_source=="SEAS5")
+  ) |> 
+  mutate(
+        adm0_es = case_when(
+      iso3== "GTM"~"Guatemala",
+      iso3 == "HND"~"Honduras",
+      iso3=="NIC"~"Nicaragua",
+      iso3=="SLV"~ "El Salvador"
+    )
+  )
+
+# get activation rates per window over all leadtimes
+df_jrp_window <- df_historical_forecasts_classified_filtered |> 
+  group_by(iso3,adm0_es, year(issued_date),window) |> 
+  summarise(
+    flag = any(flag)
+  ) |> 
+  group_by(iso3,adm0_es,window) |> 
+  summarise(
+    n = n(),
+    nevents = sum(flag),
+    ar_weibull = nevents / (n + 1),
+    rp_weibull = 1 / ar_weibull,
+    ar = mean(flag),
+    rp = 1/ar,
+    .groups="drop"
+  )
+
+# get activation rates across both windows -- activation rate of either occuring
+df_jrp_both_windows <- df_historical_forecasts_classified_filtered |> 
+  group_by(iso3, adm0_es,year(issued_date)) |> 
+  summarise(
+    flag = any(flag)
+  ) |> 
+  group_by(iso3,adm0_es) |> 
+    summarise(
+    n = n(),
+    nevents = sum(flag),
+    ar_weibull = nevents / (n + 1),
+    rp_weibull = 1 / ar_weibull,
+    ar = mean(flag),
+    rp = 1/ar,
+    .groups = "drop"
+    )
+
+ 
+
+df_jrp_per_window_wide <- df_jrp_window |> 
+  select(-iso3) |> 
+  pivot_wider(
+    
+    id_cols = "window",
+    names_from= adm0_es,
+    values_from = ar_weibull:rp_weibull
+  ) 
+
+df_jrp_both_windows_wide <- df_jrp_both_windows |> 
+  select(-iso3,-n,-nevents,-ar,-rp) |> 
+  pivot_wider(
+    # id_cols = "window",
+    names_from= adm0_es,
+    values_from = ar_weibull:rp_weibull
+  ) |> 
+  mutate(
+    window = "Combined"
+  )
+```
+
+```{r}
+bind_rows(df_jrp_per_window_wide,
+          df_jrp_both_windows_wide
+          ) |> 
+  mutate(
+    window = str_to_title(window)
+  ) |> 
+  
+  gt() |> 
+  fmt_percent(starts_with("ar"),decimals = 0) |> 
+  fmt_number(starts_with("rp"), decimals=1) |> 
+     cols_merge(
+    columns = c(`rp_weibull_El Salvador`, `ar_weibull_El Salvador`),
+    pattern = "{1} ({2})"
+  ) %>% 
+  #  cols_merge(
+  #   columns = c(`rp_Nicaragua`, `ar_Nicaragua`),
+  #   pattern = "{1} ({2})"
+  # ) %>% 
+   cols_merge(
+    columns = c(`rp_weibull_Honduras`, `ar_weibull_Honduras`),
+    pattern = "{1} ({2})"
+  ) %>% 
+   cols_merge(
+    columns = c(`rp_weibull_Guatemala`, `ar_weibull_Guatemala`),
+    pattern = "{1} ({2})"
+  ) %>% 
+  cols_label(
+    "window" = "Window",
+    "rp_weibull_El Salvador" = "El Salvador",
+    "rp_weibull_Guatemala" = "Guatemala",
+    # "rp_Nicaragua" = "Nicaragua",
+    "rp_weibull_Honduras" = "Honduras",
+  ) |> 
+  tab_header(
+    title=  "Joint Return Periods/Activation Rate (selected admin 1 AOI)",
+    subtitle = "Across all monitored leadtimes and windows"
+  ) |> tab_footnote(footnote = "Analysis years: 1981-2024") |> 
+  tab_options(
+    heading.background.color = "#00ad78ff",table.font.size = 14,
+    column_labels.background.color = hdx_hex("mint-ultra-light"),
+  )
+
+```
+
+```{r 2025_season}
+#| eval: false
+#| echo: false
+
+# one-off quick look at the upcoming season. Don't need to render this, but can keep in here for now
+# don't have INSIVUMEH data yet, so just doing on ECMWF SEAS5
+
+df_primera_feb <- df_primera |> 
+    mutate(
+    window = "primera"
+  ) |> 
+  left_join(df_new_aoi_meta) |> 
+  group_by(iso3, issued_date, leadtime, valid_month_label,window) |> 
+  summarise(
+    mm = weighted.mean (precipitation, w =seas5_n_upsampled_pixels ),.groups="drop"
+  ) |> 
+  filter(
+    month(issued_date) ==2
+  ) |> 
+  left_join(
+    df_combined_thresholds |> 
+      filter(
+    forecast_source == "SEAS5", issued_month_label =="Feb"
+  )
+  ) |> 
+  mutate(
+    mm_flag = mm<=value_empirical
+  )
+  
+
+df_primera_feb |> 
+  ggplot(
+    aes(x= year(issued_date),y=mm, group = 1)
+  )+
+  geom_point(aes(color = mm_flag), alpha= 0.7, size= 4)+
+  geom_line(color = "black")+
+  facet_grid(rows = vars(iso3))+
+  scale_color_manual(values = c(hdx_hex("sapphire-hdx"),hdx_hex("tomato-hdx")))+
+  scale_x_continuous(breaks = 1981:2025) |> 
+  labs(
+    title = "CADC: Primera (MJJA) Seasonal Precipitation Forecasts",
+    subtitle = "February publications: Selected admin 1 units in CADC",
+    caption = "Plotting minimum rainfall at any leadtime monitoried in AA Framework
+          Analysis performed at sub-national levelbased on area-weighted average of admins of interest per country"
+  ) +
+  geom_text_repel(
+    data= filter(df_primera_feb,mm_flag),
+    aes(label = year(issued_date)), color = hdx_hex("tomato-hdx"), size=txt_label_size
+  )+
+  geom_hline(
+    data = distinct(df_primera_feb,iso3,value_empirical),
+             aes(yintercept = value_empirical), color =hdx_hex("tomato-hdx"), linetype ="dashed")+
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none"
+  )
+```
