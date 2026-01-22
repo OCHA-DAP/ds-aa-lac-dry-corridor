@@ -3,6 +3,8 @@ dplyr[...],
 tidyr[...],
 stringr[...],
 lubridate[...],
+purrr[map, list_rbind],
+cumulus,
 terra,
 RNetCDF[...],
 exactextractr[...]
@@ -130,4 +132,52 @@ monthly_zonal <- function(r, zone, fun = "mean") {
     arrange(date)
 
  return(df_monthly)
+}
+
+#' aggregate_seasonal
+#' @description
+#' Aggregate monthly zonal data to seasonal totals. Default seasons are
+#' Primera (May-Aug) and Postrera (Sep-Nov) for Guatemala dry corridor.
+#'
+#' @param df data.frame from monthly_zonal() with columns: year, month, value
+#' @param seasons named list of month vectors, e.g. list(primera = 5:8, postrera = 9:11)
+#' @return data.frame with columns: year, window, obs_mm
+#' @export
+#' @examples \dontrun{
+#' r <- load_precip_enacts(wrap = FALSE)
+#' df_monthly <- monthly_zonal(r, gdf_aoi)
+#' df_seasonal <- aggregate_seasonal(df_monthly)
+#' }
+aggregate_seasonal <- function(df, seasons = list(primera = 5:8, postrera = 9:11)) {
+  names(seasons) |>
+    map(\(window_name) {
+      df |>
+        filter(month %in% seasons[[window_name]]) |>
+        group_by(year) |>
+        summarise(obs_mm = sum(value, na.rm = TRUE), .groups = "drop") |>
+        mutate(window = window_name)
+    }) |>
+    list_rbind()
+}
+
+#' load_enacts_seasonal
+#' @description
+#' Load pre-computed seasonal ENACTS zonal statistics from blob storage.
+#'
+#' @param aoi character, area of interest name (default "chiquimula")
+#' @return data.frame with columns: year, window, obs_mm, aoi_pcode, aoi_name, obs_source
+#' @export
+#' @examples \dontrun{
+#' df_seasonal <- load_enacts_seasonal("chiquimula")
+#' }
+load_enacts_seasonal <- function(aoi = "chiquimula") {
+  blob_path <- paste0(
+    "ds-aa-lac-dry-corridor/data/processed/enacts/enacts_seasonal_zonal_",
+    aoi,
+    ".parquet"
+  )
+  cumulus$blob_read(
+    name = blob_path,
+    container = "projects"
+  )
 }
