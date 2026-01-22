@@ -1,0 +1,1880 @@
+---
+title: "Seasonal Forecast Skill Assessment"
+subtitle: "INSIVUMEH vs SEAS5 | Chiquimula (GT20)"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+    fig-dpi: 96
+    fig-format: png
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| code-summary: "Setup: Libraries, configuration, data loading, helper functions"
+
+library(tidyverse)
+library(lubridate)
+library(cumulus)
+library(gghdx)
+gghdx()
+
+box::use(../../R/enacts)
+box::use(../../R/seas5)
+
+set.seed(42)
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+BASELINE_START <- 2000
+BASELINE_END <- 2024
+
+PRIMERA_MONTHS <- 5:8
+POSTRERA_MONTHS <- 9:11
+
+PRIMERA_ISSUED_MONTHS <- c(3, 4)
+POSTRERA_ISSUED_MONTHS <- c(6, 7, 8)
+
+N_BOOTSTRAP <- 1000
+
+# =============================================================================
+# LOAD DATA
+# =============================================================================
+
+df_insiv <- cumulus::blob_read(
+  name = "ds-aa-lac-dry-corridor/data/processed/insivumeh_special/insivumeh_special_models_zonal_seasonal_chiquimula.parquet",
+  container = "projects"
+)
+df_enacts <- enacts$load_enacts_seasonal("chiquimula")
+df_seas5 <- seas5$load_seas5_seasonal()
+
+aoi_pcode <- unique(df_insiv$aoi_pcode)
+aoi_name <- unique(df_insiv$aoi_name)
+
+# Load ERA5 from database
+con <- pg_con()
+df_era5_raw <- tbl(con, "era5") |>
+  filter(pcode == aoi_pcode) |>
+  collect() |>
+  mutate(
+    year = year(valid_date),
+    month = month(valid_date),
+    mean = mean * days_in_month(valid_date)  # Convert daily rate to monthly total (mm)
+  )
+DBI::dbDisconnect(con)
+
+# Aggregate ERA5 to seasonal totals
+aggregate_obs_seasonal <- function(df, window_name) {
+ months <- if (window_name == "primera") PRIMERA_MONTHS else POSTRERA_MONTHS
+  df |>
+    filter(month %in% months) |>
+    group_by(year) |>
+    summarise(obs_mm = sum(value, na.rm = TRUE), .groups = "drop") |>
+    mutate(window = window_name)
+}
+
+df_era5 <- bind_rows(
+  aggregate_obs_seasonal(df_era5_raw |> rename(value = mean), "primera"),
+  aggregate_obs_seasonal(df_era5_raw |> rename(value = mean), "postrera")
+)
+
+# Combine all forecasts
+df_fcst_all <- bind_rows(df_insiv, df_seas5) |>
+  filter(year >= BASELINE_START, year <= BASELINE_END)
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+calc_rp_threshold <- function(x, rp_target = 4, direction = -1) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n < 3) return(NA_real_)
+
+  # Use proper ranking with tie handling
+  # For direction = -1 (drought/low extreme): lowest values get rank 1 (highest RP)
+  # For direction = 1 (flood/high extreme): highest values get rank 1 (highest RP)
+  ranks <- rank(x * -direction, ties.method = "average")
+  rp <- (n + 1) / ranks
+
+  # Interpolate to find value at target RP
+  approx(rp, x, xout = rp_target, rule = 2)$y
+}
+
+calc_f1 <- function(fcst_drought, obs_drought) {
+  TP <- sum(fcst_drought & obs_drought, na.rm = TRUE)
+  FP <- sum(fcst_drought & !obs_drought, na.rm = TRUE)
+  FN <- sum(!fcst_drought & obs_drought, na.rm = TRUE)
+
+  if (TP == 0) return(0)
+  precision <- TP / (TP + FP)
+  recall <- TP / (TP + FN)
+  2 * precision * recall / (precision + recall)
+}
+
+```
+
+# Yardstick Approach (Simplified Metrics)
+
+This section provides clean wrapper functions using `yardstick` for classification metrics.
+
+```{r}
+#| label: yardstick-functions
+#| code-summary: "Yardstick wrapper functions"
+
+library(yardstick)
+
+# =============================================================================
+# CLASSIFY FORECAST
+# Takes forecast and observation data, returns classified data frame with
+# truth/estimate factor columns ready for yardstick
+# =============================================================================
+
+ys_classify <- function(df_fcst, df_obs, include_lt0 = FALSE) {
+
+  primera_months <- if (include_lt0) c(PRIMERA_ISSUED_MONTHS, 5) else PRIMERA_ISSUED_MONTHS
+  postrera_months <- if (include_lt0) c(POSTRERA_ISSUED_MONTHS, 9) else POSTRERA_ISSUED_MONTHS
+
+  # Filter forecast to baseline years and operational issued months
+
+  df_fcst_filtered <- df_fcst |>
+    filter(year >= BASELINE_START, year <= BASELINE_END) |>
+    mutate(issued_month = month(issued_date)) |>
+    filter(
+      (window == "primera" & issued_month %in% primera_months) |
+      (window == "postrera" & issued_month %in% postrera_months)
+    )
+
+  # Calculate thresholds
+  obs_thresholds <- df_obs |>
+    filter(year >= BASELINE_START, year <= BASELINE_END) |>
+    group_by(window) |>
+    summarise(obs_thresh = calc_rp_threshold(obs_mm, 4, -1), .groups = "drop")
+
+  fcst_thresholds <- df_fcst_filtered |>
+    group_by(forecast_source, window, leadtime) |>
+    summarise(fcst_thresh = calc_rp_threshold(value, 4, -1), .groups = "drop")
+
+  # Filter obs to same year range for consistency
+  df_obs_filtered <- df_obs |>
+    filter(year >= BASELINE_START, year <= BASELINE_END)
+
+  # Join and classify
+  df_fcst_filtered |>
+    left_join(df_obs_filtered |> select(year, window, obs_mm), by = c("year", "window")) |>
+    left_join(obs_thresholds, by = "window") |>
+    left_join(fcst_thresholds, by = c("forecast_source", "window", "leadtime")) |>
+    mutate(
+      truth = factor(obs_mm <= obs_thresh, c(TRUE, FALSE), c("drought", "no_drought")),
+      estimate = factor(value <= fcst_thresh, c(TRUE, FALSE), c("drought", "no_drought"))
+    ) |>
+    filter(!is.na(truth), !is.na(estimate))
+}
+
+# =============================================================================
+# CALCULATE SKILL METRICS
+# Takes classified data, returns skill metrics by group
+# =============================================================================
+
+ys_skill <- function(df_classified) {
+  df_classified |>
+    group_by(forecast_source, window, leadtime) |>
+    summarise(
+      n = n(),
+      f1 = f_meas_vec(truth, estimate, event_level = "first"),
+      precision = precision_vec(truth, estimate, event_level = "first"),
+      recall = recall_vec(truth, estimate, event_level = "first"),
+      .groups = "drop"
+    )
+}
+
+# =============================================================================
+# ONE-LINER: Classify and score
+# =============================================================================
+
+ys_classify_and_score <- function(df_fcst, df_obs, include_lt0 = FALSE) {
+  df_fcst |>
+    ys_classify(df_obs, include_lt0) |>
+    ys_skill()
+}
+```
+
+```{r}
+#| label: yardstick-run
+#| code-summary: "Run yardstick analysis"
+
+# ENACTS-only comparison (all models vs ENACTS)
+df_skill_enacts <- bind_rows(
+  ys_classify_and_score(df_seas5, df_enacts, include_lt0 = TRUE),
+  ys_classify_and_score(df_insiv, df_enacts, include_lt0 = FALSE)
+)
+
+# Native comparison (SEAS5 vs ERA5, INSIVUMEH vs ENACTS)
+df_skill_native <- bind_rows(
+  ys_classify_and_score(df_seas5, df_era5, include_lt0 = TRUE),
+  ys_classify_and_score(df_insiv, df_enacts, include_lt0 = FALSE)
+)
+
+# Get classified data for downstream analysis (random comparison, etc.)
+df_classified_enacts <- bind_rows(
+  ys_classify(df_seas5, df_enacts, include_lt0 = TRUE),
+  ys_classify(df_insiv, df_enacts, include_lt0 = FALSE)
+) |> mutate(obs_source = "ENACTS")
+
+df_classified_native <- bind_rows(
+  ys_classify(df_seas5, df_era5, include_lt0 = TRUE) |> mutate(obs_source = "ERA5"),
+  ys_classify(df_insiv, df_enacts, include_lt0 = FALSE) |> mutate(obs_source = "ENACTS")
+)
+```
+
+```{r}
+#| label: yardstick-table
+#| code-summary: "Display yardstick results"
+
+df_skill_enacts |>
+  mutate(window = factor(window, levels = c("primera", "postrera"))) |>
+  arrange(window, leadtime, desc(f1)) |>
+  mutate(across(c(f1, precision, recall), ~scales::percent(.x, accuracy = 1))) |>
+  knitr::kable(caption = "F1 Scores - All models vs ENACTS")
+```
+
+
+
+# Introduction
+
+This analysis compares the skill of **INSIVUMEH** (regional) and **SEAS5** (global) seasonal precipitation forecasts for detecting drought conditions in Chiquimula, Guatemala. We evaluate forecasts for two agricultural seasons:
+
+- **Primera**: May-August (MJJA)
+- **Postrera**: September-November (SON)
+
+We use two comparison frameworks:
+
+1. **Native**: Each forecast validated against its typical observation source
+   - SEAS5 vs ERA5
+   - INSIVUMEH vs ENACTS
+
+2. **ENACTS-only**: All forecasts validated against the same observation source (ENACTS) for direct comparison
+
+Drought is defined using a **return period of 4 years** (RP4), meaning approximately 6 drought years are expected over the 25-year baseline (2000-2024).
+
+
+# F1 Score Analysis
+
+The F1 score balances precision (avoiding false alarms) and recall (detecting actual droughts). We calculate skill for each model-leadtime combination.
+
+
+```{r}
+#| label: f1-heatmap-function
+#| code-summary: "F1 heatmap visualization function"
+
+create_f1_heatmap <- function(df_skill, title, subtitle, caption) {
+  df_plot <- df_skill |>
+    filter(!is.na(f1)) |>
+    mutate(window = factor(window, levels = c("primera", "postrera"))) |>
+    group_by(window, leadtime) |>
+    mutate(is_best = f1 == max(f1, na.rm = TRUE)) |>
+    ungroup()
+
+  f1_values <- df_plot$f1[!is.na(df_plot$f1)]
+  quantile_breaks <- quantile(f1_values, probs = seq(0, 1, 0.2), na.rm = TRUE)
+
+  ggplot(df_plot, aes(x = factor(leadtime), y = forecast_source)) +
+    geom_tile(aes(fill = f1), color = "white", linewidth = 0.5) +
+    geom_tile(
+      data = df_plot |> filter(is_best),
+      aes(x = factor(leadtime), y = forecast_source),
+      fill = NA, color = "black", linewidth = 1.5
+    ) +
+    geom_text(aes(label = sprintf("%.0f%%", f1 * 100)), size = 3.5, fontface = "bold") +
+    facet_wrap(~window) +
+    scale_fill_gradientn(
+      colors = c("#D73027", "#FC8D59", "#FEE08B", "#D9EF8B", "#91CF60", "#1A9850"),
+      values = scales::rescale(quantile_breaks),
+      limits = range(f1_values),
+      labels = scales::percent,
+      na.value = "grey90"
+    ) +
+    labs(
+      title = title,
+      subtitle = subtitle,
+      x = "Leadtime (months)",
+      y = "Forecast Source",
+      fill = "F1 Score",
+      caption = caption
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "right",
+      panel.grid = element_blank(),
+      plot.caption = element_text(hjust = 0)
+    )
+}
+```
+
+## Native Comparison
+
+SEAS5 validated against ERA5; INSIVUMEH models validated against ENACTS.
+
+```{r}
+#| label: f1-heatmap-native
+#| fig-height: 5
+
+create_f1_heatmap(
+  df_skill_native,
+  title = "F1 Score: Native Observation Sources",
+  subtitle = "Black outline = best performer per leadtime",
+  caption = paste0("SEAS5 vs ERA5, INSIVUMEH vs ENACTS (", aoi_name, ")")
+)
+```
+
+## ENACTS-Only Comparison
+
+All models validated against ENACTS for direct comparison.
+
+```{r}
+#| label: f1-heatmap-enacts
+#| fig-height: 5
+
+create_f1_heatmap(
+  df_skill_enacts,
+  title = "F1 Score: All Models vs ENACTS",
+  subtitle = "Black outline = best performer per leadtime",
+  caption = paste0("All forecasts vs ENACTS (", aoi_name, ")")
+)
+```
+
+# Year × Leadtime Classification
+
+This section shows how each forecast performed in each individual year, revealing patterns in when forecasts succeed or fail.
+
+```{r}
+#| label: yearlt-classification
+#| code-summary: "Build year × leadtime classification data"
+
+build_yearlt_data <- function(df_fcst, df_obs, include_lt0 = FALSE) {
+
+  baseline_years <- BASELINE_START:BASELINE_END
+
+  # Observation thresholds
+  obs_thresholds <- df_obs |>
+    filter(year %in% baseline_years) |>
+    group_by(window) |>
+    summarise(rp4_obs = calc_rp_threshold(obs_mm, 4, -1), .groups = "drop")
+
+  # Classify observations (as "OBS" pseudo-leadtime)
+  df_obs_class <- df_obs |>
+    filter(year %in% baseline_years) |>
+    left_join(obs_thresholds, by = "window") |>
+    mutate(
+      drought = obs_mm <= rp4_obs,
+      leadtime = "OBS"
+    ) |>
+    select(year, window, leadtime, drought)
+
+  # Filter forecasts to relevant issued months
+  primera_months <- if (include_lt0) c(PRIMERA_ISSUED_MONTHS, 5) else PRIMERA_ISSUED_MONTHS
+  postrera_months <- if (include_lt0) c(POSTRERA_ISSUED_MONTHS, 9) else POSTRERA_ISSUED_MONTHS
+
+  df_fcst_filtered <- df_fcst |>
+    filter(year %in% baseline_years) |>
+    mutate(issued_month = month(issued_date)) |>
+    filter(
+      (window == "primera" & issued_month %in% primera_months) |
+      (window == "postrera" & issued_month %in% postrera_months)
+    )
+
+  # Forecast thresholds
+  fcst_thresholds <- df_fcst_filtered |>
+    group_by(forecast_source, window, leadtime) |>
+    summarise(rp4_fcst = calc_rp_threshold(value, 4, -1), .groups = "drop")
+
+  # Classify forecasts
+  df_fcst_class <- df_fcst_filtered |>
+    left_join(fcst_thresholds, by = c("forecast_source", "window", "leadtime")) |>
+    mutate(
+      drought = value <= rp4_fcst,
+      leadtime = paste0("LT", leadtime)
+    ) |>
+    select(year, window, leadtime, drought, forecast_source)
+
+  # Add OBS to each forecast_source
+  df_obs_expanded <- df_fcst_class |>
+    distinct(forecast_source) |>
+    cross_join(df_obs_class)
+
+  bind_rows(df_obs_expanded, df_fcst_class)
+}
+
+# Native: SEAS5 vs ERA5, INSIVUMEH vs ENACTS
+df_yearlt_seas5_era5 <- build_yearlt_data(df_seas5, df_era5, include_lt0 = TRUE)
+df_yearlt_insiv_enacts <- build_yearlt_data(df_insiv, df_enacts)
+
+df_yearlt_native <- bind_rows(
+  df_yearlt_seas5_era5 |> mutate(obs_source = "ERA5"),
+  df_yearlt_insiv_enacts |> mutate(obs_source = "ENACTS")
+)
+
+# ENACTS-only
+df_yearlt_seas5_enacts <- build_yearlt_data(df_seas5, df_enacts, include_lt0 = TRUE)
+
+df_yearlt_enacts <- bind_rows(
+  df_yearlt_seas5_enacts,
+  df_yearlt_insiv_enacts
+) |> mutate(obs_source = "ENACTS")
+```
+
+```{r}
+#| label: yearlt-plot-function
+#| code-summary: "Year × leadtime heatmap function"
+
+plot_yearlt_heatmap <- function(df, window_name, comparison_type) {
+
+  df_plot <- df |>
+    filter(window == window_name, !is.na(drought)) |>
+    mutate(
+      leadtime = factor(leadtime, levels = c("OBS", "LT0", "LT1", "LT2", "LT3", "LT4"))
+    )
+
+  # Get observed drought status
+  df_obs_lookup <- df_plot |>
+    filter(leadtime == "OBS") |>
+    select(year, forecast_source, obs_drought = drought)
+
+  df_plot <- df_plot |>
+    left_join(df_obs_lookup, by = c("year", "forecast_source")) |>
+    mutate(
+      is_obs = leadtime == "OBS",
+      symbol = case_when(
+        is_obs ~ "",
+        !drought ~ "",
+        drought & obs_drought ~ "\u2713",
+        drought & !obs_drought ~ "\u2717"
+      ),
+      correct = case_when(
+        is_obs ~ NA,
+        drought & obs_drought ~ TRUE,
+        !drought & !obs_drought ~ TRUE,
+        TRUE ~ FALSE
+      ),
+      fill_cat = case_when(
+        is_obs & drought ~ "Observed drought",
+        is_obs & !drought ~ "No drought",
+        !is_obs & drought ~ "Forecast drought",
+        !is_obs & !drought ~ "No drought"
+      )
+    )
+
+  # Drought years for subtitle
+  drought_years <- df_plot |>
+    filter(leadtime == "OBS", drought) |>
+    pull(year) |>
+    unique() |>
+    sort() |>
+    paste(collapse = ", ")
+
+  caption_text <- if (comparison_type == "native") {
+    "SEAS5 vs ERA5, INSIVUMEH vs ENACTS | \u2713 = hit, \u2717 = false alarm"
+  } else {
+    "All models vs ENACTS | \u2713 = hit, \u2717 = false alarm"
+  }
+
+  fill_colors <- c(
+    "Observed drought" = "#B2182B",
+    "Forecast drought" = "#F4A582",
+    "No drought" = "#D1E5F0"
+  )
+
+  ggplot(df_plot, aes(x = leadtime, y = factor(year))) +
+    geom_tile(aes(fill = fill_cat), color = "white", linewidth = 0.4) +
+    geom_text(
+      aes(label = symbol, color = correct),
+      size = 3, fontface = "bold", show.legend = FALSE
+    ) +
+    facet_wrap(~forecast_source, nrow = 1, scales = "free_x") +
+    scale_fill_manual(values = fill_colors, name = NULL) +
+    scale_color_manual(
+      values = c("TRUE" = "darkgreen", "FALSE" = "black"),
+      na.value = "transparent"
+    ) +
+    scale_y_discrete(limits = rev) +
+    labs(
+      title = paste0("Forecast vs Observed Drought: ", str_to_title(window_name)),
+      subtitle = paste0("Drought years: ", drought_years),
+      x = "Leadtime",
+      y = "Year",
+      caption = caption_text
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.y = element_text(size = 7),
+      axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+      strip.text = element_text(size = 9, face = "bold"),
+      legend.position = "bottom",
+      plot.caption = element_text(hjust = 0),
+      panel.grid = element_blank(),
+      panel.spacing = unit(0.5, "lines")
+    )
+}
+```
+
+## Primera Season
+
+::: {.panel-tabset}
+
+### Native Comparison
+
+```{r}
+#| label: yearlt-native-primera
+#| fig-height: 10
+
+plot_yearlt_heatmap(df_yearlt_native, "primera", "native")
+```
+
+### ENACTS-Only
+
+```{r}
+#| label: yearlt-enacts-primera
+#| fig-height: 10
+
+plot_yearlt_heatmap(df_yearlt_enacts, "primera", "enacts_only")
+```
+
+:::
+
+## Postrera Season
+
+::: {.panel-tabset}
+
+### Native Comparison
+
+```{r}
+#| label: yearlt-native-postrera
+#| fig-height: 10
+
+plot_yearlt_heatmap(df_yearlt_native, "postrera", "native")
+```
+
+### ENACTS-Only
+
+```{r}
+#| label: yearlt-enacts-postrera
+#| fig-height: 10
+
+plot_yearlt_heatmap(df_yearlt_enacts, "postrera", "enacts_only")
+```
+
+:::
+
+
+# Anomaly Correlation
+
+Correlation measures how well forecasts track interannual variability - do wet years get predicted as wet and dry years as dry? Unlike F1, correlation is sensitive to the magnitude of anomalies, not just threshold exceedance.
+
+```{r}
+#| label: correlation-calc
+#| code-summary: "Calculate standardized anomalies and correlations"
+
+# Forecast anomalies
+df_fcst_anom <- df_fcst_all |>
+  group_by(forecast_source, window, leadtime) |>
+  mutate(
+    fcst_mean = mean(value, na.rm = TRUE),
+    fcst_sd = sd(value, na.rm = TRUE),
+    fcst_anom = (value - fcst_mean) / fcst_sd
+  ) |>
+  ungroup() |>
+  select(year, window, leadtime, forecast_source, value, fcst_anom)
+
+# Observation anomalies
+calc_obs_anom <- function(df, obs_name) {
+  df |>
+    filter(year >= BASELINE_START, year <= BASELINE_END) |>
+    group_by(window) |>
+    mutate(
+      obs_mean = mean(obs_mm, na.rm = TRUE),
+      obs_sd = sd(obs_mm, na.rm = TRUE),
+      obs_anom = (obs_mm - obs_mean) / obs_sd
+    ) |>
+    ungroup() |>
+    mutate(obs_source = obs_name) |>
+    select(year, window, obs_mm, obs_anom, obs_source)
+}
+
+df_enacts_anom <- calc_obs_anom(df_enacts, "ENACTS")
+df_era5_anom <- calc_obs_anom(df_era5, "ERA5")
+
+# Join forecast and observed anomalies (keep raw data for scatterplots)
+df_anom_native <- bind_rows(
+  df_fcst_anom |>
+    filter(forecast_source == "SEAS5") |>
+    inner_join(df_era5_anom, by = c("year", "window")),
+  df_fcst_anom |>
+    filter(str_detect(forecast_source, "INSIVUMEH")) |>
+    inner_join(df_enacts_anom, by = c("year", "window"))
+)
+
+df_anom_enacts <- df_fcst_anom |>
+  inner_join(df_enacts_anom, by = c("year", "window"))
+
+# Summarize correlations
+calc_corr_summary <- function(df) {
+  df |>
+    group_by(forecast_source, window, leadtime, obs_source) |>
+    summarise(
+      n = n(),
+      corr = cor(fcst_anom, obs_anom, use = "complete.obs"),
+      .groups = "drop"
+    )
+}
+
+df_corr_native <- calc_corr_summary(df_anom_native)
+df_corr_enacts <- calc_corr_summary(df_anom_enacts)
+```
+
+```{r}
+#| label: correlation-plot-function
+#| code-summary: "Correlation heatmap function"
+
+create_corr_heatmap <- function(df_corr, title, subtitle, caption) {
+  df_plot <- df_corr |>
+    filter(!is.na(corr)) |>
+    mutate(window = factor(window, levels = c("primera", "postrera"))) |>
+    group_by(window, leadtime) |>
+    mutate(is_best = corr == max(corr, na.rm = TRUE)) |>
+    ungroup()
+
+  ggplot(df_plot, aes(x = factor(leadtime), y = forecast_source)) +
+    geom_tile(aes(fill = corr), color = "white", linewidth = 0.5) +
+    geom_tile(
+      data = df_plot |> filter(is_best),
+      aes(x = factor(leadtime), y = forecast_source),
+      fill = NA, color = "black", linewidth = 1.5
+    ) +
+    geom_text(aes(label = sprintf("%.2f", corr)), size = 3.5, fontface = "bold") +
+    facet_wrap(~window) +
+    scale_fill_gradient2(
+      low = "#D73027", mid = "#FFFFBF", high = "#1A9850",
+      midpoint = 0, limits = c(-1, 1),
+      name = "Correlation"
+    ) +
+    labs(
+      title = title,
+      subtitle = subtitle,
+      x = "Leadtime (months)",
+      y = "Forecast Source",
+      caption = caption
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "right",
+      panel.grid = element_blank(),
+      plot.caption = element_text(hjust = 0)
+    )
+}
+```
+
+## Native Comparison
+
+```{r}
+#| label: corr-native
+#| fig-height: 5
+
+create_corr_heatmap(
+  df_corr_native,
+  title = "Anomaly Correlation: Native Observation Sources",
+  subtitle = "Black outline = best performer. Higher = better captures interannual variability.",
+  caption = "SEAS5 vs ERA5, INSIVUMEH vs ENACTS"
+)
+```
+
+## ENACTS-Only Comparison
+
+```{r}
+#| label: corr-enacts
+#| fig-height: 5
+
+create_corr_heatmap(
+  df_corr_enacts,
+  title = "Anomaly Correlation: All Models vs ENACTS",
+  subtitle = "Black outline = best performer. Higher = better captures interannual variability.",
+  caption = "All models vs ENACTS"
+)
+```
+
+## Scatterplots
+
+Scatterplots show the relationship between forecast and observed anomalies for each model-leadtime combination.
+
+```{r}
+#| label: scatter-function
+#| code-summary: "Scatterplot function with R² and p-value"
+
+create_corr_scatter <- function(df_anom, window_name, title_suffix) {
+  df_plot <- df_anom |>
+    filter(window == window_name) |>
+    mutate(
+      model_short = str_remove(forecast_source, "INSIVUMEH_"),
+      facet_label = paste0(model_short, " (LT", leadtime, ")")
+    )
+
+  # Calculate r and p-value for each facet
+  df_stats <- df_plot |>
+    group_by(forecast_source, leadtime, facet_label) |>
+    summarise(
+      r = cor(fcst_anom, obs_anom, use = "complete.obs"),
+      p_value = cor.test(fcst_anom, obs_anom)$p.value,
+      .groups = "drop"
+    ) |>
+    mutate(
+      label = paste0("r = ", sprintf("%.2f", r), "\n",
+                     "p = ", ifelse(p_value < 0.001, "<0.001", sprintf("%.3f", p_value)))
+    )
+
+  ggplot(df_plot, aes(x = obs_anom, y = fcst_anom)) +
+    geom_hline(yintercept = 0, color = "grey70", linetype = "dashed") +
+    geom_vline(xintercept = 0, color = "grey70", linetype = "dashed") +
+    geom_smooth(method = "lm", se = TRUE, color = "#007CE1", fill = "#007CE1", alpha = 0.2) +
+    geom_point(alpha = 0.4, size = 2) +
+    geom_text(
+      data = df_stats,
+      aes(x = Inf, y = Inf, label = label),
+      hjust = 1.1, vjust = 1.3, size = 3, color = "grey20", fontface = "bold",
+      inherit.aes = FALSE
+    ) +
+    facet_wrap(~facet_label, scales = "free") +
+    labs(
+      title = paste0("Forecast vs Observed Anomalies: ", str_to_title(window_name)),
+      subtitle = title_suffix,
+      x = "Observed Anomaly (z-score)",
+      y = "Forecast Anomaly (z-score)"
+    ) +
+    theme_minimal() +
+    theme(
+      strip.text = element_text(face = "bold", size = 9),
+      panel.grid.minor = element_blank()
+    )
+}
+```
+
+### Primera Season
+
+::: {.panel-tabset}
+
+#### Native Comparison
+
+```{r}
+#| label: scatter-native-primera
+#| fig-height: 8
+#| fig-width: 10
+
+create_corr_scatter(df_anom_native, "primera", "SEAS5 vs ERA5, INSIVUMEH vs ENACTS")
+```
+
+#### ENACTS-Only
+
+```{r}
+#| label: scatter-enacts-primera
+#| fig-height: 8
+#| fig-width: 10
+
+create_corr_scatter(df_anom_enacts, "primera", "All models vs ENACTS")
+```
+
+:::
+
+### Postrera Season
+
+::: {.panel-tabset}
+
+#### Native Comparison
+
+```{r}
+#| label: scatter-native-postrera
+#| fig-height: 8
+#| fig-width: 10
+
+create_corr_scatter(df_anom_native, "postrera", "SEAS5 vs ERA5, INSIVUMEH vs ENACTS")
+```
+
+#### ENACTS-Only
+
+```{r}
+#| label: scatter-enacts-postrera
+#| fig-height: 8
+#| fig-width: 10
+
+create_corr_scatter(df_anom_enacts, "postrera", "All models vs ENACTS")
+```
+
+:::
+
+
+# Comparison to Random Guessing
+
+A forecast is only useful if it outperforms random guessing. We use bootstrap simulation to establish what F1 score we'd expect from randomly guessing 6 drought years out of 25.
+
+```{r}
+#| label: bootstrap-setup
+#| code-summary: "Identify drought years and run bootstrap"
+
+# Get observed drought years
+get_drought_years <- function(df_obs, window_name) {
+  df_obs |>
+    filter(window == window_name, year >= BASELINE_START, year <= BASELINE_END) |>
+    arrange(obs_mm) |>
+    mutate(rank = row_number(), rp = (n() + 1) / rank) |>
+    filter(rp >= 4) |>
+    pull(year) |>
+    sort()
+}
+
+drought_years <- list(
+  primera_enacts = get_drought_years(df_enacts, "primera"),
+  postrera_enacts = get_drought_years(df_enacts, "postrera"),
+  primera_era5 = get_drought_years(df_era5, "primera"),
+  postrera_era5 = get_drought_years(df_era5, "postrera")
+)
+
+# Bootstrap random F1
+all_years <- BASELINE_START:BASELINE_END
+
+bootstrap_f1 <- function(obs_drought_years, all_years, n_sim = N_BOOTSTRAP) {
+  n_drought <- length(obs_drought_years)
+
+  map_dbl(1:n_sim, \(i) {
+    random_drought <- sample(all_years, n_drought, replace = FALSE)
+    fcst_drought <- all_years %in% random_drought
+    obs_drought <- all_years %in% obs_drought_years
+    calc_f1(fcst_drought, obs_drought)
+  })
+}
+
+# Run bootstrap for each combination
+bootstrap_results <- list()
+for (window in c("primera", "postrera")) {
+  for (obs_source in c("enacts", "era5")) {
+    key <- paste0(window, "_", obs_source)
+    bootstrap_results[[key]] <- bootstrap_f1(drought_years[[key]], all_years)
+  }
+}
+
+# Calculate percentiles
+random_percentiles <- map_dfr(names(bootstrap_results), \(key) {
+  parts <- str_split(key, "_")[[1]]
+  tibble(
+    window = parts[1],
+    obs_source = toupper(parts[2]),
+    p50 = quantile(bootstrap_results[[key]], 0.50),
+    p90 = quantile(bootstrap_results[[key]], 0.90),
+    p95 = quantile(bootstrap_results[[key]], 0.95)
+  )
+})
+```
+
+```{r}
+#| label: random-comparison
+#| code-summary: "Compare model F1 to random baseline"
+
+# Classified data already created in yardstick-run chunk (df_classified_native, df_classified_enacts)
+
+# Calculate model F1 using yardstick column names
+calc_model_f1 <- function(df_classified) {
+  # Ensure factor levels are explicit (drought = positive class)
+  drought_levels <- c("drought", "no_drought")
+
+  df_classified |>
+    mutate(
+      truth = factor(truth, levels = drought_levels),
+      estimate = factor(estimate, levels = drought_levels)
+    ) |>
+    group_by(forecast_source, window, leadtime) |>
+    summarise(
+      f1 = f_meas_vec(truth, estimate, event_level = "first"),
+      n = n(),
+      .groups = "drop"
+    )
+}
+
+df_model_f1_native <- calc_model_f1(df_classified_native) |>
+  mutate(obs_source = if_else(forecast_source == "SEAS5", "ERA5", "ENACTS"))
+
+df_model_f1_enacts <- calc_model_f1(df_classified_enacts) |>
+  mutate(obs_source = "ENACTS")
+
+# Compare to random
+compare_to_random <- function(df_model_f1) {
+  df_model_f1 |>
+    left_join(random_percentiles, by = c("window", "obs_source")) |>
+    rowwise() |>
+    mutate(
+      key = paste0(window, "_", tolower(obs_source)),
+      pct_beats_random = mean(f1 > bootstrap_results[[key]]) * 100,
+      significant = f1 > p90
+    ) |>
+    ungroup() |>
+    select(-key)
+}
+
+df_comparison_native <- compare_to_random(df_model_f1_native)
+df_comparison_enacts <- compare_to_random(df_model_f1_enacts)
+```
+
+```{r}
+#| label: random-plot-functions
+#| code-summary: "Random baseline plot functions"
+
+create_random_detail_plot <- function(df, window_name, random_pct, comparison_type) {
+  df_plot <- df |>
+    filter(window == window_name, !is.na(f1)) |>
+    mutate(
+      model_lt = paste0(str_remove(forecast_source, "INSIVUMEH_"), " (LT", leadtime, ")"),
+      model_lt = fct_reorder(model_lt, f1)
+    )
+
+  if (comparison_type == "native") {
+    pct_data <- random_pct |> filter(window == window_name)
+    caption_text <- paste0("Based on ", N_BOOTSTRAP, " bootstrap simulations.\n",
+                           "SEAS5 vs ERA5; INSIVUMEH vs ENACTS.")
+  } else {
+    pct_data <- random_pct |> filter(window == window_name, obs_source == "ENACTS")
+    caption_text <- paste0("Based on ", N_BOOTSTRAP, " bootstrap simulations.\n",
+                           "All models vs ENACTS.")
+  }
+
+  p90 <- max(pct_data$p90)
+  p50 <- mean(pct_data$p50)
+
+  ggplot(df_plot, aes(x = f1, y = model_lt)) +
+    annotate("rect", xmin = 0, xmax = p90, ymin = -Inf, ymax = Inf,
+             fill = "#FDDBC7", alpha = 0.7) +
+    geom_vline(xintercept = p50, linetype = "dashed", color = "#B2182B", linewidth = 0.8) +
+    geom_segment(aes(x = 0, xend = f1, yend = model_lt), color = "grey60") +
+    geom_point(aes(color = significant), size = 4) +
+    geom_text(aes(label = paste0(round(pct_beats_random), "%")),
+              hjust = -0.3, size = 3) +
+    scale_x_continuous(limits = c(0, 1), labels = scales::percent, expand = c(0, 0.15)) +
+    scale_color_manual(
+      values = c("TRUE" = "#1A9850", "FALSE" = "grey50"),
+      labels = c("TRUE" = "Beats random (p<0.10)", "FALSE" = "Within random range"),
+      name = NULL
+    ) +
+    labs(
+      title = paste0("Does forecast beat random guessing? (", str_to_title(window_name), ")"),
+      subtitle = "Red zone = random guessing range (90%). Labels = % of simulations beaten.",
+      x = "F1 Score",
+      y = NULL,
+      caption = caption_text
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      plot.caption = element_text(hjust = 0),
+      panel.grid.major.y = element_blank()
+    )
+}
+
+create_random_summary_plot <- function(df_comparison, random_pct, comparison_type) {
+  df_summary <- df_comparison |>
+    group_by(forecast_source, window) |>
+    summarise(
+      avg_f1 = mean(f1, na.rm = TRUE),
+      n_leadtimes = n(),
+      n_significant = sum(significant),
+      .groups = "drop"
+    ) |>
+    mutate(
+      window = factor(window, levels = c("primera", "postrera")),
+      model_short = str_remove(forecast_source, "INSIVUMEH_"),
+      label = paste0(n_significant, "/", n_leadtimes, " LTs significant")
+    )
+
+  if (comparison_type == "native") {
+    p90_max <- max(random_pct$p90)
+    p50_avg <- mean(random_pct$p50)
+    caption_text <- "SEAS5 vs ERA5; INSIVUMEH vs ENACTS."
+  } else {
+    pct_enacts <- random_pct |> filter(obs_source == "ENACTS")
+    p90_max <- max(pct_enacts$p90)
+    p50_avg <- mean(pct_enacts$p50)
+    caption_text <- "All models vs ENACTS."
+  }
+
+  ggplot(df_summary, aes(x = avg_f1, y = model_short)) +
+    annotate("rect", xmin = 0, xmax = p90_max, ymin = -Inf, ymax = Inf,
+             fill = "#FDDBC7", alpha = 0.7) +
+    geom_vline(xintercept = p50_avg, linetype = "dashed", color = "#B2182B", linewidth = 0.8) +
+    geom_segment(aes(x = 0, xend = avg_f1, yend = model_short), color = "grey60") +
+    geom_point(size = 4, color = "#007CE1") +
+    geom_text(aes(label = label), hjust = -0.1, size = 3) +
+    facet_wrap(~str_to_title(window), ncol = 1) +
+    scale_x_continuous(limits = c(0, 1), labels = scales::percent, expand = c(0, 0.15)) +
+    labs(
+      title = "Average F1 by model",
+      subtitle = "Red zone = random guessing range. Labels = leadtimes with significant skill.",
+      x = "Average F1 Score",
+      y = NULL,
+      caption = caption_text
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      plot.caption = element_text(hjust = 0),
+      panel.grid.major.y = element_blank(),
+      strip.text = element_text(face = "bold", size = 11)
+    )
+}
+```
+
+## Primera Season
+
+::: {.panel-tabset}
+
+### Native Comparison
+
+```{r}
+#| label: random-native-primera
+
+create_random_detail_plot(df_comparison_native, "primera", random_percentiles, "native")
+```
+
+### ENACTS-Only
+
+```{r}
+#| label: random-enacts-primera
+
+create_random_detail_plot(df_comparison_enacts, "primera", random_percentiles, "enacts_only")
+```
+
+:::
+
+## Postrera Season
+
+::: {.panel-tabset}
+
+### Native Comparison
+
+```{r}
+#| label: random-native-postrera
+
+create_random_detail_plot(df_comparison_native, "postrera", random_percentiles, "native")
+```
+
+### ENACTS-Only
+
+```{r}
+#| label: random-enacts-postrera
+
+create_random_detail_plot(df_comparison_enacts, "postrera", random_percentiles, "enacts_only")
+```
+
+:::
+
+## Summary by Model
+
+::: {.panel-tabset}
+
+### Native Comparison
+
+```{r}
+#| label: random-summary-native
+#| fig-height: 7
+
+create_random_summary_plot(df_comparison_native, random_percentiles, "native")
+```
+
+### ENACTS-Only
+
+```{r}
+#| label: random-summary-enacts
+#| fig-height: 7
+
+create_random_summary_plot(df_comparison_enacts, random_percentiles, "enacts_only")
+```
+
+:::
+
+
+# Operational Recommendations/Constraints
+
+- **Primera**: SEAS5 is most performant overall. Required for LT0 (May activation moment)
+- **Postrera**: Cut down to leadtime 1 & 2 and use SEAS5
+
+```{r}
+#| label: operational-analysis
+#| code-summary: "Analyze operational leadtimes"
+
+# Define operational leadtimes
+op_primera <- c(0, 1, 2)
+op_postrera <- c(1, 2, 3)
+
+# Get comprehensive metrics for operational leadtimes (ENACTS-only for fair comparison)
+df_op_primera <- df_skill_enacts |>
+  filter(window == "primera", leadtime %in% op_primera) |>
+  left_join(
+    df_corr_enacts |> select(forecast_source, window, leadtime, corr),
+    by = c("forecast_source", "window", "leadtime")
+  ) |>
+  left_join(
+    df_comparison_enacts |> select(forecast_source, window, leadtime, pct_beats_random, significant),
+    by = c("forecast_source", "window", "leadtime")
+  )
+
+df_op_postrera <- df_skill_enacts |>
+  filter(window == "postrera", leadtime %in% op_postrera) |>
+  left_join(
+    df_corr_enacts |> select(forecast_source, window, leadtime, corr),
+    by = c("forecast_source", "window", "leadtime")
+  ) |>
+ left_join(
+    df_comparison_enacts |> select(forecast_source, window, leadtime, pct_beats_random, significant),
+    by = c("forecast_source", "window", "leadtime")
+  )
+```
+
+
+
+```{r}
+#| label: primera-table
+#| eval: false
+#| show: false
+#| echo: false
+
+
+## Primera: Detailed Comparison
+
+# LT0 must be SEAS5. For LT1 and LT2, here's how models compare:
+
+df_op_primera |>
+  mutate(
+    model = str_remove(forecast_source, "INSIVUMEH_"),
+    f1_pct = scales::percent(f1, accuracy = 1),
+    corr_fmt = sprintf("%.2f", corr),
+    precision_pct = scales::percent(precision, accuracy = 1),
+    recall_pct = scales::percent(recall, accuracy = 1),
+    beats_random = paste0(round(pct_beats_random), "%"),
+    sig = ifelse(significant, "Yes", "No")
+  ) |>
+  select(model, leadtime, f1_pct, precision_pct, recall_pct, corr_fmt, beats_random, sig) |>
+  arrange(leadtime, desc(f1_pct)) |>
+  knitr::kable(
+    col.names = c("Model", "LT", "F1", "Precision", "Recall", "Corr", "Beats Random", "Sig?"),
+    caption = "Primera: All models vs ENACTS"
+  )
+```
+
+```{r}
+#| label: primera-recommendation
+#| eval: false
+#| show: false
+#| echo: false
+
+# For LT1 and LT2, find best and alternative options (use slice(1) to handle ties)
+best_lt1 <- df_op_primera |> filter(leadtime == 1) |> slice_max(f1, n = 1) |> slice(1)
+best_lt2 <- df_op_primera |> filter(leadtime == 2) |> slice_max(f1, n = 1) |> slice(1)
+best_lt1_insiv <- df_op_primera |> filter(leadtime == 1, str_detect(forecast_source, "INSIVUMEH")) |> slice_max(f1, n = 1) |> slice(1)
+best_lt2_insiv <- df_op_primera |> filter(leadtime == 2, str_detect(forecast_source, "INSIVUMEH")) |> slice_max(f1, n = 1) |> slice(1)
+seas5_lt0 <- df_op_primera |> filter(forecast_source == "SEAS5", leadtime == 0) |> slice(1)
+seas5_lt1 <- df_op_primera |> filter(forecast_source == "SEAS5", leadtime == 1) |> slice(1)
+seas5_lt2 <- df_op_primera |> filter(forecast_source == "SEAS5", leadtime == 2) |> slice(1)
+
+# Build recommendation table
+df_primera_rec <- tibble(
+  Leadtime = c("LT0", "LT1", "LT2"),
+  Month = c("May", "April", "March"),
+  Recommended = c(
+    "SEAS5 (only option)",
+    str_remove(best_lt1$forecast_source, "INSIVUMEH_"),
+    str_remove(best_lt2$forecast_source, "INSIVUMEH_")
+  ),
+  F1 = c(
+    scales::percent(seas5_lt0$f1, accuracy = 1),
+    scales::percent(best_lt1$f1, accuracy = 1),
+    scales::percent(best_lt2$f1, accuracy = 1)
+  ),
+  Alternative = c(
+    "—",
+    ifelse(best_lt1$forecast_source == "SEAS5", str_remove(best_lt1_insiv$forecast_source, "INSIVUMEH_"), "SEAS5"),
+    ifelse(best_lt2$forecast_source == "SEAS5", str_remove(best_lt2_insiv$forecast_source, "INSIVUMEH_"), "SEAS5")
+  ),
+  Alt_F1 = c(
+    "—",
+    ifelse(best_lt1$forecast_source == "SEAS5", scales::percent(best_lt1_insiv$f1, accuracy = 1), scales::percent(seas5_lt1$f1, accuracy = 1)),
+    ifelse(best_lt2$forecast_source == "SEAS5", scales::percent(best_lt2_insiv$f1, accuracy = 1), scales::percent(seas5_lt2$f1, accuracy = 1))
+  )
+)
+
+knitr::kable(df_primera_rec, col.names = c("Leadtime", "Month", "Recommended", "F1", "Alternative", "F1"),
+             caption = "Primera Recommendation")
+```
+
+
+
+```{r}
+#| label: postrera-table
+#| eval: false
+#| show: false
+#| echo: false
+
+
+## Postrera: Detailed Comparison
+
+# You want a single model across LT1-3. Here's how they compare:
+
+
+df_op_postrera |>
+  mutate(
+    model = str_remove(forecast_source, "INSIVUMEH_"),
+    f1_pct = scales::percent(f1, accuracy = 1),
+    corr_fmt = sprintf("%.2f", corr),
+    precision_pct = scales::percent(precision, accuracy = 1),
+    recall_pct = scales::percent(recall, accuracy = 1),
+    beats_random = paste0(round(pct_beats_random), "%"),
+    sig = ifelse(significant, "Yes", "No")
+  ) |>
+  select(model, leadtime, f1_pct, precision_pct, recall_pct, corr_fmt, beats_random, sig) |>
+  arrange(leadtime, desc(f1_pct)) |>
+  knitr::kable(
+    col.names = c("Model", "LT", "F1", "Precision", "Recall", "Corr", "Beats Random", "Sig?"),
+    caption = "Postrera: All models vs ENACTS"
+  )
+```
+
+```{r}
+#| label: postrera-aggregate
+#| code-summary: "Aggregate postrera performance across leadtimes"
+#| eval: false
+#| show: false
+#| echo: false
+
+# For single-model selection, look at average performance across all operational LTs
+df_postrera_agg <- df_op_postrera |>
+  group_by(forecast_source) |>
+  summarise(
+    avg_f1 = mean(f1, na.rm = TRUE),
+    avg_precision = mean(precision, na.rm = TRUE),
+    avg_recall = mean(recall, na.rm = TRUE),
+    avg_corr = mean(corr, na.rm = TRUE),
+    n_significant = sum(significant),
+    avg_beats_random = mean(pct_beats_random, na.rm = TRUE),
+    # Consistency: how stable is F1 across leadtimes?
+    f1_sd = sd(f1, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(model = str_remove(forecast_source, "INSIVUMEH_")) |>
+  arrange(desc(avg_f1))
+
+df_postrera_agg |>
+  mutate(
+    avg_f1_fmt = scales::percent(avg_f1, accuracy = 1),
+    avg_precision_fmt = scales::percent(avg_precision, accuracy = 1),
+    avg_recall_fmt = scales::percent(avg_recall, accuracy = 1),
+    avg_corr_fmt = sprintf("%.2f", avg_corr),
+    consistency = sprintf("%.2f", f1_sd),
+    beats_random_fmt = paste0(round(avg_beats_random), "%")
+  ) |>
+  select(model, avg_f1_fmt, avg_precision_fmt, avg_recall_fmt, avg_corr_fmt, consistency, n_significant, beats_random_fmt) |>
+  knitr::kable(
+    col.names = c("Model", "Avg F1", "Avg Precision", "Avg Recall", "Avg Corr", "F1 StdDev", "# Sig LTs", "Avg Beats Random"),
+    caption = "Postrera: Average performance across LT1-3 (lower StdDev = more consistent)"
+  )
+```
+
+```{r}
+#| label: postrera-recommendation
+#| eval: false
+#| show: false
+#| echo: false
+#| 
+best_postrera <- df_postrera_agg |> slice(1)
+second_postrera <- df_postrera_agg |> slice(2)
+
+df_postrera_rec <- tibble(
+  Rank = c("Primary", "Runner-up"),
+  Model = c(best_postrera$model, second_postrera$model),
+  `Avg F1` = c(scales::percent(best_postrera$avg_f1, accuracy = 1),
+               scales::percent(second_postrera$avg_f1, accuracy = 1)),
+  `Avg Corr` = c(sprintf("%.2f", best_postrera$avg_corr),
+                 sprintf("%.2f", second_postrera$avg_corr)),
+  `Sig LTs` = c(best_postrera$n_significant, second_postrera$n_significant)
+)
+
+knitr::kable(df_postrera_rec, caption = "Postrera Recommendation (single model across LT1-3)")
+```
+
+::: {.callout-warning}
+**No model shows statistically significant skill for Postrera.** Consider supplementing with monitoring-based triggers (VHI, observed rainfall).
+:::
+
+
+
+```{r}
+#| label: precision-recall-plot
+#| fig-height: 6
+#| fig-width: 10
+#| eval: false
+#| show: false
+#| echo: false
+
+## Additional Diagnostics
+
+
+# ### Hit Rate vs False Alarm Tradeoff
+# 
+# For AA, you may care differently about:
+# 
+# - **Precision** (avoiding false alarms) — high precision = fewer wasted activations
+# - **Recall** (catching events) — high recall = fewer missed droughts
+
+df_pr <- bind_rows(
+  df_op_primera |> mutate(season = "Primera"),
+  df_op_postrera |> mutate(season = "Postrera")
+) |>
+  mutate(
+    season = factor(season, levels = c("Primera", "Postrera")),
+    model = str_remove(forecast_source, "INSIVUMEH_"),
+    label = paste0(model, " LT", leadtime)
+  )
+
+ggplot(df_pr, aes(x = recall, y = precision, color = model)) +
+  geom_point(size = 4, alpha = 0.8) +
+  geom_text(aes(label = paste0("LT", leadtime)), vjust = -1, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  facet_wrap(~season) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  labs(
+    title = "Precision vs Recall by Model and Leadtime",
+    subtitle = "Above diagonal = precision > recall (conservative). Below = recall > precision (liberal).",
+    x = "Recall (% of droughts detected)",
+    y = "Precision (% of forecasts that were correct)",
+    color = "Model"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+### Aggregate Across Leadtimes
+
+What if we trigger when **any** operational leadtime predicts drought? This tests a "rolling trigger" where you activate if any of your forecast windows flags a drought.
+
+```{r}
+#| label: aggregate-leadtimes
+#| code-summary: "Aggregate forecasts across leadtimes per season"
+
+# For each model and year, check if ANY leadtime predicted drought
+df_any_lt_trigger <- df_classified_enacts |>
+  filter(
+    (window == "primera" & leadtime %in% c(1, 2)) |
+    (window == "postrera" & leadtime %in% c(1, 2, 3))
+  ) |>
+  mutate(
+    fcst_drought = estimate == "drought",
+    obs_drought = truth == "drought"
+  ) |>
+  group_by(forecast_source, window, year) |>
+  summarise(
+    any_lt_drought = any(fcst_drought),
+    obs_drought = first(obs_drought),  # Same for all LTs in a year
+    .groups = "drop"
+  )
+
+# Calculate skill for "any LT" trigger
+df_any_lt_skill <- df_any_lt_trigger |>
+  group_by(forecast_source, window) |>
+  summarise(
+    n = n(),
+    TP = sum(any_lt_drought & obs_drought),
+    FP = sum(any_lt_drought & !obs_drought),
+    FN = sum(!any_lt_drought & obs_drought),
+    TN = sum(!any_lt_drought & !obs_drought),
+    .groups = "drop"
+  ) |>
+  mutate(
+    precision = ifelse(TP + FP > 0, TP / (TP + FP), NA),
+    recall = ifelse(TP + FN > 0, TP / (TP + FN), NA),
+    f1 = ifelse(TP > 0, 2 * precision * recall / (precision + recall), 0),
+    model = str_remove(forecast_source, "INSIVUMEH_")
+  )
+```
+
+```{r}
+#| label: any-lt-table
+
+df_any_lt_skill |>
+  mutate(
+    window = factor(window, levels = c("primera", "postrera")),
+    f1_fmt = scales::percent(f1, accuracy = 1),
+    precision_fmt = scales::percent(precision, accuracy = 1),
+    recall_fmt = scales::percent(recall, accuracy = 1)
+  ) |>
+  select(model, window, f1_fmt, precision_fmt, recall_fmt, TP, FP, FN, TN) |>
+  arrange(window, desc(f1_fmt)) |>
+  knitr::kable(
+    col.names = c("Model", "Season", "F1", "Precision", "Recall", "TP", "FP", "FN", "TN"),
+    caption = "Skill when triggering if ANY operational leadtime predicts drought (Primera: LT1-2, Postrera: LT1-3)"
+  )
+```
+
+```{r}
+#| label: any-lt-vs-single
+#| code-summary: "Compare any-LT trigger to best single LT"
+#| eval: false
+#| show: false
+#| echo: false
+
+# Get best single LT for comparison
+best_single_lt <- df_skill_enacts |>
+  filter(
+    (window == "primera" & leadtime %in% c(1, 2)) |
+    (window == "postrera" & leadtime %in% c(1, 2, 3))
+  ) |>
+  group_by(forecast_source, window) |>
+  slice_max(f1, n = 1) |>
+  ungroup() |>
+  mutate(
+    model = str_remove(forecast_source, "INSIVUMEH_"),
+    strategy = paste0("Best single LT (LT", leadtime, ")")
+  ) |>
+  select(model, window, strategy, f1, precision, recall)
+
+# Add any-LT results
+df_compare_strategies <- bind_rows(
+  best_single_lt,
+  df_any_lt_skill |>
+    mutate(strategy = "Any LT trigger") |>
+    select(model, window, strategy, f1, precision, recall)
+)
+```
+
+```{r}
+#| label: strategy-comparison-plot
+#| fig-height: 6
+#| fig-width: 10
+#| eval: false
+#| show: false
+#| echo: false
+
+ggplot(df_compare_strategies |> mutate(window = factor(window, levels = c("primera", "postrera"))),
+       aes(x = model, y = f1, fill = strategy)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_text(
+    aes(label = scales::percent(f1, accuracy = 1)),
+    position = position_dodge(width = 0.9),
+    vjust = -0.5, size = 3
+  ) +
+  facet_wrap(~str_to_title(window)) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1), expand = c(0, 0.1)) +
+  scale_fill_manual(values = c("Any LT trigger" = "#007CE1", "Best single LT (LT1)" = "#F2645A", "Best single LT (LT2)" = "#1EBFB3", "Best single LT (LT3)" = "#FFC759")) +
+  labs(
+    title = "Any-Leadtime Trigger vs Best Single Leadtime",
+    subtitle = "Does aggregating across leadtimes improve or hurt skill?",
+    x = NULL,
+    y = "F1 Score",
+    fill = "Strategy"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+### Error Magnitude Analysis (Postrera)
+
+Since Primera shows clear skill with SEAS5, we focus on Postrera where decisions are harder. When the forecast is wrong, how wrong is it? This helps distinguish between near-misses and catastrophic failures.
+
+```{r}
+#| label: error-magnitude
+#| code-summary: "Calculate distance from threshold for FP and FN cases"
+
+# Get threshold values for reference
+obs_thresholds_enacts <- df_enacts |>
+  filter(year >= BASELINE_START, year <= BASELINE_END) |>
+  group_by(window) |>
+  summarise(obs_threshold = calc_rp_threshold(obs_mm, 4, -1), .groups = "drop")
+
+# Analyze errors - Postrera only (Primera is decided)
+df_error_analysis <- df_classified_enacts |>
+  filter(window == "postrera", leadtime %in% c(1, 2, 3)) |>
+  left_join(obs_thresholds_enacts, by = "window") |>
+  mutate(
+    fcst_drought = estimate == "drought",
+    obs_drought = truth == "drought",
+    error_type = case_when(
+      fcst_drought & !obs_drought ~ "False Positive",
+      !fcst_drought & obs_drought ~ "False Negative",
+      TRUE ~ NA_character_
+    ),
+    # Distance from threshold (positive = wetter than threshold, negative = drier)
+    obs_distance_mm = obs_mm - obs_threshold,
+    # As percentage of threshold
+    obs_distance_pct = (obs_mm - obs_threshold) / obs_threshold * 100,
+    model = str_remove(forecast_source, "INSIVUMEH_")
+  ) |>
+  filter(!is.na(error_type))
+
+# Summary by error type
+df_error_summary <- df_error_analysis |>
+  group_by(model, window, leadtime, error_type) |>
+  summarise(
+    n_errors = n(),
+    mean_distance_mm = mean(obs_distance_mm),
+    mean_distance_pct = mean(obs_distance_pct),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: error-magnitude-table
+
+df_error_summary |>
+  mutate(
+    distance_fmt = paste0(round(mean_distance_mm), " mm (", sprintf("%+.0f%%", mean_distance_pct), ")")
+  ) |>
+  select(model, leadtime, error_type, n_errors, distance_fmt) |>
+  arrange(leadtime, error_type, model) |>
+  knitr::kable(
+    col.names = c("Model", "LT", "Error Type", "N", "Avg Distance from Threshold"),
+    caption = "Postrera: How far from threshold was observed rainfall when forecast was wrong? Positive = wetter than threshold, negative = drier."
+  )
+```
+
+```{r}
+#| label: error-magnitude-plot
+#| fig-height: 7
+#| fig-width: 10
+
+# Show individual error cases with separate means for FP and FN (Postrera only)
+ggplot(df_error_analysis, aes(x = model, y = obs_distance_mm, color = error_type)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_jitter(width = 0.2, alpha = 0.6, size = 3) +
+  stat_summary(
+    aes(group = error_type),
+    fun = mean, geom = "point", shape = 18, size = 5,
+    position = position_dodge(width = 0.5)
+  ) +
+  facet_wrap(~ paste0("LT", leadtime), nrow = 1) +
+  scale_color_manual(
+    values = c("False Positive" = "#F2645A", "False Negative" = "#007CE1"),
+    name = "Error Type"
+  ) +
+  labs(
+    title = "How Wrong Are the Errors? (Postrera)",
+    subtitle = "Distance of observed rainfall from drought threshold when forecast was wrong. Diamond = mean per error type. Zero line = threshold.",
+    x = NULL,
+    y = "Observed Distance from Threshold (mm)",
+    caption = "False Positive: triggered but no drought (points above zero)\nFalse Negative: missed drought (points below zero)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold")
+  )
+```
+
+```{r}
+#| label: error-years-detail
+#| code-summary: "Show specific years for each error type"
+#| eval: false
+#| show: false
+#| echo: false
+
+df_error_analysis |>
+  select(year, leadtime, model, error_type, obs_mm, obs_threshold, obs_distance_mm) |>
+  mutate(
+    obs_mm = round(obs_mm),
+    obs_threshold = round(obs_threshold),
+    obs_distance_mm = round(obs_distance_mm)
+  ) |>
+  arrange(error_type, year) |>
+  knitr::kable(
+    col.names = c("Year", "LT", "Model", "Error Type", "Observed (mm)", "Threshold (mm)", "Distance (mm)"),
+    caption = "Postrera: Which years had errors and how far off was observed rainfall?"
+  )
+```
+
+### Model Agreement Analysis
+
+When models agree, is skill higher? This could support an ensemble trigger.
+```{r}
+#| label: agreement-analysis
+#| code-summary: "Check if model agreement improves skill"
+
+# Get classified data and check agreement
+df_agreement <- df_classified_enacts |>
+  mutate(
+    fcst_drought = estimate == "drought",
+    obs_drought = truth == "drought"
+  ) |>
+  select(year, window, leadtime, forecast_source, fcst_drought, obs_drought) |>
+  pivot_wider(names_from = forecast_source, values_from = fcst_drought) |>
+  mutate(
+    n_models_predict_drought = rowSums(across(c(SEAS5, starts_with("INSIVUMEH")), ~.x), na.rm = TRUE),
+    any_predict = n_models_predict_drought >= 1,
+    majority_predict = n_models_predict_drought >= 2,
+    all_predict = n_models_predict_drought == 4
+  )
+
+# Calculate skill when models agree
+calc_agreement_skill <- function(df, fcst_col, name) {
+  df |>
+    filter(!is.na(!!sym(fcst_col))) |>
+    group_by(window, leadtime) |>
+    summarise(
+      n = n(),
+      TP = sum(!!sym(fcst_col) & obs_drought),
+      FP = sum(!!sym(fcst_col) & !obs_drought),
+      FN = sum(!.data[[fcst_col]] & obs_drought),
+      TN = sum(!.data[[fcst_col]] & !obs_drought),
+      .groups = "drop"
+    ) |>
+    mutate(
+      precision = ifelse(TP + FP > 0, TP / (TP + FP), NA),
+      recall = ifelse(TP + FN > 0, TP / (TP + FN), NA),
+      f1 = ifelse(TP > 0, 2 * precision * recall / (precision + recall), 0),
+      strategy = name
+    )
+}
+
+df_agreement_skill <- bind_rows(
+  calc_agreement_skill(df_agreement, "any_predict", "Any model (≥1)"),
+  calc_agreement_skill(df_agreement, "majority_predict", "Majority (≥2)"),
+  calc_agreement_skill(df_agreement, "all_predict", "All models (4)")
+)
+```
+
+```{r}
+#| label: agreement-table
+
+df_agreement_skill |>
+  filter(leadtime %in% c(1, 2)) |>  # Focus on common leadtimes
+  mutate(
+    window = factor(window, levels = c("primera", "postrera")),
+    f1_fmt = scales::percent(f1, accuracy = 1),
+    precision_fmt = scales::percent(precision, accuracy = 1),
+    recall_fmt = scales::percent(recall, accuracy = 1)
+  ) |>
+  select(window, leadtime, strategy, f1_fmt, precision_fmt, recall_fmt) |>
+  arrange(window, leadtime, strategy) |>
+  knitr::kable(
+    col.names = c("Season", "LT", "Agreement Strategy", "F1", "Precision", "Recall"),
+    caption = "Does requiring model agreement improve skill?"
+  )
+```
+
+# Summary
+
+```{r}
+#| label: summary-prep
+#| include: false
+#| eval: false
+#| show: false
+#| echo: false
+
+
+# Prepare summary values for inline use
+primera_lt0_f1 <- df_op_primera |> filter(forecast_source == "SEAS5", leadtime == 0) |> pull(f1)
+primera_lt1_model <- str_remove(best_lt1$forecast_source, "INSIVUMEH_")
+primera_lt1_f1 <- best_lt1$f1
+primera_lt2_model <- str_remove(best_lt2$forecast_source, "INSIVUMEH_")
+primera_lt2_f1 <- best_lt2$f1
+
+postrera_model <- best_postrera$model
+postrera_avg_f1 <- best_postrera$avg_f1
+```
+
+
+
+```{r}
+#| eval: false
+#| show: false
+#| echo: false
+
+## Final Recommendations
+
+### Primera (MJJA)
+
+# | Leadtime | Month | Recommended Model | F1 Score |
+# |----------|-------|-------------------|----------|
+# | LT0 | May | SEAS5 (only option) | `r scales::percent(primera_lt0_f1, accuracy = 1)` |
+# | LT1 | April | `r primera_lt1_model` | `r scales::percent(primera_lt1_f1, accuracy = 1)` |
+# | LT2 | March | `r primera_lt2_model` | `r scales::percent(primera_lt2_f1, accuracy = 1)` |
+# 
+# ### Postrera (SON)
+# 
+# - **Single model recommendation**: `r postrera_model`
+# - **Average F1 across LT1-3**: `r scales::percent(postrera_avg_f1, accuracy = 1)`
+# - **Warning**: No model shows statistically significant skill — consider supplementing with monitoring-based triggers (VHI, observed rainfall deficits)
+# 
+# ### Key Caveats
+# 
+# 1. **Primera** shows genuine predictive skill; multiple model-leadtime combinations beat random guessing
+# 2. **Postrera** does not beat random guessing with any model — forecast-based triggers alone are risky
+# 3. For Postrera, consider:
+#    - Monitoring-based triggers (VHI, rainfall anomalies)
+#    - Ensemble agreement requirements
+#    - Accepting higher uncertainty in trigger design
+```
+
+# Next Steps
+
+## Exploring Larger Spatial Scales
+
+Both SEAS5 and INSIVUMEH may perform poorly at the admin-1 (Chiquimula) scale because seasonal forecasts typically have better skill at larger spatial scales. HydroBASINS provides standardized watershed boundaries at multiple levels that could serve as alternative analysis units.
+
+```{r}
+#| label: load-hybas
+#| code-summary: "Load HydroBASINS and Chiquimula boundary"
+
+library(sf)
+
+# Disable s2 for this section (HydroBASINS has some geometry issues with s2)
+sf_use_s2(FALSE)
+
+# Load Guatemala boundaries
+sf_gtm_adm0 <- cumulus::download_fieldmaps_sf(iso3 = "GTM", layer = "gtm_adm0")$gtm_adm0
+sf_gtm_adm1 <- cumulus::download_fieldmaps_sf(iso3 = "GTM", layer = "gtm_adm1")$gtm_adm1 |>
+ janitor::clean_names()
+sf_chiquimula <- sf_gtm_adm1 |> filter(adm1_pcode == "GT20")
+
+# Path to HydroBASINS data
+hybas_dir <- "../../data/hybas_na_lev01-12_v1c"
+
+# Load levels 5 and 6
+sf_hybas_5 <- st_read(file.path(hybas_dir, "hybas_na_lev05_v1c.shp"), quiet = TRUE)
+sf_hybas_6 <- st_read(file.path(hybas_dir, "hybas_na_lev06_v1c.shp"), quiet = TRUE)
+
+# Ensure same CRS
+sf_chiquimula <- st_transform(sf_chiquimula, st_crs(sf_hybas_5))
+
+# Get bounding box of Chiquimula with buffer for context
+chiq_bbox <- st_bbox(sf_chiquimula)
+bbox_buffer <- 1  # degrees
+
+# Create bbox polygon for filtering
+bbox_poly <- st_as_sfc(st_bbox(c(
+  xmin = as.numeric(chiq_bbox["xmin"]) - bbox_buffer,
+  xmax = as.numeric(chiq_bbox["xmax"]) + bbox_buffer,
+  ymin = as.numeric(chiq_bbox["ymin"]) - bbox_buffer,
+  ymax = as.numeric(chiq_bbox["ymax"]) + bbox_buffer
+), crs = st_crs(sf_hybas_5)))
+
+# Filter basins to region around Chiquimula using intersection
+sf_hybas_5_region <- sf_hybas_5[st_intersects(sf_hybas_5, bbox_poly, sparse = FALSE)[,1], ]
+sf_hybas_6_region <- sf_hybas_6[st_intersects(sf_hybas_6, bbox_poly, sparse = FALSE)[,1], ]
+
+# Find basins that intersect Chiquimula
+sf_hybas_5_intersect <- sf_hybas_5_region[st_intersects(sf_hybas_5_region, sf_chiquimula, sparse = FALSE)[,1], ]
+sf_hybas_6_intersect <- sf_hybas_6_region[st_intersects(sf_hybas_6_region, sf_chiquimula, sparse = FALSE)[,1], ]
+
+cat("Level 5 basins intersecting Chiquimula:", nrow(sf_hybas_5_intersect), "\n")
+cat("Level 6 basins intersecting Chiquimula:", nrow(sf_hybas_6_intersect), "\n")
+```
+
+```{r}
+#| label: basin-comparison-map
+#| fig-height: 8
+#| fig-width: 12
+#| code-summary: "Map comparing basin levels 5 and 6 over Chiquimula"
+
+library(patchwork)
+
+# Calculate areas for labels
+sf_hybas_5_intersect <- sf_hybas_5_intersect |>
+  mutate(area_km2 = as.numeric(st_area(geometry)) / 1e6)
+
+sf_hybas_6_intersect <- sf_hybas_6_intersect |>
+  mutate(area_km2 = as.numeric(st_area(geometry)) / 1e6)
+
+chiq_area <- as.numeric(st_area(sf_chiquimula)) / 1e6
+
+# Transform admin0 to match CRS
+sf_gtm_adm0_t <- st_transform(sf_gtm_adm0, st_crs(sf_hybas_5))
+
+# Create base plot function
+create_basin_map <- function(sf_basins, level, sf_admin, sf_country) {
+
+  # Get centroids for labels
+  basin_centroids <- st_centroid(sf_basins) |>
+    mutate(
+      x = st_coordinates(geometry)[,1],
+      y = st_coordinates(geometry)[,2]
+    )
+
+  ggplot() +
+    geom_sf(data = sf_country, fill = "grey95", color = "grey50", linewidth = 0.3) +
+    geom_sf(data = sf_basins, aes(fill = area_km2), color = "darkblue", linewidth = 0.8) +
+    geom_sf(data = sf_admin, fill = NA, color = "red", linewidth = 1.2) +
+    geom_sf_text(
+      data = basin_centroids,
+      aes(label = paste0(round(area_km2), " km²")),
+      size = 3, fontface = "bold", color = "white"
+    ) +
+    scale_fill_viridis_c(option = "mako", direction = -1, name = "Area (km²)") +
+    labs(
+      title = paste0("HydroBASINS Level ", level),
+      subtitle = paste0(nrow(sf_basins), " basin(s) intersecting Chiquimula"),
+      caption = paste0("Red outline = Chiquimula (", round(chiq_area), " km²)")
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      plot.caption = element_text(color = "red", face = "bold")
+    )
+}
+
+p_lev5 <- create_basin_map(sf_hybas_5_intersect, 5, sf_chiquimula, sf_gtm_adm0_t)
+p_lev6 <- create_basin_map(sf_hybas_6_intersect, 6, sf_chiquimula, sf_gtm_adm0_t)
+
+p_lev5 + p_lev6 +
+  plot_annotation(
+    title = "HydroBASINS Comparison: Potential Analysis Units",
+    subtitle = "Comparing basin scales that could provide better forecast skill than admin-1 boundaries"
+  )
+```
+
+```{r}
+#| label: basin-summary-table
+
+# Summary comparison
+tibble(
+  `Spatial Unit` = c(
+    "Chiquimula (Admin-1)",
+    paste0("Level 5 (", nrow(sf_hybas_5_intersect), " basin", ifelse(nrow(sf_hybas_5_intersect) > 1, "s", ""), ")"),
+    paste0("Level 6 (", nrow(sf_hybas_6_intersect), " basin", ifelse(nrow(sf_hybas_6_intersect) > 1, "s", ""), ")")
+  ),
+  `Total Area (km²)` = c(
+    round(chiq_area),
+    round(sum(sf_hybas_5_intersect$area_km2)),
+    round(sum(sf_hybas_6_intersect$area_km2))
+  ),
+  `Mean Basin Area (km²)` = c(
+    round(chiq_area),
+    round(mean(sf_hybas_5_intersect$area_km2)),
+    round(mean(sf_hybas_6_intersect$area_km2))
+  ),
+  Notes = c(
+    "Current analysis unit",
+    "Larger basins - may have better forecast skill",
+    "Medium basins - balance of skill and resolution"
+  )
+) |>
+  knitr::kable(caption = "Comparison of spatial units for forecast skill assessment")
+```
+
+### Interpretation
+
+- **Level 5** provides larger drainage basins that may better match the spatial resolution at which seasonal forecasts have skill
+- **Level 6** offers a middle ground between admin boundaries and larger regional basins
+- Next step: Re-run the skill assessment using basin-aggregated forecasts and observations to test if skill improves at larger scales
