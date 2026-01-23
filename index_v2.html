@@ -6,10 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="OCHA Centre for Humanitarian Data">
-<meta name="dcterms.date" content="2026-01-23">
 
-<title>Seasonal Forecast Skill Assessment</title>
+<title>1&nbsp; Intro – Seasonal Forecast Skill Assessment</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -32,7 +30,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./intro.html" rel="next">
+<link href="./01_binary_metrics.html" rel="next">
+<link href="./index.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -85,7 +84,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Key Findings</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index_v2.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Intro</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -114,13 +113,13 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Key Findings</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./intro.html" class="sidebar-item-text sidebar-link">
+  <a href="./index_v2.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Intro</span></span></a>
   </div>
 </li>
@@ -181,11 +180,20 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#key-findings" id="toc-key-findings" class="nav-link active" data-scroll-target="#key-findings">Key Findings</a>
+  <li><a href="#the-decisionquestion" id="toc-the-decisionquestion" class="nav-link active" data-scroll-target="#the-decisionquestion"><span class="header-section-number">1.1</span> The Decision/Question</a></li>
+  <li><a href="#research-progression" id="toc-research-progression" class="nav-link" data-scroll-target="#research-progression"><span class="header-section-number">1.2</span> Research Progression</a>
   <ul class="collapse">
-  <li><a href="#decision-steps" id="toc-decision-steps" class="nav-link" data-scroll-target="#decision-steps">Decision Steps</a></li>
-  <li><a href="#recommendations" id="toc-recommendations" class="nav-link" data-scroll-target="#recommendations">Recommendations</a></li>
+  <li><a href="#step-1-start-with-standard-metrics" id="toc-step-1-start-with-standard-metrics" class="nav-link" data-scroll-target="#step-1-start-with-standard-metrics"><span class="header-section-number">1.2.1</span> Step 1: Start with Standard Metrics</a></li>
+  <li><a href="#step-2-try-continuous-metrics" id="toc-step-2-try-continuous-metrics" class="nav-link" data-scroll-target="#step-2-try-continuous-metrics"><span class="header-section-number">1.2.2</span> Step 2: Try Continuous Metrics</a></li>
+  <li><a href="#step-3-bring-in-a-third-opinion" id="toc-step-3-bring-in-a-third-opinion" class="nav-link" data-scroll-target="#step-3-bring-in-a-third-opinion"><span class="header-section-number">1.2.3</span> Step 3: Bring in a Third Opinion</a></li>
+  <li><a href="#step-4-check-for-drift" id="toc-step-4-check-for-drift" class="nav-link" data-scroll-target="#step-4-check-for-drift"><span class="header-section-number">1.2.4</span> Step 4: Check for Drift</a></li>
+  <li><a href="#step-5-the-decider---forecast-internal-consistency" id="toc-step-5-the-decider---forecast-internal-consistency" class="nav-link" data-scroll-target="#step-5-the-decider---forecast-internal-consistency"><span class="header-section-number">1.2.5</span> Step 5: The Decider - Forecast Internal Consistency</a></li>
   </ul></li>
+  <li><a href="#final-recommendations" id="toc-final-recommendations" class="nav-link" data-scroll-target="#final-recommendations"><span class="header-section-number">1.3</span> Final Recommendations</a>
+  <ul class="collapse">
+  <li><a href="#the-postrera-problem" id="toc-the-postrera-problem" class="nav-link" data-scroll-target="#the-postrera-problem"><span class="header-section-number">1.3.1</span> The Postrera Problem</a></li>
+  </ul></li>
+  <li><a href="#book-structure" id="toc-book-structure" class="nav-link" data-scroll-target="#book-structure"><span class="header-section-number">1.4</span> Book Structure</a></li>
   </ul>
 </nav>
     </div>
@@ -208,27 +216,14 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Seasonal Forecast Skill Assessment</h1>
-<p class="subtitle lead">INSIVUMEH vs SEAS5 | Chiquimula, Guatemala</p>
+<h1 class="title"><span id="sec-journey" class="quarto-section-identifier"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Intro</span></span></h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
-    <div>
-    <div class="quarto-title-meta-heading">Author</div>
-    <div class="quarto-title-meta-contents">
-             <p>OCHA Centre for Humanitarian Data </p>
-          </div>
-  </div>
     
-    <div>
-    <div class="quarto-title-meta-heading">Published</div>
-    <div class="quarto-title-meta-contents">
-      <p class="date">January 23, 2026</p>
-    </div>
-  </div>
   
     
   </div>
@@ -238,104 +233,179 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="key-findings" class="level1 unnumbered">
-<h1 class="unnumbered">Key Findings</h1>
-<p>This book evaluates seasonal precipitation forecasts for drought prediction in <strong>Chiquimula, Guatemala</strong>. We compare SEAS5 (ECMWF global) against INSIVUMEH (Guatemala national service) for two agricultural seasons: Primera (May-Aug) and Postrera (Sep-Nov).</p>
-<section id="decision-steps" class="level2">
-<h2 class="anchored" data-anchor-id="decision-steps">Decision Steps</h2>
+<section id="the-decisionquestion" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="the-decisionquestion"><span class="header-section-number">1.1</span> The Decision/Question</h2>
+<p>Which seasonal forecast should Guatemala’s anticipatory action framework use for drought prediction in Chiquimula? Two options are available:</p>
+<ul>
+<li><strong>SEAS5</strong>: ECMWF’s global seasonal forecasting system</li>
+<li><strong>INSIVUMEH</strong>: Regional forecasts from Guatemala’s national meteorological service (CFSv2, CCSM4, and CESM1 models)</li>
+</ul>
+<p>This book documents the reserch to answer this question for two agricultural seasons:</p>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 24%">
-<col style="width: 40%">
-<col style="width: 36%">
-</colgroup>
 <thead>
 <tr class="header">
-<th>Step</th>
-<th>Question</th>
-<th>Finding</th>
+<th>Season</th>
+<th>Months</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>1. Binary Metrics</td>
-<td>Do forecasts beat random guessing?</td>
-<td>Primera yes (SEAS5 wins), Postrera inconclusive</td>
+<td><strong>Primera</strong></td>
+<td>May-August (MJJA)</td>
+<td>First maize planting</td>
 </tr>
 <tr class="even">
-<td>2. Continuous Metrics</td>
-<td>Does skill hold with different metrics?</td>
-<td>Primera confirmed (SEAS5 wins), Postrera ambiguous</td>
-</tr>
-<tr class="odd">
-<td>3. CHIRPS Tie-Breaker</td>
-<td>Is skill robust across observation sources? Does a 3rd data source clear Postrera ambiguity?</td>
-<td>Primera robust, Postrera still ambiguous</td>
-</tr>
-<tr class="even">
-<td>4. Temporal Drift</td>
-<td>Are trends/drift affecting skill estimates?</td>
-<td>Mild drift, unlikely to be the significant factor causing poor postrera skill</td>
-</tr>
-<tr class="odd">
-<td>5. Internal Consistency</td>
-<td>Are forecasts internally coherent?</td>
-<td>INSIVUMEH Postrera forecasts completely internally incoherent - lack signal</td>
+<td><strong>Postrera</strong></td>
+<td>September-November (SON)</td>
+<td>Second maize planting</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="recommendations" class="level2">
-<h2 class="anchored" data-anchor-id="recommendations">Recommendations</h2>
+<section id="research-progression" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="research-progression"><span class="header-section-number">1.2</span> Research Progression</h2>
+<section id="step-1-start-with-standard-metrics" class="level3" data-number="1.2.1">
+<h3 data-number="1.2.1" class="anchored" data-anchor-id="step-1-start-with-standard-metrics"><span class="header-section-number">1.2.1</span> Step 1: Start with Standard Metrics</h3>
+<p>The analysis began with <strong>binary classification metrics</strong> (Chapter 1) - the traditional approach where forecasts are scored as hits or misses against a drought threshold (return period of 4 years).</p>
+<p><strong>Primera results were encouraging</strong>: SEAS5 showed F1 scores around 50-60%, significantly better than random guessing. Several model-leadtime combinations beat the 90th percentile of bootstrap random simulations.</p>
+<p><strong>Postrera was troubling</strong>: No model showed statistically significant skill. F1 scores hovered near random guessing levels. Different models won at different leadtimes with no clear pattern.</p>
+<p><em>Remaining question</em>: Are the Postrera results genuinely inconclusive, or are binary metrics too noisy with only ~6 drought events in 25 years?</p>
+</section>
+<section id="step-2-try-continuous-metrics" class="level3" data-number="1.2.2">
+<h3 data-number="1.2.2" class="anchored" data-anchor-id="step-2-try-continuous-metrics"><span class="header-section-number">1.2.2</span> Step 2: Try Continuous Metrics</h3>
+<p>Chapter 2 introduced <strong>continuous metrics</strong> that don’t require threshold choices: Spearman correlation, RMSE, and ROC-AUC. These provide partial credit for near-misses and are more stable with small samples.</p>
+<p><strong>Primera confirmation</strong>: SEAS5 dominated across all continuous metrics. AUC values around 0.88 - meaning 88% probability of correctly ranking a drought year below a non-drought year. The signal was real.</p>
+<p><strong>Postrera remained ambiguous</strong>: Different metrics favored different models:</p>
+<ul>
+<li>Spearman: SEAS5 best at LT1</li>
+<li>RMSE: CCSM4 best</li>
+<li>AUC: SEAS5 at LT1, CCSM4 at LT2</li>
+</ul>
+<p>No model showed AUC consistently above 0.7 (general threshold for “acceptable” discrimination skill).</p>
+<p><em>Remaining question</em>: Are these results sensitive to which observation dataset we validate against? Would a different “ground truth” give the same answer?</p>
+</section>
+<section id="step-3-bring-in-a-third-opinion" class="level3" data-number="1.2.3">
+<h3 data-number="1.2.3" class="anchored" data-anchor-id="step-3-bring-in-a-third-opinion"><span class="header-section-number">1.2.3</span> Step 3: Bring in a Third Opinion</h3>
+<p>Chapter 3 introduced <strong>CHIRPS</strong> as an independent observation source alongside ERA5 and ENACTS. If forecasts perform well against multiple observation sources, the skill assessment is more credible.</p>
+<p><strong>Primera verdict</strong>: Skill was robust across all three observation sources. SEAS5 won most comparisons.</p>
+<p><strong>Postrera raised a red flag</strong>: CCSM4 showed <em>better</em> skill at longer leadtimes (LT2-3) than shorter ones (LT1). This is backwards - forecast skill should degrade with increasing leadtime, not improve. The pattern suggested we might be seeing noise rather than genuine skill.</p>
+<p><em>Remaining question</em>: What’s causing the inverted skill-leadtime relationship for Postrera?</p>
+</section>
+<section id="step-4-check-for-drift" class="level3" data-number="1.2.4">
+<h3 data-number="1.2.4" class="anchored" data-anchor-id="step-4-check-for-drift"><span class="header-section-number">1.2.4</span> Step 4: Check for Drift</h3>
+<p>Chapter 4 investigated whether <strong>temporal trends</strong> in forecasts or observations could explain the strange patterns.</p>
+<p><strong>Findings</strong>:</p>
+<ul>
+<li>ENACTS showed a drying trend for Primera, but other sources showed similar patterns</li>
+<li>Forecast error drift was modest (~5-8 mm/year)</li>
+<li><strong>Split-half stability</strong> was the key finding: Primera correlations were stable between 2000-2012 and 2013-2024, but Postrera correlations were wildly different between periods</li>
+</ul>
+<p>The drift analysis didn’t explain the inverted skill pattern.</p>
+</section>
+<section id="step-5-the-decider---forecast-internal-consistency" class="level3" data-number="1.2.5">
+<h3 data-number="1.2.5" class="anchored" data-anchor-id="step-5-the-decider---forecast-internal-consistency"><span class="header-section-number">1.2.5</span> Step 5: The Decider - Forecast Internal Consistency</h3>
+<p>Chapter 5 applied <strong>internal consistency diagnostics</strong> - asking not “do forecasts predict observations?” but “do forecasts behave like forecasts?”</p>
+<p><strong>Inter-leadtime correlations</strong>: For a well-behaved forecast, LT1 and LT2 predictions for the same target season should correlate - they’re trying to predict the same thing.</p>
+<ul>
+<li>SEAS5: LT1-LT2 correlations of 0.6-0.9 (expected)</li>
+<li>INSIVUMEH Primera: Moderate correlations of 0.3-0.7 (acceptable)</li>
+<li>INSIVUMEH Postrera: <strong>Near-zero or negative correlations</strong> - when LT1 predicts wet, LT2 might predict dry for the same season</li>
+</ul>
+<p><strong>Coefficient of Variation (CV)</strong>: Forecasts should show interannual variability approaching observed variability.</p>
+<ul>
+<li>Observed Postrera CV: ~23%</li>
+<li>SEAS5 Postrera CV: ~15% (reasonable)</li>
+<li>INSIVUMEH Postrera CV: <strong>3-7%</strong> - forecasts barely varied from climatology</li>
+</ul>
+<p>This explained everything. INSIVUMEH Postrera forecasts weren’t failing skill tests because Postrera is hard to predict - they were failing because <strong>the forecasts show much less interannual variability than the observed rainfall</strong>. The apparent skill differences between leadtimes were artifacts of forecasts that vary little from year to year.</p>
+</section>
+</section>
+<section id="final-recommendations" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="final-recommendations"><span class="header-section-number">1.3</span> Final Recommendations</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 19%">
-<col style="width: 24%">
+<col style="width: 18%">
 <col style="width: 29%">
-<col style="width: 26%">
+<col style="width: 27%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Season</th>
-<th>Forecast</th>
+<th>Recommended</th>
 <th>Confidence</th>
 <th>Rationale</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><strong>Primera</strong></td>
-<td>SEAS5</td>
+<td>Primera</td>
+<td><strong>SEAS5</strong></td>
 <td>High</td>
 <td>Clear skill advantage across all metrics and observation sources</td>
 </tr>
 <tr class="even">
-<td><strong>Postrera</strong></td>
-<td>SEAS5</td>
+<td>Postrera</td>
+<td><strong>SEAS5</strong></td>
 <td>Low</td>
-<td>All sources show low “skill.” However, INSIVUMEH forecasts show no internal consistency and barely vary from climatology</td>
+<td>SEAS5 shows better internal consistency, though skill and consistency remains limited for all models</td>
 </tr>
 </tbody>
 </table>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="true" aria-label="Toggle callout">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-<span class="screen-reader-only">Note</span>Abstract
-</div>
-<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
-</div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse show">
-<div class="callout-body-container callout-body">
-<p>This evaluation informs forecast selection for anticipatory action triggers in Chiquimula, Guatemala (2026). We compared ECMWF SEAS5 and INSIVUMEH (CFSv2, CCSM4, CESM1) seasonal precipitation forecasts using 25 years (2000–2024) of hindcasts validated against three independent observation sources (ERA5, ENACTS, CHIRPS). For Primera (May–August), SEAS5 is recommended based on demonstrated skill: ROC-AUC = 0.87–0.88 at 1–2 month lead times, consistent across all observation sources. For Postrera (September–November), SEAS5 is recommended by elimination: INSIVUMEH forecasts exhibit near-zero inter-leadtime correlations (r = -0.1 to 0.2) and coefficient of variation 3–7% compared to 23% in observations, indicating negligible predictive signal. The counterintuitive pattern of higher apparent skill at longer lead times (LT3 &gt; LT1) for INSIVUMEH Postrera is attributable to sampling noise. No model demonstrates reliable Postrera skill (AUC consistently above 0.7), suggesting monitoring-based triggers may be more appropriate than forecast-only approaches for this season.</p>
-</div>
-</div>
-</div>
-
-
+<section id="the-postrera-problem" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1" class="anchored" data-anchor-id="the-postrera-problem"><span class="header-section-number">1.3.1</span> The Postrera Problem</h3>
+<p>For Postrera, the recommendation is SEAS5 by elimination rather than demonstrated skill. INSIVUMEH Postrera forecasts show <strong>much lower interannual variability than observed rainfall</strong> and weak consistency between leadtimes—suggesting limited predictive signal for this season.</p>
+<p>SEAS5 at least <em>behaves</em> like a forecast: different leadtimes agree with each other, and it shows realistic interannual variability. Whether this translates to operational skill for Postrera remains uncertain.</p>
+<p><strong>Operational implications for Postrera</strong>: - Consider monitoring-based triggers (observed rainfall deficits, VHI) rather than relying solely on seasonal forecasts - Acknowledge limited predictability in operational communications - Supplementing forecast-based triggers with monitoring-based indicators (e.g., observed rainfall deficits or VHI during early Postrera)</p>
 </section>
+</section>
+<section id="book-structure" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="book-structure"><span class="header-section-number">1.4</span> Book Structure</h2>
+<p>The chapters document each step of this journey:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 31%">
+<col style="width: 40%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Chapter</th>
+<th>Question</th>
+<th>Key Finding</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1. Binary Metrics</td>
+<td>Do forecasts beat random guessing?</td>
+<td>Primera yes, Postrera inconclusive</td>
+</tr>
+<tr class="even">
+<td>2. Continuous Metrics</td>
+<td>Does skill hold with different metrics?</td>
+<td>Primera confirmed, Postrera ambiguous</td>
+</tr>
+<tr class="odd">
+<td>3. CHIRPS Tie-Breaker</td>
+<td>Is skill robust across observation sources?</td>
+<td>Primera robust, Postrera shows suspicious patterns</td>
+</tr>
+<tr class="even">
+<td>4. Temporal Drift</td>
+<td>Are trends affecting skill estimates?</td>
+<td>Modest drift, but split-half instability for Postrera</td>
+</tr>
+<tr class="odd">
+<td>5. Leadtime Diagnostics</td>
+<td>Are forecasts internally consistent?</td>
+<td>INSIVUMEH Postrera forecasts lack signal</td>
+</tr>
+</tbody>
+</table>
+
+
 </section>
 
 </main> <!-- /main -->
@@ -741,10 +811,13 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="./index.html" class="pagination-link" aria-label="Key Findings">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Key Findings</span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./intro.html" class="pagination-link" aria-label="Intro">
-        <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Intro</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./01_binary_metrics.html" class="pagination-link" aria-label="Binary Classification Metrics">
+        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Binary Classification Metrics</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
