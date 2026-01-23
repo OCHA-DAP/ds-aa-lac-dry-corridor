@@ -109,13 +109,9 @@ calc_f1 <- function(fcst_drought, obs_drought) {
 
 ```
 
-# Yardstick Approach (Simplified Metrics)
-
-This section provides clean wrapper functions using `yardstick` for classification metrics.
-
 ```{r}
 #| label: yardstick-functions
-#| code-summary: "Yardstick wrapper functions"
+#| include: false
 
 library(yardstick)
 
@@ -196,7 +192,7 @@ ys_classify_and_score <- function(df_fcst, df_obs, include_lt0 = FALSE) {
 
 ```{r}
 #| label: yardstick-run
-#| code-summary: "Run yardstick analysis"
+#| include: false
 
 # ENACTS-only comparison (all models vs ENACTS)
 df_skill_enacts <- bind_rows(
@@ -221,19 +217,6 @@ df_classified_native <- bind_rows(
   ys_classify(df_insiv, df_enacts, include_lt0 = FALSE) |> mutate(obs_source = "ENACTS")
 )
 ```
-
-```{r}
-#| label: yardstick-table
-#| code-summary: "Display yardstick results"
-
-df_skill_enacts |>
-  mutate(window = factor(window, levels = c("primera", "postrera"))) |>
-  arrange(window, leadtime, desc(f1)) |>
-  mutate(across(c(f1, precision, recall), ~scales::percent(.x, accuracy = 1))) |>
-  knitr::kable(caption = "F1 Scores - All models vs ENACTS")
-```
-
-
 
 # Introduction
 
@@ -1589,75 +1572,6 @@ df_error_analysis |>
   )
 ```
 
-### Model Agreement Analysis
-
-When models agree, is skill higher? This could support an ensemble trigger.
-```{r}
-#| label: agreement-analysis
-#| code-summary: "Check if model agreement improves skill"
-
-# Get classified data and check agreement
-df_agreement <- df_classified_enacts |>
-  mutate(
-    fcst_drought = estimate == "drought",
-    obs_drought = truth == "drought"
-  ) |>
-  select(year, window, leadtime, forecast_source, fcst_drought, obs_drought) |>
-  pivot_wider(names_from = forecast_source, values_from = fcst_drought) |>
-  mutate(
-    n_models_predict_drought = rowSums(across(c(SEAS5, starts_with("INSIVUMEH")), ~.x), na.rm = TRUE),
-    any_predict = n_models_predict_drought >= 1,
-    majority_predict = n_models_predict_drought >= 2,
-    all_predict = n_models_predict_drought == 4
-  )
-
-# Calculate skill when models agree
-calc_agreement_skill <- function(df, fcst_col, name) {
-  df |>
-    filter(!is.na(!!sym(fcst_col))) |>
-    group_by(window, leadtime) |>
-    summarise(
-      n = n(),
-      TP = sum(!!sym(fcst_col) & obs_drought),
-      FP = sum(!!sym(fcst_col) & !obs_drought),
-      FN = sum(!.data[[fcst_col]] & obs_drought),
-      TN = sum(!.data[[fcst_col]] & !obs_drought),
-      .groups = "drop"
-    ) |>
-    mutate(
-      precision = ifelse(TP + FP > 0, TP / (TP + FP), NA),
-      recall = ifelse(TP + FN > 0, TP / (TP + FN), NA),
-      f1 = ifelse(TP > 0, 2 * precision * recall / (precision + recall), 0),
-      strategy = name
-    )
-}
-
-df_agreement_skill <- bind_rows(
-  calc_agreement_skill(df_agreement, "any_predict", "Any model (≥1)"),
-  calc_agreement_skill(df_agreement, "majority_predict", "Majority (≥2)"),
-  calc_agreement_skill(df_agreement, "all_predict", "All models (4)")
-)
-```
-
-```{r}
-#| label: agreement-table
-
-df_agreement_skill |>
-  filter(leadtime %in% c(1, 2)) |>  # Focus on common leadtimes
-  mutate(
-    window = factor(window, levels = c("primera", "postrera")),
-    f1_fmt = scales::percent(f1, accuracy = 1),
-    precision_fmt = scales::percent(precision, accuracy = 1),
-    recall_fmt = scales::percent(recall, accuracy = 1)
-  ) |>
-  select(window, leadtime, strategy, f1_fmt, precision_fmt, recall_fmt) |>
-  arrange(window, leadtime, strategy) |>
-  knitr::kable(
-    col.names = c("Season", "LT", "Agreement Strategy", "F1", "Precision", "Recall"),
-    caption = "Does requiring model agreement improve skill?"
-  )
-```
-
 # Summary
 
 ```{r}
@@ -1712,154 +1626,3 @@ postrera_avg_f1 <- best_postrera$avg_f1
 #    - Accepting higher uncertainty in trigger design
 ```
 
-# Next Steps
-
-## Exploring Larger Spatial Scales
-
-Both SEAS5 and INSIVUMEH may perform poorly at the admin-1 (Chiquimula) scale because seasonal forecasts typically have better skill at larger spatial scales. HydroBASINS provides standardized watershed boundaries at multiple levels that could serve as alternative analysis units.
-
-```{r}
-#| label: load-hybas
-#| code-summary: "Load HydroBASINS and Chiquimula boundary"
-
-library(sf)
-
-# Disable s2 for this section (HydroBASINS has some geometry issues with s2)
-sf_use_s2(FALSE)
-
-# Load Guatemala boundaries
-sf_gtm_adm0 <- cumulus::download_fieldmaps_sf(iso3 = "GTM", layer = "gtm_adm0")$gtm_adm0
-sf_gtm_adm1 <- cumulus::download_fieldmaps_sf(iso3 = "GTM", layer = "gtm_adm1")$gtm_adm1 |>
- janitor::clean_names()
-sf_chiquimula <- sf_gtm_adm1 |> filter(adm1_pcode == "GT20")
-
-# Path to HydroBASINS data
-hybas_dir <- "../../data/hybas_na_lev01-12_v1c"
-
-# Load levels 5 and 6
-sf_hybas_5 <- st_read(file.path(hybas_dir, "hybas_na_lev05_v1c.shp"), quiet = TRUE)
-sf_hybas_6 <- st_read(file.path(hybas_dir, "hybas_na_lev06_v1c.shp"), quiet = TRUE)
-
-# Ensure same CRS
-sf_chiquimula <- st_transform(sf_chiquimula, st_crs(sf_hybas_5))
-
-# Get bounding box of Chiquimula with buffer for context
-chiq_bbox <- st_bbox(sf_chiquimula)
-bbox_buffer <- 1  # degrees
-
-# Create bbox polygon for filtering
-bbox_poly <- st_as_sfc(st_bbox(c(
-  xmin = as.numeric(chiq_bbox["xmin"]) - bbox_buffer,
-  xmax = as.numeric(chiq_bbox["xmax"]) + bbox_buffer,
-  ymin = as.numeric(chiq_bbox["ymin"]) - bbox_buffer,
-  ymax = as.numeric(chiq_bbox["ymax"]) + bbox_buffer
-), crs = st_crs(sf_hybas_5)))
-
-# Filter basins to region around Chiquimula using intersection
-sf_hybas_5_region <- sf_hybas_5[st_intersects(sf_hybas_5, bbox_poly, sparse = FALSE)[,1], ]
-sf_hybas_6_region <- sf_hybas_6[st_intersects(sf_hybas_6, bbox_poly, sparse = FALSE)[,1], ]
-
-# Find basins that intersect Chiquimula
-sf_hybas_5_intersect <- sf_hybas_5_region[st_intersects(sf_hybas_5_region, sf_chiquimula, sparse = FALSE)[,1], ]
-sf_hybas_6_intersect <- sf_hybas_6_region[st_intersects(sf_hybas_6_region, sf_chiquimula, sparse = FALSE)[,1], ]
-
-cat("Level 5 basins intersecting Chiquimula:", nrow(sf_hybas_5_intersect), "\n")
-cat("Level 6 basins intersecting Chiquimula:", nrow(sf_hybas_6_intersect), "\n")
-```
-
-```{r}
-#| label: basin-comparison-map
-#| fig-height: 8
-#| fig-width: 12
-#| code-summary: "Map comparing basin levels 5 and 6 over Chiquimula"
-
-library(patchwork)
-
-# Calculate areas for labels
-sf_hybas_5_intersect <- sf_hybas_5_intersect |>
-  mutate(area_km2 = as.numeric(st_area(geometry)) / 1e6)
-
-sf_hybas_6_intersect <- sf_hybas_6_intersect |>
-  mutate(area_km2 = as.numeric(st_area(geometry)) / 1e6)
-
-chiq_area <- as.numeric(st_area(sf_chiquimula)) / 1e6
-
-# Transform admin0 to match CRS
-sf_gtm_adm0_t <- st_transform(sf_gtm_adm0, st_crs(sf_hybas_5))
-
-# Create base plot function
-create_basin_map <- function(sf_basins, level, sf_admin, sf_country) {
-
-  # Get centroids for labels
-  basin_centroids <- st_centroid(sf_basins) |>
-    mutate(
-      x = st_coordinates(geometry)[,1],
-      y = st_coordinates(geometry)[,2]
-    )
-
-  ggplot() +
-    geom_sf(data = sf_country, fill = "grey95", color = "grey50", linewidth = 0.3) +
-    geom_sf(data = sf_basins, aes(fill = area_km2), color = "darkblue", linewidth = 0.8) +
-    geom_sf(data = sf_admin, fill = NA, color = "red", linewidth = 1.2) +
-    geom_sf_text(
-      data = basin_centroids,
-      aes(label = paste0(round(area_km2), " km²")),
-      size = 3, fontface = "bold", color = "white"
-    ) +
-    scale_fill_viridis_c(option = "mako", direction = -1, name = "Area (km²)") +
-    labs(
-      title = paste0("HydroBASINS Level ", level),
-      subtitle = paste0(nrow(sf_basins), " basin(s) intersecting Chiquimula"),
-      caption = paste0("Red outline = Chiquimula (", round(chiq_area), " km²)")
-    ) +
-    theme_minimal() +
-    theme(
-      legend.position = "bottom",
-      plot.caption = element_text(color = "red", face = "bold")
-    )
-}
-
-p_lev5 <- create_basin_map(sf_hybas_5_intersect, 5, sf_chiquimula, sf_gtm_adm0_t)
-p_lev6 <- create_basin_map(sf_hybas_6_intersect, 6, sf_chiquimula, sf_gtm_adm0_t)
-
-p_lev5 + p_lev6 +
-  plot_annotation(
-    title = "HydroBASINS Comparison: Potential Analysis Units",
-    subtitle = "Comparing basin scales that could provide better forecast skill than admin-1 boundaries"
-  )
-```
-
-```{r}
-#| label: basin-summary-table
-
-# Summary comparison
-tibble(
-  `Spatial Unit` = c(
-    "Chiquimula (Admin-1)",
-    paste0("Level 5 (", nrow(sf_hybas_5_intersect), " basin", ifelse(nrow(sf_hybas_5_intersect) > 1, "s", ""), ")"),
-    paste0("Level 6 (", nrow(sf_hybas_6_intersect), " basin", ifelse(nrow(sf_hybas_6_intersect) > 1, "s", ""), ")")
-  ),
-  `Total Area (km²)` = c(
-    round(chiq_area),
-    round(sum(sf_hybas_5_intersect$area_km2)),
-    round(sum(sf_hybas_6_intersect$area_km2))
-  ),
-  `Mean Basin Area (km²)` = c(
-    round(chiq_area),
-    round(mean(sf_hybas_5_intersect$area_km2)),
-    round(mean(sf_hybas_6_intersect$area_km2))
-  ),
-  Notes = c(
-    "Current analysis unit",
-    "Larger basins - may have better forecast skill",
-    "Medium basins - balance of skill and resolution"
-  )
-) |>
-  knitr::kable(caption = "Comparison of spatial units for forecast skill assessment")
-```
-
-### Interpretation
-
-- **Level 5** provides larger drainage basins that may better match the spatial resolution at which seasonal forecasts have skill
-- **Level 6** offers a middle ground between admin boundaries and larger regional basins
-- Next step: Re-run the skill assessment using basin-aggregated forecasts and observations to test if skill improves at larger scales

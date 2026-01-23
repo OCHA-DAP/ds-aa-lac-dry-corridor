@@ -9,12 +9,20 @@ book:
   date: today
   chapters:
     - index.qmd
+    - index_v2.qmd
     - 01_binary_metrics.qmd
     - 02_continuous_metrics.qmd
+    - 03_chirps_tiebreaker.qmd
+    - 04_forecast_drift.qmd
+    - 05_inter_lt_correlation.qmd
+  appendices:
+    - appendix_technical_notes.qmd
 
 format:
   html:
+    include-before-body: password.html
     theme: cosmo
+    css: custom.css
     toc: true
     toc-depth: 3
     code-fold: true

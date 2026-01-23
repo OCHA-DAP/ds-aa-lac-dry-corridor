@@ -1,0 +1,114 @@
+# Intro (2) {#sec-journey}
+
+## The Decision/Question
+
+Which seasonal forecast should Guatemala's anticipatory action framework use for drought prediction in Chiquimula? Two options are available:
+
+- **SEAS5**: ECMWF's global seasonal forecasting system
+- **INSIVUMEH**: Regional forecasts from Guatemala's national meteorological service (CFSv2, CCSM4, and CESM1 models)
+
+This book documents the reserch to answer this question for two agricultural seasons:
+
+| Season | Months | Description |
+|--------|--------|-------------|
+| **Primera** | May-August (MJJA) | First maize planting |
+| **Postrera** | September-November (SON) | Second maize planting |
+
+## Research Progression
+
+### Step 1: Start with Standard Metrics
+
+The analysis began with **binary classification metrics** (Chapter 1) - the traditional approach where forecasts are scored as hits or misses against a drought threshold (return period of 4 years).
+
+**Primera results were encouraging**: SEAS5 showed F1 scores around 50-60%, significantly better than random guessing. Several model-leadtime combinations beat the 90th percentile of bootstrap random simulations.
+
+**Postrera was troubling**: No model showed statistically significant skill. F1 scores hovered near random guessing levels. Different models won at different leadtimes with no clear pattern.
+
+*Remaining question*: Are the Postrera results genuinely inconclusive, or are binary metrics too noisy with only ~6 drought events in 25 years?
+
+### Step 2: Try Continuous Metrics
+
+Chapter 2 introduced **continuous metrics** that don't require threshold choices: Spearman correlation, RMSE, and ROC-AUC. These provide partial credit for near-misses and are more stable with small samples.
+
+**Primera confirmation**: SEAS5 dominated across all continuous metrics. AUC values around 0.88 - meaning 88% probability of correctly ranking a drought year below a non-drought year. The signal was real.
+
+**Postrera remained ambiguous**: Different metrics favored different models:
+
+- Spearman: SEAS5 best at LT1
+- RMSE: CCSM4 best
+- AUC: SEAS5 at LT1, CCSM4 at LT2
+
+No model showed AUC consistently above 0.7 (general threshold for "acceptable" discrimination skill).
+
+*Remaining question*: Are these results sensitive to which observation dataset we validate against? Would a different "ground truth" give the same answer?
+
+### Step 3: Bring in a Third Opinion
+
+Chapter 3 introduced **CHIRPS** as an independent observation source alongside ERA5 and ENACTS. If forecasts perform well against multiple observation sources, the skill assessment is more credible.
+
+**Primera verdict**: Skill was robust across all three observation sources. SEAS5 won most comparisons.
+
+**Postrera raised a red flag**: CCSM4 showed *better* skill at longer leadtimes (LT2-3) than shorter ones (LT1). This is backwards - forecast skill should degrade with increasing leadtime, not improve. The pattern suggested we might be seeing noise rather than genuine skill.
+
+*Remaining question*: What's causing the inverted skill-leadtime relationship for Postrera?
+
+### Step 4: Check for Drift
+
+Chapter 4 investigated whether **temporal trends** in forecasts or observations could explain the strange patterns.
+
+**Findings**:
+
+- ENACTS showed a drying trend for Primera, but other sources showed similar patterns
+- Forecast error drift was modest (~5-8 mm/year)
+- **Split-half stability** was the key finding: Primera correlations were stable between 2000-2012 and 2013-2024, but Postrera correlations were wildly different between periods
+
+The drift analysis didn't explain the inverted skill pattern.
+
+### Step 5: The Decider - Forecast Internal Consistency
+
+Chapter 5 applied **internal consistency diagnostics** - asking not "do forecasts predict observations?" but "do forecasts behave like forecasts?"
+
+**Inter-leadtime correlations**: For a well-behaved forecast, LT1 and LT2 predictions for the same target season should correlate - they're trying to predict the same thing.
+
+- SEAS5: LT1-LT2 correlations of 0.6-0.9 (expected)
+- INSIVUMEH Primera: Moderate correlations of 0.3-0.7 (acceptable)
+- INSIVUMEH Postrera: **Near-zero or negative correlations** - when LT1 predicts wet, LT2 might predict dry for the same season
+
+**Coefficient of Variation (CV)**: Forecasts should show interannual variability approaching observed variability.
+
+- Observed Postrera CV: ~23%
+- SEAS5 Postrera CV: ~15% (reasonable)
+- INSIVUMEH Postrera CV: **3-7%** - forecasts barely varied from climatology
+
+This explained everything. INSIVUMEH Postrera forecasts weren't failing skill tests because Postrera is hard to predict - they were failing because **the forecasts contained almost no signal**. The apparent skill at some leadtimes was random noise from forecasts that were essentially flat lines.
+
+## Final Recommendations
+
+| Season | Recommended | Confidence | Rationale |
+|--------|-------------|------------|-----------|
+| Primera | **SEAS5** | High | Clear skill advantage across all metrics and observation sources |
+| Postrera | **SEAS5** | Low | Not because SEAS5 has strong skill, but because INSIVUMEH forecasts are unreliable |
+
+### The Postrera Problem
+
+For Postrera, the recommendation is SEAS5 by elimination rather than demonstrated skill. INSIVUMEH Postrera forecasts are **"noise dressed up as predictions"** - they show no internal consistency between leadtimes and barely vary from climatology.
+
+SEAS5 at least *behaves* like a forecast: different leadtimes agree with each other, and it shows realistic interannual variability. Whether this translates to operational skill for Postrera remains uncertain.
+
+**Operational implications for Postrera**:
+- Consider monitoring-based triggers (observed rainfall deficits, VHI) rather than relying solely on seasonal forecasts
+- Acknowledge limited predictability in operational communications
+- Weight climatological probabilities more heavily than dynamic forecasts
+
+## Book Structure
+
+The chapters document each step of this journey:
+
+| Chapter | Question | Key Finding |
+|---------|----------|-------------|
+| 1. Binary Metrics | Do forecasts beat random guessing? | Primera yes, Postrera inconclusive |
+| 2. Continuous Metrics | Does skill hold with different metrics? | Primera confirmed, Postrera ambiguous |
+| 3. CHIRPS Tie-Breaker | Is skill robust across observation sources? | Primera robust, Postrera shows suspicious patterns |
+| 4. Temporal Drift | Are trends affecting skill estimates? | Modest drift, but split-half instability for Postrera |
+| 5. Leadtime Diagnostics | Are forecasts internally consistent? | INSIVUMEH Postrera forecasts lack signal |
+
