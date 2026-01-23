@@ -1,0 +1,204 @@
+---
+title: "INSIVUMEH Special Forecast Data QC"
+format: html
+---
+
+## Overview
+
+Quality check for INSIVUMEH historical forecast files (received 2026-01-12). Identifies data issues to communicate to the provider.
+
+```{r}
+#| label: setup
+#| message: false
+
+library(tidyverse)
+library(ncmeta)
+library(lubridate)
+```
+
+```{r}
+#| label: config
+
+forecast_dir <- file.path(
+  Sys.getenv("AA_DATA_DIR_NEW"),
+  "private/raw/lac/INSIVUMEH/special_forecast_historical_20260112",
+  "pronosticos historicos"
+)
+
+all_files <- list.files(forecast_dir, pattern = "\\.nc$", recursive = TRUE, full.names = TRUE)
+prcp_files <- all_files[str_detect(all_files, "_PRCP/")]
+
+cat("Total PRCP files:", length(prcp_files), "\n")
+```
+
+## Extract Metadata
+
+```{r}
+#| label: extract-metadata
+
+extract_nc_metadata <- function(fp) {
+  valid_time_meta <- nc_att(fp, "T", "units")$value[[1]]
+  start_time_meta <- nc_att(fp, "S", "units")$value[[1]]
+
+  valid_date <- as_date(str_extract(valid_time_meta, "\\d{4}-\\d{2}-\\d{2}"))
+  pub_date <- as_date(str_extract(start_time_meta, "\\d{4}-\\d{2}-\\d{2}"))
+  lt <- interval(pub_date, valid_date) %/% months(1)
+  model <- str_extract(fp, "(CCSM4|CESM1|CFSv2)")
+
+  fname <- basename(fp)
+  lt_from_fname <- str_extract(fname, "(?<=_L)\\d") |> as.integer()
+  target_month_fname <- str_extract(fname, "(?<=forecast_)[A-Za-z]+(?=_)")
+  pub_month_fname <- str_extract(fname, "(?<=_)[A-Za-z]+(?=\\d{4}_L)")
+
+
+  tibble(
+    filepath = fp,
+    filename = fname,
+    model = model,
+    pub_date_nc = pub_date,
+    valid_date_nc = valid_date,
+    lt_nc = lt,
+    lt_fname = lt_from_fname,
+    target_month_fname = target_month_fname,
+    pub_month_fname = pub_month_fname,
+    bname = paste0(pub_date, ".lt_", lt, ".", model)
+  )
+}
+
+df_all_meta <- map_dfr(prcp_files, extract_nc_metadata, .progress = TRUE)
+
+cat("Total files:", nrow(df_all_meta), "\n")
+cat("Unique forecasts (by nc metadata):", n_distinct(df_all_meta$bname), "\n")
+```
+
+## Issue 1: Leadtime Mismatch
+
+Files where the leadtime in the filename doesn't match the NC metadata.
+
+```{r}
+#| label: lt-mismatch
+
+df_lt_mismatch <- df_all_meta |>
+  filter(lt_nc != lt_fname)
+
+cat("Files with LT mismatch:", nrow(df_lt_mismatch), "\n\n")
+
+if (nrow(df_lt_mismatch) > 0) {
+  df_lt_mismatch |>
+    mutate(
+      issue = paste0(
+        "Filename says LT", lt_fname, " (", target_month_fname, "), ",
+        "but file contains LT", lt_nc
+      )
+    ) |>
+    select(filename, model, pub_date_nc, issue) |>
+    knitr::kable()
+}
+```
+
+## Issue 2: Duplicate Data
+
+Files containing the same forecast (same pub_date + leadtime + model).
+
+```{r}
+#| label: duplicates
+
+df_dupes <- df_all_meta |>
+  group_by(bname) |>
+  filter(n() > 1) |>
+  arrange(bname) |>
+  ungroup()
+
+cat("Files with duplicate content:", nrow(df_dupes), "\n")
+cat("Unique duplicate forecasts:", n_distinct(df_dupes$bname), "\n\n")
+
+if (nrow(df_dupes) > 0) {
+  df_dupes |>
+    select(bname, filename, lt_nc, lt_fname) |>
+    knitr::kable()
+}
+```
+
+## Issue 3: Missing Data
+
+Check if the data promised by mismatched filenames exists elsewhere.
+```{r}
+#| label: missing-check
+
+if (nrow(df_lt_mismatch) > 0) {
+  missing_check <- map_dfr(seq_len(nrow(df_lt_mismatch)), \(i) {
+    row <- df_lt_mismatch[i, ]
+    expected_lt <- row$lt_fname
+    pub_yr <- year(row$pub_date_nc)
+    pub_mo <- month(row$pub_date_nc)
+
+    matches <- df_all_meta |>
+      filter(
+        year(pub_date_nc) == pub_yr,
+        month(pub_date_nc) == pub_mo,
+        lt_nc == expected_lt,
+        model == row$model
+      )
+
+    tibble(
+      model = row$model,
+      pub_date = row$pub_date_nc,
+      expected_lt = expected_lt,
+      expected_month = row$target_month_fname,
+      found_elsewhere = nrow(matches) > 0,
+      status = if (nrow(matches) > 0) "OK" else "MISSING"
+    )
+  })
+
+  missing_check |> knitr::kable()
+
+  truly_missing <- missing_check |> filter(status == "MISSING")
+  cat("\nConfirmed missing forecasts:", nrow(truly_missing), "\n")
+} else {
+  truly_missing <- tibble()
+  cat("No LT mismatches, so no missing data to check.\n")
+}
+```
+
+## Summary
+
+```{r}
+#| label: summary
+
+cat("=" |> rep(60) |> paste(collapse = ""), "\n")
+cat("DATA ISSUES SUMMARY\n")
+cat("=" |> rep(60) |> paste(collapse = ""), "\n\n")
+
+cat("Dataset: INSIVUMEH historical special forecasts (received 2026-01-12)\n")
+cat("Files examined:", nrow(df_all_meta), "precipitation forecast files\n\n")
+
+cat("1. LT mismatch (filename vs metadata):", nrow(df_lt_mismatch), "file(s)\n")
+cat("2. Duplicate forecasts:", n_distinct(df_dupes$bname), "\n")
+cat("3. Confirmed missing forecasts:", nrow(truly_missing), "\n\n")
+
+if (nrow(df_lt_mismatch) > 0) {
+  cat("DETAILS - Mismatched files:\n")
+  for (i in seq_len(nrow(df_lt_mismatch))) {
+    row <- df_lt_mismatch[i, ]
+    cat("  -", row$filename, "\n")
+    cat("    Filename says LT", row$lt_fname, "(", row$target_month_fname, "),",
+        "but contains LT", row$lt_nc, "\n")
+  }
+  cat("\n")
+}
+
+if (nrow(truly_missing) > 0) {
+  cat("DETAILS - Missing forecasts:\n")
+  for (i in seq_len(nrow(truly_missing))) {
+    row <- truly_missing[i, ]
+    cat("  -", row$model, format(row$pub_date, "%Y-%m"),
+        "LT", row$expected_lt, "(", row$expected_month, ")\n")
+  }
+  cat("\n")
+}
+
+cat("IMPACT:\n")
+cat("- Missing data means we cannot produce forecasts for those month/LT combinations\n")
+cat("- Duplicates are handled by keeping one file per unique forecast\n")
+cat("- All other data verified and used correctly\n")
+```
