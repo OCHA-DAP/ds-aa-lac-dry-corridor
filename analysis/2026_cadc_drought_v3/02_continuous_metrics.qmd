@@ -4,6 +4,8 @@
 
 The binary metrics in @sec-binary (F1 score, precision, recall) provide one lens on forecast skill, but they can be noisy - especially with only ~25 years of data and ~6 drought events. A single misclassified year can swing F1 scores dramatically.
 
+Consider an analogy: judging a temperature forecast as "wrong" for predicting 33°F when it was actually 31°F. The forecast told you to expect cold, even if it missed the freezing threshold. Binary metrics don't distinguish between a near-miss and being completely off.
+
 This chapter introduces **continuous metrics** that provide a more nuanced picture:
 
 - **Correlation metrics** measure how well forecasts track year-to-year variability

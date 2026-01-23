@@ -9,7 +9,7 @@ book:
   date: today
   chapters:
     - index.qmd
-    - index_v2.qmd
+    - intro.qmd
     - 01_binary_metrics.qmd
     - 02_continuous_metrics.qmd
     - 03_chirps_tiebreaker.qmd

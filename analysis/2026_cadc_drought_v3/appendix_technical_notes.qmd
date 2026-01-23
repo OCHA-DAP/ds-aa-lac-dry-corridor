@@ -36,9 +36,11 @@ Both SEAS5 and INSIVUMEH may perform poorly at the admin-1 (Chiquimula) scale be
 ```{r}
 #| label: load-hybas
 #| code-summary: "Load HydroBASINS and Chiquimula boundary"
-#| eval: false
+#| eval: true
 
+library(tidyverse)
 library(sf)
+library(cumulus)
 
 # Disable s2 for this section (HydroBASINS has some geometry issues with s2)
 sf_use_s2(FALSE)
@@ -88,7 +90,7 @@ cat("Level 6 basins intersecting Chiquimula:", nrow(sf_hybas_6_intersect), "\n")
 #| fig-height: 8
 #| fig-width: 12
 #| code-summary: "Map comparing basin levels 5 and 6 over Chiquimula"
-#| eval: false
+#| eval: true
 
 library(patchwork)
 
@@ -148,7 +150,7 @@ p_lev5 + p_lev6 +
 
 ```{r}
 #| label: basin-summary-table
-#| eval: false
+#| eval: true
 
 # Summary comparison
 tibble(

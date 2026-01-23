@@ -1,4 +1,4 @@
-# Intro (2) {#sec-journey}
+# Intro {#sec-journey}
 
 ## The Decision/Question
 
@@ -80,35 +80,35 @@ Chapter 5 applied **internal consistency diagnostics** - asking not "do forecast
 - SEAS5 Postrera CV: ~15% (reasonable)
 - INSIVUMEH Postrera CV: **3-7%** - forecasts barely varied from climatology
 
-This explained everything. INSIVUMEH Postrera forecasts weren't failing skill tests because Postrera is hard to predict - they were failing because **the forecasts contained almost no signal**. The apparent skill at some leadtimes was random noise from forecasts that were essentially flat lines.
+This explained everything. INSIVUMEH Postrera forecasts weren't failing skill tests because Postrera is hard to predict - they were failing because **the forecasts show much less interannual variability than the observed rainfall**. The apparent skill differences between leadtimes were artifacts of forecasts that vary little from year to year.
 
 ## Final Recommendations
 
 | Season | Recommended | Confidence | Rationale |
 |--------|-------------|------------|-----------|
 | Primera | **SEAS5** | High | Clear skill advantage across all metrics and observation sources |
-| Postrera | **SEAS5** | Low | Not because SEAS5 has strong skill, but because INSIVUMEH forecasts are unreliable |
+| Postrera | **SEAS5** | Low | SEAS5 shows better internal consistency, though skill and consistency remains limited for all models |
 
 ### The Postrera Problem
 
-For Postrera, the recommendation is SEAS5 by elimination rather than demonstrated skill. INSIVUMEH Postrera forecasts are **"noise dressed up as predictions"** - they show no internal consistency between leadtimes and barely vary from climatology.
+For Postrera, the recommendation is SEAS5 by elimination rather than demonstrated skill. INSIVUMEH Postrera forecasts show **much lower interannual variability than observed rainfall** and weak consistency between leadtimes—suggesting limited predictive signal for this season.
 
 SEAS5 at least *behaves* like a forecast: different leadtimes agree with each other, and it shows realistic interannual variability. Whether this translates to operational skill for Postrera remains uncertain.
 
 **Operational implications for Postrera**:
 - Consider monitoring-based triggers (observed rainfall deficits, VHI) rather than relying solely on seasonal forecasts
 - Acknowledge limited predictability in operational communications
-- Weight climatological probabilities more heavily than dynamic forecasts
+- Supplementing forecast-based triggers with monitoring-based indicators (e.g., observed rainfall deficits or VHI during early Postrera)
 
 ## Book Structure
 
 The chapters document each step of this journey:
 
-| Chapter | Question | Key Finding |
-|---------|----------|-------------|
-| 1. Binary Metrics | Do forecasts beat random guessing? | Primera yes, Postrera inconclusive |
-| 2. Continuous Metrics | Does skill hold with different metrics? | Primera confirmed, Postrera ambiguous |
-| 3. CHIRPS Tie-Breaker | Is skill robust across observation sources? | Primera robust, Postrera shows suspicious patterns |
-| 4. Temporal Drift | Are trends affecting skill estimates? | Modest drift, but split-half instability for Postrera |
-| 5. Leadtime Diagnostics | Are forecasts internally consistent? | INSIVUMEH Postrera forecasts lack signal |
+| Step | Question | Finding |
+|------|----------|---------|
+| 1. Binary Metrics | Do forecasts beat random guessing? | Primera yes (SEAS5 wins), Postrera inconclusive |
+| 2. Continuous Metrics | Does skill hold with different metrics? | Primera confirmed (SEAS5 wins), Postrera ambiguous |
+| 3. CHIRPS Tie-Breaker | Is skill robust across observation sources? | Primera robust, Postrera still ambiguous |
+| 4. Temporal Drift | Are trends/drift affecting skill estimates? | Mild drift, unlikely to explain poor Postrera skill |
+| 5. Internal Consistency | Are forecasts internally coherent? | INSIVUMEH Postrera forecasts lack signal |
 

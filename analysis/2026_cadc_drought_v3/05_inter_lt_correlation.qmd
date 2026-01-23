@@ -24,6 +24,8 @@ box::use(../../R/seas5)
 
 BASELINE_START <- 2000
 BASELINE_END <- 2024
+PRIMERA_MONTHS <- 5:8
+POSTRERA_MONTHS <- 9:11
 ```
 
 ```{r}
@@ -150,7 +152,7 @@ df_seas5_corr |>
     title = "SEAS5: Inter-Leadtime Correlations",
     subtitle = "Adjacent leadtimes should correlate strongly",
     x = NULL, y = NULL, fill = "Correlation",
-    caption = "Omitting leadtime 0 as available from INSVIUMEH provided models"
+    caption = "Omitting leadtime 0 as it is not available from INSVIUMEH provided models"
   ) +
   theme(legend.position = "right",plot.caption = element_text(hjust= 0,vjust=-1))
 ```
@@ -247,22 +249,26 @@ cv_all <- bind_rows(
 
 cv_all |>
   mutate(
-    model = factor(model, levels = c("ENACTS (Observed)", "SEAS5", "CFSv2", "CCSM4", "CESM1"))
+    model = factor(model, levels = c("ENACTS (Observed)", "SEAS5", "CFSv2", "CCSM4", "CESM1")),
+    window = fct_relevel(str_to_title(window), "Primera", "Postrera")
   ) |>
   ggplot(aes(x = model, y = cv_pct, fill = type)) +
   geom_col(alpha = 0.8) +
   geom_hline(
-    data = obs_cv,
+    data = obs_cv |> mutate(window = fct_relevel(str_to_title(window), "Primera", "Postrera")),
     aes(yintercept = cv_pct),
     linetype = "dashed", color = "grey30"
   ) +
-  facet_wrap(~str_to_title(window)) +
+  facet_wrap(~window) +
   labs(
     title = "Coefficient of Variation: Forecasts vs Observations",
     subtitle = "Dashed line = observed variability. Forecasts should approach this level.",
     x = NULL, y = "CV (%)", fill = NULL
   ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    legend.position = "none"
+  )
 ```
 
 ```{r}
@@ -270,22 +276,24 @@ cv_all |>
 
 cv_all |>
   select(model, window, cv_pct) |>
+  mutate(window = str_to_title(window)) |>
   pivot_wider(names_from = window, values_from = cv_pct) |>
+  select(model, Primera, Postrera) |>
   mutate(across(where(is.numeric), ~sprintf("%.1f%%", .x))) |>
-  knitr::kable(
-    caption = "Coefficient of Variation by Model and Season",
-    col.names = c("Model", "Primera", "Postrera")
-  )
+  knitr::kable(caption = "Coefficient of Variation by Model and Season")
 ```
 
-**Key findings:**
+**Key findings** (shown here for LT1 for simplicity):
 
 - **Observed CV**: Primera ~14%, Postrera ~23%
 - **SEAS5**: Reasonable CV for both seasons (8-15%), approaching observed variability
 - **INSIVUMEH Primera**: Moderate CV (10-18%), usable signal
 - **INSIVUMEH Postrera**: Very low CV (3-7%), forecasts barely vary from climatology
 
-### Robustness Check: CV Across Leadtimes and Observation Sources
+This pattern holds across all leadtimes—see the expanded analysis in the collapsible section below.
+
+::: {.callout-tip collapse="true"}
+## Robustness Check: CV Across Leadtimes and Observation Sources
 
 Does the low CV pattern for INSIVUMEH Postrera hold across all leadtimes? And how does it compare to multiple observation sources?
 
@@ -369,45 +377,123 @@ obs_cv_all <- bind_rows(
 ```
 
 ```{r}
-#| label: cv-expanded-plot
-#| fig-height: 6
+#| label: cv-expanded-gt
+#| code-summary: "Create color-coded CV table"
 
-fcst_cv_all_lt |>
+library(gt)
+
+# Get observed CV range for reference
+obs_cv_summary <- obs_cv_all |>
+  group_by(window) |>
+  summarise(
+    obs_mean = mean(cv_pct),
+    obs_min = min(cv_pct),
+    obs_max = max(cv_pct),
+    .groups = "drop"
+  )
+
+# Create wide table for gt
+df_cv_wide <- fcst_cv_all_lt |>
   mutate(
-    window = str_to_title(window),
-    window = fct_relevel(window, "Primera", "Postrera")
+    col_name = paste0(str_to_title(window), " LT", leadtime)
   ) |>
-  ggplot(aes(x = factor(leadtime), y = cv_pct, fill = model)) +
-  geom_col(position = "dodge", alpha = 0.8) +
-  geom_hline(
-    data = obs_cv_all |> mutate(window = str_to_title(window)),
-    aes(yintercept = cv_pct, linetype = source),
-    color = "grey30"
-  ) +
-  facet_wrap(~window) +
-  scale_linetype_manual(values = c("ENACTS" = "dashed", "ERA5" = "dotted", "CHIRPS" = "dotdash")) +
-  labs(
-    title = "Coefficient of Variation Across Leadtimes",
-    subtitle = "Horizontal lines = observed CV from three sources",
-    x = "Leadtime", y = "CV (%)", fill = "Model", linetype = "Observed"
-  ) +
-  theme(legend.position = "bottom")
+  select(model, col_name, cv_pct) |>
+  pivot_wider(names_from = col_name, values_from = cv_pct)
+
+# Add observed row (using mean across sources)
+obs_row <- obs_cv_all |>
+  group_by(window) |>
+  summarise(cv_pct = mean(cv_pct), .groups = "drop") |>
+  mutate(col_name = paste0(str_to_title(window), " (Obs)")) |>
+  pivot_wider(names_from = col_name, values_from = cv_pct) |>
+  mutate(model = "Observed (mean)")
+
+# Combine and order
+df_cv_wide <- df_cv_wide |>
+  mutate(model = factor(model, levels = c("SEAS5", "CFSv2", "CCSM4", "CESM1"))) |>
+  arrange(model) |>
+  mutate(model = as.character(model))
+
+# Define column order
+primera_cols <- paste0("Primera LT", 1:3)
+postrera_cols <- paste0("Postrera LT", 1:3)
+all_cols <- c(primera_cols, postrera_cols)
+all_cols <- all_cols[all_cols %in% names(df_cv_wide)]
+
+df_cv_wide |>
+  select(model, all_of(all_cols)) |>
+  gt(rowname_col = "model") |>
+  tab_header(
+    title = "Coefficient of Variation by Model, Season, and Leadtime",
+    subtitle = "Higher CV = more interannual variability (closer to observations)"
+  ) |>
+  tab_spanner(label = "Primera", columns = starts_with("Primera")) |>
+  tab_spanner(label = "Postrera", columns = starts_with("Postrera")) |>
+  fmt_number(columns = everything(), decimals = 1, pattern = "{x}%") |>
+  data_color(
+    columns = starts_with("Primera"),
+    palette = c("#D73027", "#FFFFBF", "#1A9850"),
+    domain = c(0, obs_cv_summary |> filter(window == "primera") |> pull(obs_mean))
+  ) |>
+  data_color(
+    columns = starts_with("Postrera"),
+    palette = c("#D73027", "#FFFFBF", "#1A9850"),
+    domain = c(0, obs_cv_summary |> filter(window == "postrera") |> pull(obs_mean))
+  ) |>
+  tab_source_note(
+    source_note = sprintf(
+      "Observed CV: Primera %.0f-%.0f%%, Postrera %.0f-%.0f%% (across ENACTS, ERA5, CHIRPS)",
+      obs_cv_summary |> filter(window == "primera") |> pull(obs_min),
+      obs_cv_summary |> filter(window == "primera") |> pull(obs_max),
+      obs_cv_summary |> filter(window == "postrera") |> pull(obs_min),
+      obs_cv_summary |> filter(window == "postrera") |> pull(obs_max)
+    )
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub()
+  ) |>
+  cols_label_with(fn = ~str_remove(.x, "Primera |Postrera "))
 ```
 
 ```{r}
-#| label: cv-expanded-table
+#| label: cv-postrera-plot
+#| fig-height: 4
 
-obs_cv_all |>
-  mutate(window = str_to_title(window)) |>
-  pivot_wider(names_from = window, values_from = cv_pct) |>
-  mutate(across(where(is.numeric), ~sprintf("%.1f%%", .x))) |>
-  knitr::kable(
-    caption = "Observed CV by Source",
-    col.names = c("Source", "Primera", "Postrera")
-  )
+# Postrera-only bar plot with labeled observation lines
+obs_cv_postrera <- obs_cv_all |>
+  filter(window == "postrera") |>
+  mutate(label_x = 3.5)  # Position for labels
+
+fcst_cv_all_lt |>
+  filter(window == "postrera") |>
+  ggplot(aes(x = factor(leadtime), y = cv_pct, fill = model)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_hline(
+    data = obs_cv_postrera,
+    aes(yintercept = cv_pct, linetype = source),
+    inherit.aes = FALSE,
+    color = "grey30"
+  ) +
+  geom_text(
+    data = obs_cv_postrera,
+    aes(x = label_x, y = cv_pct, label = source),
+    inherit.aes = FALSE,
+    hjust = 0, vjust = -0.3, size = 3, color = "grey30"
+  ) +
+  scale_linetype_manual(values = c("ENACTS" = "dashed", "ERA5" = "dotted", "CHIRPS" = "longdash")) +
+  coord_cartesian(xlim = c(0.5, 4.2), clip = "off") +
+  labs(
+    title = "Postrera: Forecast CV vs Observed Variability",
+    subtitle = "INSIVUMEH models show almost no interannual variation",
+    x = "Leadtime", y = "CV (%)", fill = "Model"
+  ) +
+  theme(legend.position = "bottom") +
+  guides(linetype = "none")
 ```
 
 The pattern holds: **INSIVUMEH Postrera CV remains very low (3-7%) across all leadtimes**, far below observed variability from any source. This is not a leadtime-specific issue—the Postrera forecasts systematically lack interannual signal.
+:::
 
 ## Implications
 
@@ -417,7 +503,7 @@ The diagnostic tests reveal a fundamental issue with INSIVUMEH Postrera forecast
 |------------|-------|-------------------|-------------------|
 | Inter-LT correlation | High (0.6-0.9) | Moderate (0.3-0.7) | Near-zero or negative |
 | CV vs observed | ~70% of observed | ~80% of observed | ~20% of observed |
-| Data quality | Good | Acceptable | **Problematic** |
+| Signal strength | Strong | Moderate | **Limited** |
 
 This explains the suspicious patterns in @sec-chirps:
 
@@ -441,17 +527,17 @@ Not because SEAS5 has demonstrated strong Postrera skill (it hasn't), but becaus
 2. SEAS5 shows realistic interannual variability
 3. SEAS5 at least *behaves* like a forecast, even if predictability is limited
 
-INSIVUMEH Postrera forecasts are essentially noise dressed up as predictions.
+INSIVUMEH Postrera forecasts show limited predictive signal for this region and season.
 
 ## Final Recommendations
 
 | Season | Recommended | Rationale |
 |--------|-------------|-----------|
 | **Primera** | SEAS5 | Clear skill advantage across metrics and observation sources |
-| **Postrera** | SEAS5 | INSIVUMEH forecasts are unreliable (low CV, inconsistent leadtimes) |
+| **Postrera** | SEAS5 | INSIVUMEH forecasts show limited signal (low CV, weak inter-leadtime consistency) |
 
 For Postrera specifically, consider:
 
 - Acknowledging limited predictability in operational communications
 - Using shorter-range forecasts when available
-- Weighting climatological probabilities more heavily than dynamic forecasts
+- Supplementing forecast-based triggers with monitoring-based indicators (e.g., observed rainfall deficits or VHI during early Postrera)
