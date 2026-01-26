@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./appendix_technical_notes.html" rel="next">
+<link href="./07_multi_aoi_comparison.html" rel="next">
 <link href="./05_inter_lt_correlation.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -194,6 +194,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">ENSO Stratification</span></span></a>
   </div>
 </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07_multi_aoi_comparison.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">CADC - Framework Skill Comparison</span></span></a>
+  </div>
+</li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
@@ -229,7 +235,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#what-seas5-gets-right-the-average-enso-signal" id="toc-what-seas5-gets-right-the-average-enso-signal" class="nav-link" data-scroll-target="#what-seas5-gets-right-the-average-enso-signal"><span class="header-section-number">7.4.1</span> What SEAS5 Gets Right: The Average ENSO Signal</a></li>
   <li><a href="#what-seas5-gets-wrong-individual-year-accuracy" id="toc-what-seas5-gets-wrong-individual-year-accuracy" class="nav-link" data-scroll-target="#what-seas5-gets-wrong-individual-year-accuracy"><span class="header-section-number">7.4.2</span> What SEAS5 Gets Wrong: Individual Year Accuracy</a></li>
   <li><a href="#the-critical-failure-el-niño-year-details" id="toc-the-critical-failure-el-niño-year-details" class="nav-link" data-scroll-target="#the-critical-failure-el-niño-year-details"><span class="header-section-number">7.4.3</span> The Critical Failure: El Niño Year Details</a></li>
-  <li><a href="#interpretation" id="toc-interpretation" class="nav-link" data-scroll-target="#interpretation"><span class="header-section-number">7.4.4</span> Interpretation</a></li>
+  <li><a href="#drought-detection-during-el-niño-roc-auc" id="toc-drought-detection-during-el-niño-roc-auc" class="nav-link" data-scroll-target="#drought-detection-during-el-niño-roc-auc"><span class="header-section-number">7.4.4</span> Drought Detection During El Niño (ROC-AUC)</a></li>
+  <li><a href="#interpretation" id="toc-interpretation" class="nav-link" data-scroll-target="#interpretation"><span class="header-section-number">7.4.5</span> Interpretation</a></li>
   </ul></li>
   <li><a href="#scatter-plots-by-phase" id="toc-scatter-plots-by-phase" class="nav-link" data-scroll-target="#scatter-plots-by-phase"><span class="header-section-number">7.5</span> Scatter Plots by Phase</a></li>
   <li><a href="#primera-skill-is-robust-across-phases" id="toc-primera-skill-is-robust-across-phases" class="nav-link" data-scroll-target="#primera-skill-is-robust-across-phases"><span class="header-section-number">7.6</span> Primera: Skill is Robust Across Phases</a></li>
@@ -931,15 +938,199 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p><strong>The 2014 problem</strong>: This El Niño year was the <strong>wettest Postrera in 25 years</strong> (857mm, rank 25), but SEAS5 predicted it as moderately dry (366mm, rank 6). A 19-position error is catastrophic for operational use.</p>
 <p>Several other El Niño years (2015, 2018, 2002) show 6-position errors where SEAS5 predicted them as the driest years but they were actually mid-range.</p>
 </section>
-<section id="interpretation" class="level3" data-number="7.4.4">
-<h3 data-number="7.4.4" class="anchored" data-anchor-id="interpretation"><span class="header-section-number">7.4.4</span> Interpretation</h3>
-<p>SEAS5 appears to use a simple heuristic: <strong>El Niño → predict dry</strong>. This works on average but fails for individual years because:</p>
+<section id="drought-detection-during-el-niño-roc-auc" class="level3" data-number="7.4.4">
+<h3 data-number="7.4.4" class="anchored" data-anchor-id="drought-detection-during-el-niño-roc-auc"><span class="header-section-number">7.4.4</span> Drought Detection During El Niño (ROC-AUC)</h3>
+<p>The ranking analysis above focused on all years, but operationally we care about <strong>drought detection</strong>. Can SEAS5 identify which El Niño years will be droughts (RP4 threshold)?</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># RP4 drought threshold</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>drought_thresh <span class="ot">&lt;-</span> <span class="fu">quantile</span>(</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  df_joined_any <span class="sc">|&gt;</span> <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"postrera"</span>, obs_source <span class="sc">==</span> <span class="st">"ENACTS"</span>) <span class="sc">|&gt;</span> <span class="fu">pull</span>(obs_mm),</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="fl">0.25</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>df_drought <span class="ot">&lt;-</span> df_joined_any <span class="sc">|&gt;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"postrera"</span>, obs_source <span class="sc">==</span> <span class="st">"ENACTS"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">is_drought =</span> obs_mm <span class="sc">&lt;=</span> drought_thresh)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>df_drought <span class="sc">|&gt;</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(enso_phase) <span class="sc">|&gt;</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Years</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">n</span>(),</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Droughts</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(is_drought),</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Drought Rate</span><span class="st">`</span> <span class="ot">=</span> scales<span class="sc">::</span><span class="fu">percent</span>(<span class="fu">mean</span>(is_drought), <span class="at">accuracy =</span> <span class="dv">1</span>),</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="fu">sprintf</span>(<span class="st">"Drought frequency by ENSO phase (threshold: %d mm)"</span>, <span class="fu">round</span>(drought_thresh)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Drought frequency by ENSO phase (threshold: 465 mm)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">enso_phase</th>
+<th style="text-align: right;">Years</th>
+<th style="text-align: right;">Droughts</th>
+<th style="text-align: left;">Drought Rate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">El Nino</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">44%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">La Nina</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">20%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Neutral</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">17%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>El Niño years have a 44% drought rate</strong> - more than double the rate for other phases. This is valuable climatological information.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>df_elnino <span class="ot">&lt;-</span> df_drought <span class="sc">|&gt;</span> <span class="fu">filter</span>(enso_phase <span class="sc">==</span> <span class="st">"El Nino"</span>)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>df_elnino <span class="sc">|&gt;</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(obs_mm) <span class="sc">|&gt;</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">obs_mm =</span> <span class="fu">round</span>(obs_mm),</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">value =</span> <span class="fu">round</span>(value),</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">fcst_rank =</span> <span class="fu">rank</span>(value)</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(year, obs_mm, value, is_drought, fcst_rank) <span class="sc">|&gt;</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Year"</span>, <span class="st">"Observed (mm)"</span>, <span class="st">"Forecast (mm)"</span>, <span class="st">"Drought?"</span>, <span class="st">"Fcst Rank"</span>),</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">"El Niño years sorted by observed rainfall"</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>El Niño years sorted by observed rainfall</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Year</th>
+<th style="text-align: right;">Observed (mm)</th>
+<th style="text-align: right;">Forecast (mm)</th>
+<th style="text-align: left;">Drought?</th>
+<th style="text-align: right;">Fcst Rank</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2009</td>
+<td style="text-align: right;">372</td>
+<td style="text-align: right;">358</td>
+<td style="text-align: left;">TRUE</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2019</td>
+<td style="text-align: right;">397</td>
+<td style="text-align: right;">402</td>
+<td style="text-align: left;">TRUE</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2023</td>
+<td style="text-align: right;">463</td>
+<td style="text-align: right;">424</td>
+<td style="text-align: left;">TRUE</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2015</td>
+<td style="text-align: right;">465</td>
+<td style="text-align: right;">328</td>
+<td style="text-align: left;">TRUE</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2018</td>
+<td style="text-align: right;">485</td>
+<td style="text-align: right;">338</td>
+<td style="text-align: left;">FALSE</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2002</td>
+<td style="text-align: right;">491</td>
+<td style="text-align: right;">348</td>
+<td style="text-align: left;">FALSE</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2004</td>
+<td style="text-align: right;">538</td>
+<td style="text-align: right;">382</td>
+<td style="text-align: left;">FALSE</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2006</td>
+<td style="text-align: right;">545</td>
+<td style="text-align: right;">431</td>
+<td style="text-align: left;">FALSE</td>
+<td style="text-align: right;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2014</td>
+<td style="text-align: right;">857</td>
+<td style="text-align: right;">366</td>
+<td style="text-align: left;">FALSE</td>
+<td style="text-align: right;">5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ROC-AUC for El Niño drought detection</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>calc_auc_safe <span class="ot">&lt;-</span> <span class="cf">function</span>(df) {</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(<span class="fu">length</span>(<span class="fu">unique</span>(df<span class="sc">$</span>is_drought)) <span class="sc">&lt;</span> <span class="dv">2</span>) <span class="fu">return</span>(<span class="cn">NA_real_</span>)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  df <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">drought_factor =</span> <span class="fu">factor</span>(is_drought, <span class="at">levels =</span> <span class="fu">c</span>(<span class="cn">TRUE</span>, <span class="cn">FALSE</span>)))</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tryCatch</span>({</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>    yardstick<span class="sc">::</span><span class="fu">roc_auc</span>(df, <span class="at">truth =</span> drought_factor, value, <span class="at">event_level =</span> <span class="st">"first"</span>)<span class="sc">$</span>.estimate</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  }, <span class="at">error =</span> <span class="cf">function</span>(e) <span class="cn">NA_real_</span>)</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>elnino_auc <span class="ot">&lt;-</span> <span class="fu">calc_auc_safe</span>(df_elnino)</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Compare mean forecasts</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>drought_fcst <span class="ot">&lt;-</span> <span class="fu">mean</span>(df_elnino <span class="sc">|&gt;</span> <span class="fu">filter</span>(is_drought) <span class="sc">|&gt;</span> <span class="fu">pull</span>(value))</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>non_drought_fcst <span class="ot">&lt;-</span> <span class="fu">mean</span>(df_elnino <span class="sc">|&gt;</span> <span class="fu">filter</span>(<span class="sc">!</span>is_drought) <span class="sc">|&gt;</span> <span class="fu">pull</span>(value))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<p><strong>El Niño ROC-AUC = 0.5</strong> (random chance = 0.50)</p>
+<p>SEAS5 has <strong>no skill</strong> at distinguishing El Niño drought years from non-drought years. Worse, SEAS5 gives slightly <strong>higher</strong> forecasts to drought years (378 mm) than non-drought years (373 mm) - the wrong direction.</p>
+</section>
+<section id="interpretation" class="level3" data-number="7.4.5">
+<h3 data-number="7.4.5" class="anchored" data-anchor-id="interpretation"><span class="header-section-number">7.4.5</span> Interpretation</h3>
+<p><strong>Can we use SEAS5 Postrera forecasts during El Niño for drought anticipation?</strong> No.</p>
 <ol type="1">
-<li>Not all El Niño years are equally dry</li>
-<li>Some El Niño years (like 2014) are actually wet</li>
-<li>SEAS5 cannot distinguish which El Niño years will deviate from the mean</li>
+<li><p><strong>El Niño itself is informative</strong>: 44% of El Niño Postreras are droughts (vs ~20% baseline). If you know it’s El Niño, you already know drought risk is elevated.</p></li>
+<li><p><strong>SEAS5 adds nothing</strong>: With ROC-AUC of 0.50, SEAS5 cannot distinguish which El Niño years will be droughts. It’s literally coin-flip accuracy.</p></li>
+<li><p><strong>Operational recommendation</strong>: During El Niño, use the elevated baseline drought probability (44%) for decision-making. Don’t use the specific SEAS5 forecast value - it provides no additional information.</p></li>
 </ol>
-<p><strong>Bottom line</strong>: Knowing it’s El Niño tells you to expect drier-than-average conditions (climatological information). SEAS5 adds little predictive value beyond this - you’d do equally well using “El Niño → below-normal” as a simple rule.</p>
 </section>
 </section>
 <section id="scatter-plots-by-phase" class="level2" data-number="7.5">
@@ -947,25 +1138,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Scatter plot function</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>plot_scatter_postrera <span class="ot">&lt;-</span> <span class="cf">function</span>(df_joined, subtitle) {</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  df_joined <span class="sc">|&gt;</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"postrera"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">enso_phase =</span> <span class="fu">factor</span>(enso_phase, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span>, <span class="st">"Neutral"</span>, <span class="st">"El Nino"</span>))) <span class="sc">|&gt;</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> obs_mm, <span class="at">y =</span> value, <span class="at">color =</span> enso_phase)) <span class="sc">+</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_abline</span>(<span class="at">slope =</span> <span class="dv">1</span>, <span class="at">intercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey50"</span>) <span class="sc">+</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">2.5</span>, <span class="at">alpha =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">se =</span> <span class="cn">FALSE</span>, <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_grid</span>(obs_source <span class="sc">~</span> enso_phase) <span class="sc">+</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_color_manual</span>(</span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span> <span class="ot">=</span> <span class="st">"#2166AC"</span>, <span class="st">"Neutral"</span> <span class="ot">=</span> <span class="st">"#636363"</span>, <span class="st">"El Nino"</span> <span class="ot">=</span> <span class="st">"#B2182B"</span>)</span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="st">"SEAS5 Postrera: Forecast vs Observed by ENSO Phase (LT1)"</span>,</span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> subtitle,</span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="st">"Observed (mm)"</span>, <span class="at">y =</span> <span class="st">"Forecast (mm)"</span></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>plot_scatter_postrera <span class="ot">&lt;-</span> <span class="cf">function</span>(df_joined, subtitle) {</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  df_joined <span class="sc">|&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"postrera"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">enso_phase =</span> <span class="fu">factor</span>(enso_phase, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span>, <span class="st">"Neutral"</span>, <span class="st">"El Nino"</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> obs_mm, <span class="at">y =</span> value, <span class="at">color =</span> enso_phase)) <span class="sc">+</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_abline</span>(<span class="at">slope =</span> <span class="dv">1</span>, <span class="at">intercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey50"</span>) <span class="sc">+</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">2.5</span>, <span class="at">alpha =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">se =</span> <span class="cn">FALSE</span>, <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_grid</span>(obs_source <span class="sc">~</span> enso_phase) <span class="sc">+</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_color_manual</span>(</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span> <span class="ot">=</span> <span class="st">"#2166AC"</span>, <span class="st">"Neutral"</span> <span class="ot">=</span> <span class="st">"#636363"</span>, <span class="st">"El Nino"</span> <span class="ot">=</span> <span class="st">"#B2182B"</span>)</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="st">"SEAS5 Postrera: Forecast vs Observed by ENSO Phase (LT1)"</span>,</span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> subtitle,</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="st">"Observed (mm)"</span>, <span class="at">y =</span> <span class="st">"Forecast (mm)"</span></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
@@ -975,7 +1166,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_scatter_postrera</span>(df_joined_any, <span class="st">"Any month ≥ ±0.5°C. Steeper positive slope = better ranking skill."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_scatter_postrera</span>(df_joined_any, <span class="st">"Any month ≥ ±0.5°C. Steeper positive slope = better ranking skill."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -990,7 +1181,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_scatter_postrera</span>(df_joined_avg, <span class="st">"Seasonal mean ≥ ±0.5°C. Steeper positive slope = better ranking skill."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_scatter_postrera</span>(df_joined_avg, <span class="st">"Seasonal mean ≥ ±0.5°C. Steeper positive slope = better ranking skill."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -1011,52 +1202,52 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Primera skill functions</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>calc_primera_skill <span class="ot">&lt;-</span> <span class="cf">function</span>(df_joined) {</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  df_joined <span class="sc">|&gt;</span></span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"primera"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(obs_source, enso_phase) <span class="sc">|&gt;</span></span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">n_years =</span> <span class="fu">n</span>(),</span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">spearman =</span> <span class="fu">cor</span>(value, obs_mm, <span class="at">method =</span> <span class="st">"spearman"</span>),</span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">.groups =</span> <span class="st">"drop"</span></span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">enso_phase =</span> <span class="fu">factor</span>(enso_phase, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span>, <span class="st">"Neutral"</span>, <span class="st">"El Nino"</span>)))</span>
-<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>plot_primera_skill <span class="ot">&lt;-</span> <span class="cf">function</span>(primera_skill, subtitle) {</span>
-<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>  primera_skill <span class="sc">|&gt;</span></span>
-<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> enso_phase, <span class="at">y =</span> spearman, <span class="at">fill =</span> enso_phase)) <span class="sc">+</span></span>
-<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_col</span>(<span class="at">alpha =</span> <span class="fl">0.85</span>, <span class="at">width =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
-<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">"solid"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"#1A9850"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, spearman)), <span class="at">vjust =</span> <span class="sc">-</span><span class="fl">0.5</span>, <span class="at">fontface =</span> <span class="st">"bold"</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
-<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>obs_source) <span class="sc">+</span></span>
-<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_manual</span>(</span>
-<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>      <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span> <span class="ot">=</span> <span class="st">"#2166AC"</span>, <span class="st">"Neutral"</span> <span class="ot">=</span> <span class="st">"#B0B0B0"</span>, <span class="st">"El Nino"</span> <span class="ot">=</span> <span class="st">"#B2182B"</span>)</span>
-<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.1</span>, <span class="fl">1.05</span>)) <span class="sc">+</span></span>
-<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
-<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="st">"SEAS5 Primera Ranking Skill by ENSO Phase (LT1)"</span>,</span>
-<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> subtitle,</span>
-<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Spearman Correlation"</span></span>
-<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
-<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>table_primera_skill <span class="ot">&lt;-</span> <span class="cf">function</span>(primera_skill) {</span>
-<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>  primera_skill <span class="sc">|&gt;</span></span>
-<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">spearman =</span> <span class="fu">round</span>(spearman, <span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(obs_source, enso_phase, spearman) <span class="sc">|&gt;</span></span>
-<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> enso_phase, <span class="at">values_from =</span> spearman) <span class="sc">|&gt;</span></span>
-<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(obs_source, <span class="st">`</span><span class="at">La Nina</span><span class="st">`</span>, Neutral, <span class="st">`</span><span class="at">El Nino</span><span class="st">`</span>) <span class="sc">|&gt;</span></span>
-<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a>    knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
-<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Obs Source"</span>, <span class="st">"La Niña"</span>, <span class="st">"Neutral"</span>, <span class="st">"El Niño"</span>),</span>
-<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"SEAS5 Primera Spearman correlation by ENSO phase and observation source (LT1)"</span></span>
-<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a>primera_skill_any <span class="ot">&lt;-</span> <span class="fu">calc_primera_skill</span>(df_joined_any)</span>
-<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a>primera_skill_avg <span class="ot">&lt;-</span> <span class="fu">calc_primera_skill</span>(df_joined_avg)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>calc_primera_skill <span class="ot">&lt;-</span> <span class="cf">function</span>(df_joined) {</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  df_joined <span class="sc">|&gt;</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"primera"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(obs_source, enso_phase) <span class="sc">|&gt;</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">n_years =</span> <span class="fu">n</span>(),</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">spearman =</span> <span class="fu">cor</span>(value, obs_mm, <span class="at">method =</span> <span class="st">"spearman"</span>),</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">enso_phase =</span> <span class="fu">factor</span>(enso_phase, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span>, <span class="st">"Neutral"</span>, <span class="st">"El Nino"</span>)))</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>plot_primera_skill <span class="ot">&lt;-</span> <span class="cf">function</span>(primera_skill, subtitle) {</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>  primera_skill <span class="sc">|&gt;</span></span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> enso_phase, <span class="at">y =</span> spearman, <span class="at">fill =</span> enso_phase)) <span class="sc">+</span></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_col</span>(<span class="at">alpha =</span> <span class="fl">0.85</span>, <span class="at">width =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">"solid"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"#1A9850"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, spearman)), <span class="at">vjust =</span> <span class="sc">-</span><span class="fl">0.5</span>, <span class="at">fontface =</span> <span class="st">"bold"</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>obs_source) <span class="sc">+</span></span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_manual</span>(</span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>      <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"La Nina"</span> <span class="ot">=</span> <span class="st">"#2166AC"</span>, <span class="st">"Neutral"</span> <span class="ot">=</span> <span class="st">"#B0B0B0"</span>, <span class="st">"El Nino"</span> <span class="ot">=</span> <span class="st">"#B2182B"</span>)</span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.1</span>, <span class="fl">1.05</span>)) <span class="sc">+</span></span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="st">"SEAS5 Primera Ranking Skill by ENSO Phase (LT1)"</span>,</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> subtitle,</span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Spearman Correlation"</span></span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>table_primera_skill <span class="ot">&lt;-</span> <span class="cf">function</span>(primera_skill) {</span>
+<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a>  primera_skill <span class="sc">|&gt;</span></span>
+<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">spearman =</span> <span class="fu">round</span>(spearman, <span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(obs_source, enso_phase, spearman) <span class="sc">|&gt;</span></span>
+<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> enso_phase, <span class="at">values_from =</span> spearman) <span class="sc">|&gt;</span></span>
+<span id="cb25-38"><a href="#cb25-38" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(obs_source, <span class="st">`</span><span class="at">La Nina</span><span class="st">`</span>, Neutral, <span class="st">`</span><span class="at">El Nino</span><span class="st">`</span>) <span class="sc">|&gt;</span></span>
+<span id="cb25-39"><a href="#cb25-39" aria-hidden="true" tabindex="-1"></a>    knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb25-40"><a href="#cb25-40" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Obs Source"</span>, <span class="st">"La Niña"</span>, <span class="st">"Neutral"</span>, <span class="st">"El Niño"</span>),</span>
+<span id="cb25-41"><a href="#cb25-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"SEAS5 Primera Spearman correlation by ENSO phase and observation source (LT1)"</span></span>
+<span id="cb25-42"><a href="#cb25-42" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb25-43"><a href="#cb25-43" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb25-44"><a href="#cb25-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-45"><a href="#cb25-45" aria-hidden="true" tabindex="-1"></a>primera_skill_any <span class="ot">&lt;-</span> <span class="fu">calc_primera_skill</span>(df_joined_any)</span>
+<span id="cb25-46"><a href="#cb25-46" aria-hidden="true" tabindex="-1"></a>primera_skill_avg <span class="ot">&lt;-</span> <span class="fu">calc_primera_skill</span>(df_joined_avg)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
@@ -1066,7 +1257,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_primera_skill</span>(primera_skill_any)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_primera_skill</span>(primera_skill_any)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
@@ -1105,7 +1296,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_primera_skill</span>(primera_skill_any, <span class="st">"Any month ≥ ±0.5°C"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_primera_skill</span>(primera_skill_any, <span class="st">"Any month ≥ ±0.5°C"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -1120,7 +1311,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_primera_skill</span>(primera_skill_avg)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_primera_skill</span>(primera_skill_avg)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
@@ -1159,7 +1350,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_primera_skill</span>(primera_skill_avg, <span class="st">"Seasonal mean ≥ ±0.5°C"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_primera_skill</span>(primera_skill_avg, <span class="st">"Seasonal mean ≥ ±0.5°C"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -1178,9 +1369,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 data-number="7.7" class="anchored" data-anchor-id="summary"><span class="header-section-number">7.7</span> Summary</h2>
 <section id="key-finding" class="level3" data-number="7.7.1">
 <h3 data-number="7.7.1" class="anchored" data-anchor-id="key-finding"><span class="header-section-number">7.7.1</span> Key Finding</h3>
-<p><strong>Can we use SEAS5 Postrera forecasts during El Niño?</strong> No - not for individual year predictions.</p>
-<p>SEAS5 correctly captures the <em>average</em> ENSO-rainfall relationship (El Niño years are drier on average, and SEAS5 predicts them as such). However, SEAS5 cannot distinguish which El Niño years will be wet vs dry. The 2014 El Niño was the wettest Postrera in 25 years, but SEAS5 predicted drought - a catastrophic 19-position ranking error.</p>
-<p><strong>SEAS5 appears to apply a simple heuristic</strong>: El Niño → predict dry. This adds no predictive value beyond the climatological expectation that El Niño years tend to be drier.</p>
+<p><strong>Can we use SEAS5 Postrera forecasts during El Niño for drought anticipation?</strong> No.</p>
+<ul>
+<li><strong>El Niño ROC-AUC = 0.50</strong> (random chance) - SEAS5 cannot distinguish which El Niño years will be droughts</li>
+<li>SEAS5 actually gives slightly <strong>higher</strong> forecasts to El Niño drought years than non-drought years (wrong direction)</li>
+<li>The 2014 El Niño was the wettest Postrera in 25 years, but SEAS5 predicted drought</li>
+</ul>
+<p><strong>However, El Niño itself is informative</strong>: 44% of El Niño Postreras are droughts (vs ~20% for other phases). Knowing it’s El Niño doubles your baseline drought probability - that’s useful even without SEAS5.</p>
 </section>
 <section id="operational-implications" class="level3" data-number="7.7.2">
 <h3 data-number="7.7.2" class="anchored" data-anchor-id="operational-implications"><span class="header-section-number">7.7.2</span> Operational Implications</h3>
@@ -1611,8 +1806,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./appendix_technical_notes.html" class="pagination-link" aria-label="Technical Notes">
-        <span class="nav-page-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Technical Notes</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./07_multi_aoi_comparison.html" class="pagination-link" aria-label="CADC - Framework Skill Comparison">
+        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">CADC - Framework Skill Comparison</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
