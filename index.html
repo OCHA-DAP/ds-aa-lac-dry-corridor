@@ -252,9 +252,10 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="key-findings" class="level1 unnumbered">
 <h1 class="unnumbered">Key Findings</h1>
-<p>This book evaluates seasonal precipitation forecasts for drought prediction in <strong>Chiquimula, Guatemala</strong>. We compare SEAS5 (ECMWF global) against INSIVUMEH (Guatemala national service) for two agricultural seasons: Primera (May-Aug) and Postrera (Sep-Nov).</p>
+<p>This book evaluates seasonal precipitation forecasts for drought prediction in <strong>Chiquimula, Guatemala</strong>, comparing SEAS5 (ECMWF global) against INSIVUMEH (Guatemala national service) for two agricultural seasons: Primera (May-Aug) and Postrera (Sep-Nov). The low Postrera skill observed for Guatemala raised concerns for Honduras and El Salvador—framework countries that rely solely on SEAS5—prompting an expanded regional analysis that yielded a breakthrough finding.</p>
 <section id="decision-steps" class="level2">
 <h2 class="anchored" data-anchor-id="decision-steps">Decision Steps</h2>
+<p><strong>Chapters 1-6: Guatemala Forecast Comparison</strong></p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 24%">
@@ -281,35 +282,44 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td>3. CHIRPS Tie-Breaker</td>
-<td>Is skill robust across observation sources? Does a 3rd data source clear Postrera ambiguity?</td>
+<td>Is skill robust across observation sources?</td>
 <td>Primera robust, Postrera still ambiguous</td>
 </tr>
 <tr class="even">
 <td>4. Temporal Drift</td>
 <td>Are trends/drift affecting skill estimates?</td>
-<td>Mild drift, unlikely to be the significant factor causing poor postrera skill</td>
+<td>Mild drift, unlikely to explain poor Postrera skill</td>
 </tr>
 <tr class="odd">
 <td>5. Internal Consistency</td>
 <td>Are forecasts internally coherent?</td>
-<td>INSIVUMEH Postrera forecasts completely internally incoherent - lack signal</td>
+<td>INSIVUMEH Postrera forecasts lack signal</td>
+</tr>
+<tr class="even">
+<td>6. ENSO Stratification</td>
+<td>Does skill vary by ENSO phase?</td>
+<td>Primera consistent; Postrera El Niño challenging</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Chapter 7: Regional Expansion → Breakthrough</strong></p>
+<p>The poor Postrera skill in Guatemala had implications for Honduras and El Salvador, which use SEAS5 without a national forecast alternative. Expanding the analysis across the Dry Corridor and testing different baseline periods revealed that <strong>Postrera skill was masked by the shorter 2000-2024 baseline</strong>. With the full 1981-2024 record, SEAS5 Postrera achieves usable skill at LT0-1.</p>
 </section>
 <section id="recommendations" class="level2">
 <h2 class="anchored" data-anchor-id="recommendations">Recommendations</h2>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 15%">
 <col style="width: 19%">
-<col style="width: 24%">
-<col style="width: 29%">
-<col style="width: 26%">
+<col style="width: 21%">
+<col style="width: 23%">
+<col style="width: 21%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Season</th>
 <th>Forecast</th>
+<th>Leadtimes</th>
 <th>Confidence</th>
 <th>Rationale</th>
 </tr>
@@ -318,19 +328,56 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><strong>Primera</strong></td>
 <td>SEAS5</td>
+<td>LT0-2</td>
 <td>High</td>
 <td>Clear skill advantage across all metrics and observation sources</td>
 </tr>
 <tr class="even">
 <td><strong>Postrera</strong></td>
 <td>SEAS5</td>
-<td>Low</td>
-<td>All sources show low “skill.” However, INSIVUMEH forecasts show no internal consistency and barely vary from climatology</td>
+<td><strong>LT0-1</strong></td>
+<td><strong>Moderate</strong></td>
+<td>With 1981-2024 baseline, ROC-AUC 0.72-0.87 at LT0-1</td>
 </tr>
 </tbody>
 </table>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Breakthrough: Postrera Skill Revealed with Longer Baseline
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Extending from 2000-2024 (n=25) to 1981-2024 (n=44) dramatically improves Postrera skill estimates:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: center;">Leadtime</th>
+<th style="text-align: center;">Issued</th>
+<th style="text-align: center;">ROC-AUC (1981-2024)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">LT0</td>
+<td style="text-align: center;">September</td>
+<td style="text-align: center;">0.80-0.87</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">LT1</td>
+<td style="text-align: center;">August</td>
+<td style="text-align: center;">0.72-0.79</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Operational recommendation</strong>: Use <strong>LT1 for planning</strong> (~1 month lead), <strong>LT0 to confirm</strong> as season begins. Use the <strong>1981-2024 baseline</strong> for threshold calculation.</p>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="true" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="true" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -339,9 +386,9 @@ ul.task-list li input[type="checkbox"] {
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse show">
+<div id="callout-2" class="callout-2-contents callout-collapse collapse show">
 <div class="callout-body-container callout-body">
-<p>This evaluation informs forecast selection for anticipatory action triggers in Chiquimula, Guatemala (2026). We compared ECMWF SEAS5 and INSIVUMEH (CFSv2, CCSM4, CESM1) seasonal precipitation forecasts using 25 years (2000–2024) of hindcasts validated against three independent observation sources (ERA5, ENACTS, CHIRPS). For Primera (May–August), SEAS5 is recommended based on consistently stronger performance across both binary and continuous skill metrics (F1, ROC-AUC, Spearman correlation), with ROC-AUC values of 0.87–0.88 at 1–2 month lead times that remain robust across all observation sources. For Postrera (September–November), SEAS5 is recommended by elimination: INSIVUMEH forecasts exhibit near-zero inter-leadtime correlations (r = -0.1 to 0.2) and coefficient of variation 3–7% compared to 23% in observations, indicating negligible predictive signal. The counterintuitive pattern of higher apparent skill at longer lead times (LT3 &gt; LT1) for INSIVUMEH Postrera is attributable to sampling noise. No model demonstrates reliable Postrera skill (AUC consistently above 0.7), suggesting monitoring-based triggers may be more appropriate than forecast-only approaches for this season.</p>
+<p>This evaluation informs forecast selection for anticipatory action triggers in Chiquimula, Guatemala (2026). We compared ECMWF SEAS5 and INSIVUMEH (CFSv2, CCSM4, CESM1) seasonal precipitation forecasts using 25 years (2000–2024) of hindcasts validated against three independent observation sources (ERA5, ENACTS, CHIRPS). For Primera (May–August), SEAS5 is recommended based on consistently stronger performance across both binary and continuous skill metrics (F1, ROC-AUC, Spearman correlation), with ROC-AUC values of 0.85–0.90 at 1–2 month lead times that remain robust across all observation sources. For Postrera (September–November), INSIVUMEH forecasts are eliminated due to weak internal consistency: near-zero inter-leadtime correlations (r = -0.1 to 0.2) and coefficient of variation 3–7× lower than observations indicate negligible predictive signal. Initial SEAS5 Postrera analysis using the 2000-2024 baseline also showed limited skill. However, expanding the analysis to Honduras and El Salvador (which rely solely on SEAS5) and extending the baseline to 1981-2024 revealed substantially stronger Postrera skill: ROC-AUC of 0.80-0.87 at LT0 and 0.72-0.79 at LT1. We recommend SEAS5 for both seasons, with Postrera forecasts using <strong>LT0-1 and the 1981-2024 baseline</strong> for threshold calculation.</p>
 </div>
 </div>
 </div>

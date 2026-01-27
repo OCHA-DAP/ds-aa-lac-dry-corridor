@@ -200,10 +200,13 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#step-3-bring-in-a-third-opinion" id="toc-step-3-bring-in-a-third-opinion" class="nav-link" data-scroll-target="#step-3-bring-in-a-third-opinion"><span class="header-section-number">1.2.3</span> Step 3: Bring in a Third Opinion</a></li>
   <li><a href="#step-4-check-for-drift" id="toc-step-4-check-for-drift" class="nav-link" data-scroll-target="#step-4-check-for-drift"><span class="header-section-number">1.2.4</span> Step 4: Check for Drift</a></li>
   <li><a href="#step-5-the-decider---forecast-internal-consistency" id="toc-step-5-the-decider---forecast-internal-consistency" class="nav-link" data-scroll-target="#step-5-the-decider---forecast-internal-consistency"><span class="header-section-number">1.2.5</span> Step 5: The Decider - Forecast Internal Consistency</a></li>
+  <li><a href="#step-6-enso-stratification" id="toc-step-6-enso-stratification" class="nav-link" data-scroll-target="#step-6-enso-stratification"><span class="header-section-number">1.2.6</span> Step 6: ENSO Stratification</a></li>
+  <li><a href="#step-7-the-breakthrough---regional-comparison-baseline-extension" id="toc-step-7-the-breakthrough---regional-comparison-baseline-extension" class="nav-link" data-scroll-target="#step-7-the-breakthrough---regional-comparison-baseline-extension"><span class="header-section-number">1.2.7</span> Step 7: The Breakthrough - Regional Comparison &amp; Baseline Extension</a></li>
   </ul></li>
   <li><a href="#final-recommendations" id="toc-final-recommendations" class="nav-link" data-scroll-target="#final-recommendations"><span class="header-section-number">1.3</span> Final Recommendations</a>
   <ul class="collapse">
-  <li><a href="#the-postrera-problem" id="toc-the-postrera-problem" class="nav-link" data-scroll-target="#the-postrera-problem"><span class="header-section-number">1.3.1</span> The Postrera Problem</a></li>
+  <li><a href="#insivumeh-eliminated" id="toc-insivumeh-eliminated" class="nav-link" data-scroll-target="#insivumeh-eliminated"><span class="header-section-number">1.3.1</span> INSIVUMEH: Eliminated</a></li>
+  <li><a href="#the-postrera-solution" id="toc-the-postrera-solution" class="nav-link" data-scroll-target="#the-postrera-solution"><span class="header-section-number">1.3.2</span> The Postrera Solution</a></li>
   </ul></li>
   <li><a href="#book-structure" id="toc-book-structure" class="nav-link" data-scroll-target="#book-structure"><span class="header-section-number">1.4</span> Book Structure</a></li>
   </ul>
@@ -330,22 +333,62 @@ ul.task-list li input[type="checkbox"] {
 <li>SEAS5 Postrera CV: ~15% (reasonable)</li>
 <li>INSIVUMEH Postrera CV: <strong>3-7%</strong> - forecasts barely varied from climatology</li>
 </ul>
-<p>This explained everything. INSIVUMEH Postrera forecasts weren’t failing skill tests because Postrera is hard to predict - they were failing because <strong>the forecasts show much less interannual variability than the observed rainfall</strong>. The apparent skill differences between leadtimes were artifacts of forecasts that vary little from year to year.</p>
+<p>This <strong>eliminated INSIVUMEH</strong> from consideration for Postrera - their forecasts lack predictive signal. But SEAS5 Postrera skill also appeared limited. This raised a concern: Honduras and El Salvador rely solely on SEAS5 without a national forecast alternative.</p>
+</section>
+<section id="step-6-enso-stratification" class="level3" data-number="1.2.6">
+<h3 data-number="1.2.6" class="anchored" data-anchor-id="step-6-enso-stratification"><span class="header-section-number">1.2.6</span> Step 6: ENSO Stratification</h3>
+<p>Chapter 6 examined whether forecast skill varies by ENSO phase. The key finding: Primera skill is consistent across ENSO phases, but <strong>Postrera El Niño years remain challenging</strong> for all models.</p>
+</section>
+<section id="step-7-the-breakthrough---regional-comparison-baseline-extension" class="level3" data-number="1.2.7">
+<h3 data-number="1.2.7" class="anchored" data-anchor-id="step-7-the-breakthrough---regional-comparison-baseline-extension"><span class="header-section-number">1.2.7</span> Step 7: The Breakthrough - Regional Comparison &amp; Baseline Extension</h3>
+<p>The poor Postrera skill had implications beyond Guatemala. Honduras and El Salvador use SEAS5 for their anticipatory action frameworks—if SEAS5 Postrera lacks skill, these frameworks are affected too.</p>
+<p>Chapter 7 expanded the analysis across the Dry Corridor (Guatemala, Honduras, El Salvador) and tested different baseline periods. This revealed a <strong>breakthrough finding</strong>:</p>
+<p><strong>The 2000-2024 baseline was masking Postrera skill.</strong></p>
+<p>Extending to 1981-2024 (44 years) dramatically improved apparent Postrera skill:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: center;">Leadtime</th>
+<th style="text-align: center;">ROC-AUC (2000-2024)</th>
+<th style="text-align: center;">ROC-AUC (1981-2024)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">LT0</td>
+<td style="text-align: center;">0.66-0.81</td>
+<td style="text-align: center;"><strong>0.80-0.87</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">LT1</td>
+<td style="text-align: center;">0.55-0.79</td>
+<td style="text-align: center;"><strong>0.72-0.79</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">LT2</td>
+<td style="text-align: center;">0.48-0.62</td>
+<td style="text-align: center;">0.63-0.77</td>
+</tr>
+</tbody>
+</table>
+<p>The longer baseline provides more stable threshold estimates and reveals skill that was obscured by the shorter record.</p>
 </section>
 </section>
 <section id="final-recommendations" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="final-recommendations"><span class="header-section-number">1.3</span> Final Recommendations</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 18%">
-<col style="width: 29%">
-<col style="width: 27%">
-<col style="width: 25%">
+<col style="width: 14%">
+<col style="width: 23%">
+<col style="width: 20%">
+<col style="width: 21%">
+<col style="width: 20%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Season</th>
 <th>Recommended</th>
+<th>Leadtimes</th>
 <th>Confidence</th>
 <th>Rationale</th>
 </tr>
@@ -354,22 +397,41 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td>Primera</td>
 <td><strong>SEAS5</strong></td>
+<td>LT0-2</td>
 <td>High</td>
 <td>Clear skill advantage across all metrics and observation sources</td>
 </tr>
 <tr class="even">
 <td>Postrera</td>
 <td><strong>SEAS5</strong></td>
-<td>Low</td>
-<td>SEAS5 shows better internal consistency, though skill and consistency remains limited for all models</td>
+<td><strong>LT0-1</strong></td>
+<td><strong>Moderate</strong></td>
+<td>With 1981-2024 baseline, ROC-AUC 0.72-0.87 at LT0-1</td>
 </tr>
 </tbody>
 </table>
-<section id="the-postrera-problem" class="level3" data-number="1.3.1">
-<h3 data-number="1.3.1" class="anchored" data-anchor-id="the-postrera-problem"><span class="header-section-number">1.3.1</span> The Postrera Problem</h3>
-<p>For Postrera, the recommendation is SEAS5 by elimination rather than demonstrated skill. INSIVUMEH Postrera forecasts show <strong>much lower interannual variability than observed rainfall</strong> and weak consistency between leadtimes—suggesting limited predictive signal for this season.</p>
-<p>SEAS5 at least <em>behaves</em> like a forecast: different leadtimes agree with each other, and it shows realistic interannual variability. Whether this translates to operational skill for Postrera remains uncertain.</p>
-<p><strong>Operational implications for Postrera</strong>: - Consider monitoring-based triggers (observed rainfall deficits, VHI) rather than relying solely on seasonal forecasts - Acknowledge limited predictability in operational communications - Supplementing forecast-based triggers with monitoring-based indicators (e.g., observed rainfall deficits or VHI during early Postrera)</p>
+<section id="insivumeh-eliminated" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1" class="anchored" data-anchor-id="insivumeh-eliminated"><span class="header-section-number">1.3.1</span> INSIVUMEH: Eliminated</h3>
+<p>INSIVUMEH forecasts are <strong>not recommended</strong> for either season due to weak internal consistency. For Postrera specifically, their forecasts exhibit:</p>
+<ul>
+<li>Near-zero inter-leadtime correlations (r = -0.1 to 0.2)</li>
+<li>Coefficient of variation 3-7× lower than observations</li>
+<li>No meaningful predictive signal</li>
+</ul>
+</section>
+<section id="the-postrera-solution" class="level3" data-number="1.3.2">
+<h3 data-number="1.3.2" class="anchored" data-anchor-id="the-postrera-solution"><span class="header-section-number">1.3.2</span> The Postrera Solution</h3>
+<p>The initial Postrera analysis suggested limited skill, but extending the baseline period revealed <strong>usable skill at shorter leadtimes</strong>:</p>
+<ul>
+<li><strong>LT1 (August-issued)</strong>: Use for initial planning with ~1 month lead time (ROC-AUC 0.72-0.79)</li>
+<li><strong>LT0 (September-issued)</strong>: Use to confirm/update the forecast as season begins (ROC-AUC 0.80-0.87)</li>
+<li><strong>LT2-3</strong>: Skill degrades substantially; less reliable for operational decisions</li>
+</ul>
+<p><strong>Key operational requirements</strong>:</p>
+<ol type="1">
+<li><strong>Use the 1981-2024 baseline</strong> for drought threshold calculation (not 2000-2024)</li>
+<li><strong>Focus on LT0 and LT1</strong> for Postrera decisions</li>
+</ol>
 </section>
 </section>
 <section id="book-structure" class="level2" data-number="1.4">
@@ -413,6 +475,16 @@ ul.task-list li input[type="checkbox"] {
 <td>5. Internal Consistency</td>
 <td>Are forecasts internally coherent?</td>
 <td>INSIVUMEH Postrera forecasts lack signal</td>
+</tr>
+<tr class="even">
+<td>6. ENSO Stratification</td>
+<td>Does skill vary by ENSO phase?</td>
+<td>Primera consistent; Postrera El Niño challenging</td>
+</tr>
+<tr class="odd">
+<td><strong>7. Regional Comparison</strong></td>
+<td><strong>Does baseline period matter?</strong></td>
+<td><strong>Longer baseline reveals strong Postrera skill at LT0-1</strong></td>
 </tr>
 </tbody>
 </table>
