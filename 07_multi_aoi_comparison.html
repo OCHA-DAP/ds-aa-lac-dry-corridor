@@ -238,7 +238,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#f1-score-vs-rp-threshold" id="toc-f1-score-vs-rp-threshold" class="nav-link" data-scroll-target="#f1-score-vs-rp-threshold"><span class="header-section-number">7.7.3</span> F1 Score vs RP Threshold</a></li>
   <li><a href="#or-based-trigger-optimization-postrera" id="toc-or-based-trigger-optimization-postrera" class="nav-link" data-scroll-target="#or-based-trigger-optimization-postrera"><span class="header-section-number">7.7.4</span> OR-Based Trigger Optimization (Postrera)</a></li>
   </ul></li>
-  <li><a href="#recommendations" id="toc-recommendations" class="nav-link" data-scroll-target="#recommendations"><span class="header-section-number">7.8</span> Recommendations</a></li>
+  <li><a href="#summary-table-1" id="toc-summary-table-1" class="nav-link" data-scroll-target="#summary-table-1"><span class="header-section-number">7.8</span> Summary Table</a></li>
+  <li><a href="#recommendations" id="toc-recommendations" class="nav-link" data-scroll-target="#recommendations"><span class="header-section-number">7.9</span> Recommendations</a></li>
   </ul>
 </nav>
     </div>
@@ -2726,8 +2727,605 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 </section>
 </section>
-<section id="recommendations" class="level2" data-number="7.8">
-<h2 data-number="7.8" class="anchored" data-anchor-id="recommendations"><span class="header-section-number">7.8</span> Recommendations</h2>
+<section id="summary-table-1" class="level2" data-number="7.8">
+<h2 data-number="7.8" class="anchored" data-anchor-id="summary-table-1"><span class="header-section-number">7.8</span> Summary Table</h2>
+<div class="cell" data-tbl-cap="SEAS5 Forecast Skill Summary">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create summary table for 1981 baseline with recommendations</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>df_summary <span class="ot">&lt;-</span> df_skill_all <span class="sc">|&gt;</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(baseline <span class="sc">==</span> <span class="st">"1981-2024"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>    (window <span class="sc">==</span> <span class="st">"primera"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">2</span>) <span class="sc">|</span></span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>    (window <span class="sc">==</span> <span class="st">"postrera"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">3</span>)</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">score =</span> <span class="fu">sprintf</span>(<span class="st">"%.2f (%.2f)"</span>, roc_auc, f1),</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Format window labels with months</span></span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">window =</span> <span class="fu">case_when</span>(</span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>      window <span class="sc">==</span> <span class="st">"primera"</span> <span class="sc">~</span> <span class="st">"Primera (May-Aug)"</span>,</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>      window <span class="sc">==</span> <span class="st">"postrera"</span> <span class="sc">~</span> <span class="st">"Postrera (Sep-Nov)"</span></span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Flag recommended combinations</span></span>
+<span id="cb40-17"><a href="#cb40-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">recommended =</span> <span class="fu">case_when</span>(</span>
+<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a>      window <span class="sc">==</span> <span class="st">"Primera (May-Aug)"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">2</span> <span class="sc">~</span> <span class="cn">TRUE</span>,</span>
+<span id="cb40-19"><a href="#cb40-19" aria-hidden="true" tabindex="-1"></a>      window <span class="sc">==</span> <span class="st">"Postrera (Sep-Nov)"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">1</span> <span class="sc">~</span> <span class="cn">TRUE</span>,</span>
+<span id="cb40-20"><a href="#cb40-20" aria-hidden="true" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">FALSE</span></span>
+<span id="cb40-21"><a href="#cb40-21" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb40-22"><a href="#cb40-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-23"><a href="#cb40-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(country_aoi, window, lt_label, score, roc_auc, recommended) <span class="sc">|&gt;</span></span>
+<span id="cb40-24"><a href="#cb40-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> lt_label, <span class="at">values_from =</span> <span class="fu">c</span>(score, roc_auc, recommended))</span>
+<span id="cb40-25"><a href="#cb40-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-26"><a href="#cb40-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Build GT table</span></span>
+<span id="cb40-27"><a href="#cb40-27" aria-hidden="true" tabindex="-1"></a>df_summary <span class="sc">|&gt;</span></span>
+<span id="cb40-28"><a href="#cb40-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(country_aoi, window, <span class="fu">starts_with</span>(<span class="st">"score_"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb40-29"><a href="#cb40-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_with</span>(<span class="sc">~</span><span class="fu">str_remove</span>(.x, <span class="st">"score_"</span>), <span class="fu">starts_with</span>(<span class="st">"score_"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb40-30"><a href="#cb40-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>(<span class="at">groupname_col =</span> <span class="st">"window"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb40-31"><a href="#cb40-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_header</span>(</span>
+<span id="cb40-32"><a href="#cb40-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**SEAS5 Forecast Skill: ROC-AUC (F1)**"</span>),</span>
+<span id="cb40-33"><a href="#cb40-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="fu">md</span>(<span class="st">"RP4 drought threshold | 1981-2024 baseline | *Recommended leadtimes highlighted*"</span>)</span>
+<span id="cb40-34"><a href="#cb40-34" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-35"><a href="#cb40-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_label</span>(<span class="at">country_aoi =</span> <span class="st">"Country"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb40-36"><a href="#cb40-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_style</span>(</span>
+<span id="cb40-37"><a href="#cb40-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">style =</span> <span class="fu">list</span>(</span>
+<span id="cb40-38"><a href="#cb40-38" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cell_fill</span>(<span class="at">color =</span> <span class="st">"#c7e9c0"</span>),</span>
+<span id="cb40-39"><a href="#cb40-39" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cell_text</span>(<span class="at">weight =</span> <span class="st">"bold"</span>)</span>
+<span id="cb40-40"><a href="#cb40-40" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb40-41"><a href="#cb40-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">locations =</span> <span class="fu">list</span>(</span>
+<span id="cb40-42"><a href="#cb40-42" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cells_body</span>(<span class="at">columns =</span> <span class="fu">c</span>(LT0, LT1, LT2), <span class="at">rows =</span> window <span class="sc">==</span> <span class="st">"Primera (May-Aug)"</span>),</span>
+<span id="cb40-43"><a href="#cb40-43" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cells_body</span>(<span class="at">columns =</span> <span class="fu">c</span>(LT0, LT1), <span class="at">rows =</span> window <span class="sc">==</span> <span class="st">"Postrera (Sep-Nov)"</span>)</span>
+<span id="cb40-44"><a href="#cb40-44" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb40-45"><a href="#cb40-45" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-46"><a href="#cb40-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_style</span>(</span>
+<span id="cb40-47"><a href="#cb40-47" aria-hidden="true" tabindex="-1"></a>    <span class="at">style =</span> <span class="fu">cell_text</span>(<span class="at">color =</span> <span class="st">"#6c757d"</span>),</span>
+<span id="cb40-48"><a href="#cb40-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">locations =</span> <span class="fu">cells_body</span>(<span class="at">columns =</span> <span class="fu">c</span>(LT2, LT3), <span class="at">rows =</span> window <span class="sc">==</span> <span class="st">"Postrera (Sep-Nov)"</span>)</span>
+<span id="cb40-49"><a href="#cb40-49" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-50"><a href="#cb40-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_style</span>(</span>
+<span id="cb40-51"><a href="#cb40-51" aria-hidden="true" tabindex="-1"></a>    <span class="at">style =</span> <span class="fu">cell_text</span>(<span class="at">weight =</span> <span class="st">"bold"</span>, <span class="at">size =</span> <span class="fu">px</span>(<span class="dv">13</span>)),</span>
+<span id="cb40-52"><a href="#cb40-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">locations =</span> <span class="fu">cells_row_groups</span>()</span>
+<span id="cb40-53"><a href="#cb40-53" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-54"><a href="#cb40-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_style</span>(</span>
+<span id="cb40-55"><a href="#cb40-55" aria-hidden="true" tabindex="-1"></a>    <span class="at">style =</span> <span class="fu">cell_borders</span>(<span class="at">sides =</span> <span class="st">"bottom"</span>, <span class="at">color =</span> <span class="st">"#dee2e6"</span>, <span class="at">weight =</span> <span class="fu">px</span>(<span class="dv">2</span>)),</span>
+<span id="cb40-56"><a href="#cb40-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">locations =</span> <span class="fu">cells_column_labels</span>()</span>
+<span id="cb40-57"><a href="#cb40-57" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-58"><a href="#cb40-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_footnote</span>(</span>
+<span id="cb40-59"><a href="#cb40-59" aria-hidden="true" tabindex="-1"></a>    <span class="at">footnote =</span> <span class="fu">md</span>(<span class="st">"**Green** = recommended for operational use; Gray = use with caution"</span>),</span>
+<span id="cb40-60"><a href="#cb40-60" aria-hidden="true" tabindex="-1"></a>    <span class="at">locations =</span> <span class="fu">cells_title</span>(<span class="at">groups =</span> <span class="st">"subtitle"</span>)</span>
+<span id="cb40-61"><a href="#cb40-61" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-62"><a href="#cb40-62" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_footnote</span>(</span>
+<span id="cb40-63"><a href="#cb40-63" aria-hidden="true" tabindex="-1"></a>    <span class="at">footnote =</span> <span class="st">"Format: ROC-AUC (F1). ROC-AUC &gt; 0.7 = good; &gt; 0.8 = excellent"</span>,</span>
+<span id="cb40-64"><a href="#cb40-64" aria-hidden="true" tabindex="-1"></a>    <span class="at">locations =</span> <span class="fu">cells_column_labels</span>(<span class="at">columns =</span> LT0)</span>
+<span id="cb40-65"><a href="#cb40-65" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-66"><a href="#cb40-66" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_source_note</span>(</span>
+<span id="cb40-67"><a href="#cb40-67" aria-hidden="true" tabindex="-1"></a>    <span class="at">source_note =</span> <span class="fu">md</span>(<span class="st">"**Recommendation**: Use LT0-2 for Primera, LT0-1 for Postrera. Honduras shows strongest Postrera skill."</span>)</span>
+<span id="cb40-68"><a href="#cb40-68" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb40-69"><a href="#cb40-69" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_options</span>(</span>
+<span id="cb40-70"><a href="#cb40-70" aria-hidden="true" tabindex="-1"></a>    <span class="at">table.font.size =</span> <span class="fu">px</span>(<span class="dv">14</span>),</span>
+<span id="cb40-71"><a href="#cb40-71" aria-hidden="true" tabindex="-1"></a>    <span class="at">heading.title.font.size =</span> <span class="fu">px</span>(<span class="dv">18</span>),</span>
+<span id="cb40-72"><a href="#cb40-72" aria-hidden="true" tabindex="-1"></a>    <span class="at">heading.subtitle.font.size =</span> <span class="fu">px</span>(<span class="dv">13</span>),</span>
+<span id="cb40-73"><a href="#cb40-73" aria-hidden="true" tabindex="-1"></a>    <span class="at">column_labels.font.weight =</span> <span class="st">"bold"</span>,</span>
+<span id="cb40-74"><a href="#cb40-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">row_group.background.color =</span> <span class="st">"#f8f9fa"</span>,</span>
+<span id="cb40-75"><a href="#cb40-75" aria-hidden="true" tabindex="-1"></a>    <span class="at">table.border.top.style =</span> <span class="st">"solid"</span>,</span>
+<span id="cb40-76"><a href="#cb40-76" aria-hidden="true" tabindex="-1"></a>    <span class="at">table.border.top.width =</span> <span class="fu">px</span>(<span class="dv">2</span>),</span>
+<span id="cb40-77"><a href="#cb40-77" aria-hidden="true" tabindex="-1"></a>    <span class="at">table.border.top.color =</span> <span class="st">"#1a9850"</span></span>
+<span id="cb40-78"><a href="#cb40-78" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="rffbtcvubw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#rffbtcvubw table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#rffbtcvubw thead, #rffbtcvubw tbody, #rffbtcvubw tfoot, #rffbtcvubw tr, #rffbtcvubw td, #rffbtcvubw th {
+  border-style: none;
+}
+
+#rffbtcvubw p {
+  margin: 0;
+  padding: 0;
+}
+
+#rffbtcvubw .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 14px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #1A9850;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#rffbtcvubw .gt_title {
+  color: #333333;
+  font-size: 18px;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#rffbtcvubw .gt_subtitle {
+  color: #333333;
+  font-size: 13px;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#rffbtcvubw .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: bold;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#rffbtcvubw .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: bold;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#rffbtcvubw .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#rffbtcvubw .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#rffbtcvubw .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#rffbtcvubw .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#rffbtcvubw .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #F8F9FA;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#rffbtcvubw .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #F8F9FA;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#rffbtcvubw .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#rffbtcvubw .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#rffbtcvubw .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#rffbtcvubw .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rffbtcvubw .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#rffbtcvubw .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#rffbtcvubw .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#rffbtcvubw .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rffbtcvubw .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#rffbtcvubw .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rffbtcvubw .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#rffbtcvubw .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rffbtcvubw .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#rffbtcvubw .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rffbtcvubw .gt_left {
+  text-align: left;
+}
+
+#rffbtcvubw .gt_center {
+  text-align: center;
+}
+
+#rffbtcvubw .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#rffbtcvubw .gt_font_normal {
+  font-weight: normal;
+}
+
+#rffbtcvubw .gt_font_bold {
+  font-weight: bold;
+}
+
+#rffbtcvubw .gt_font_italic {
+  font-style: italic;
+}
+
+#rffbtcvubw .gt_super {
+  font-size: 65%;
+}
+
+#rffbtcvubw .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#rffbtcvubw .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#rffbtcvubw .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#rffbtcvubw .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#rffbtcvubw .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#rffbtcvubw .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#rffbtcvubw .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false"><caption><p>SEAS5 Forecast Skill Summary</p></caption>
+  <thead>
+    <tr class="gt_heading">
+      <td colspan="5" class="gt_heading gt_title gt_font_normal" style=""><strong>SEAS5 Forecast Skill: ROC-AUC (F1)</strong></td>
+    </tr>
+    <tr class="gt_heading">
+      <td colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style="">RP4 drought threshold | 1981-2024 baseline | <em>Recommended leadtimes highlighted</em><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></td>
+    </tr>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="border-bottom-width: 2px; border-bottom-style: solid; border-bottom-color: #dee2e6;" scope="col" id="Country">Country</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="border-bottom-width: 2px; border-bottom-style: solid; border-bottom-color: #dee2e6;" scope="col" id="LT0<span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>2</sup></span>">LT0<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>2</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="border-bottom-width: 2px; border-bottom-style: solid; border-bottom-color: #dee2e6;" scope="col" id="LT1">LT1</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="border-bottom-width: 2px; border-bottom-style: solid; border-bottom-color: #dee2e6;" scope="col" id="LT2">LT2</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="border-bottom-width: 2px; border-bottom-style: solid; border-bottom-color: #dee2e6;" scope="col" id="LT3">LT3</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" style="font-size: 13px; font-weight: bold;" scope="colgroup" id="Postrera (Sep-Nov)">Postrera (Sep-Nov)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Postrera (Sep-Nov)  country_aoi" class="gt_row gt_center">El Salvador</td>
+<td headers="Postrera (Sep-Nov)  LT0" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.86 (0.55)</td>
+<td headers="Postrera (Sep-Nov)  LT1" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.76 (0.45)</td>
+<td headers="Postrera (Sep-Nov)  LT2" class="gt_row gt_right" style="color: #6C757D;">0.63 (0.36)</td>
+<td headers="Postrera (Sep-Nov)  LT3" class="gt_row gt_right" style="color: #6C757D;">0.63 (0.45)</td></tr>
+    <tr><td headers="Postrera (Sep-Nov)  country_aoi" class="gt_row gt_center">Guatemala</td>
+<td headers="Postrera (Sep-Nov)  LT0" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.80 (0.64)</td>
+<td headers="Postrera (Sep-Nov)  LT1" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.72 (0.55)</td>
+<td headers="Postrera (Sep-Nov)  LT2" class="gt_row gt_right" style="color: #6C757D;">0.66 (0.36)</td>
+<td headers="Postrera (Sep-Nov)  LT3" class="gt_row gt_right" style="color: #6C757D;">0.65 (0.45)</td></tr>
+    <tr><td headers="Postrera (Sep-Nov)  country_aoi" class="gt_row gt_center">Honduras</td>
+<td headers="Postrera (Sep-Nov)  LT0" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.87 (0.64)</td>
+<td headers="Postrera (Sep-Nov)  LT1" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.79 (0.45)</td>
+<td headers="Postrera (Sep-Nov)  LT2" class="gt_row gt_right" style="color: #6C757D;">0.77 (0.55)</td>
+<td headers="Postrera (Sep-Nov)  LT3" class="gt_row gt_right" style="color: #6C757D;">0.74 (0.36)</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" style="font-size: 13px; font-weight: bold;" scope="colgroup" id="Primera (May-Aug)">Primera (May-Aug)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Primera (May-Aug)  country_aoi" class="gt_row gt_center">El Salvador</td>
+<td headers="Primera (May-Aug)  LT0" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.72 (0.36)</td>
+<td headers="Primera (May-Aug)  LT1" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.73 (0.45)</td>
+<td headers="Primera (May-Aug)  LT2" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.67 (0.45)</td>
+<td headers="Primera (May-Aug)  LT3" class="gt_row gt_right">NA</td></tr>
+    <tr><td headers="Primera (May-Aug)  country_aoi" class="gt_row gt_center">Guatemala</td>
+<td headers="Primera (May-Aug)  LT0" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.81 (0.55)</td>
+<td headers="Primera (May-Aug)  LT1" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.85 (0.64)</td>
+<td headers="Primera (May-Aug)  LT2" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.79 (0.64)</td>
+<td headers="Primera (May-Aug)  LT3" class="gt_row gt_right">NA</td></tr>
+    <tr><td headers="Primera (May-Aug)  country_aoi" class="gt_row gt_center">Honduras</td>
+<td headers="Primera (May-Aug)  LT0" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.75 (0.45)</td>
+<td headers="Primera (May-Aug)  LT1" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.75 (0.45)</td>
+<td headers="Primera (May-Aug)  LT2" class="gt_row gt_right" style="background-color: #C7E9C0; font-weight: bold;">0.71 (0.55)</td>
+<td headers="Primera (May-Aug)  LT3" class="gt_row gt_right">NA</td></tr>
+  </tbody>
+  <tfoot class="gt_sourcenotes">
+    <tr>
+      <td class="gt_sourcenote" colspan="5"><strong>Recommendation</strong>: Use LT0-2 for Primera, LT0-1 for Postrera. Honduras shows strongest Postrera skill.</td>
+    </tr>
+  </tfoot>
+  <tfoot class="gt_footnotes">
+    <tr>
+      <td class="gt_footnote" colspan="5"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span> <strong>Green</strong> = recommended for operational use; Gray = use with caution</td>
+    </tr>
+    <tr>
+      <td class="gt_footnote" colspan="5"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>2</sup></span> Format: ROC-AUC (F1). ROC-AUC &gt; 0.7 = good; &gt; 0.8 = excellent</td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</div>
+</div>
+</section>
+<section id="recommendations" class="level2" data-number="7.9">
+<h2 data-number="7.9" class="anchored" data-anchor-id="recommendations"><span class="header-section-number">7.9</span> Recommendations</h2>
 <p>Based on this multi-AOI assessment:</p>
 <ol type="1">
 <li><p><strong>Use the 1981-2024 baseline</strong> for threshold calculation. The longer record provides more stable estimates and reveals skill that is masked by the shorter baseline.</p></li>
