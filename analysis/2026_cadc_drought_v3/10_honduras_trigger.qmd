@@ -1,0 +1,997 @@
+# Honduras Trigger Configuration {#sec-honduras-trigger}
+
+```{r}
+#| label: setup-honduras
+#| include: false
+
+library(tidyverse)
+library(lubridate)
+library(cumulus)
+library(gt)
+library(scales)
+library(patchwork)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Overview
+
+Chapter @sec-threshold-optimization identified optimal forecast thresholds under the constraint that a single set of thresholds must work across all three countries. This chapter relaxes that constraint and performs a **Honduras-specific** optimization, allowing thresholds to vary independently across leadtimes and seasons for the Honduras AOI (departments Intibuca, HN07 and Lempira, HN08).
+
+The key methodological advance is the **matched return period** approach: rather than defining drought at a fixed RP (e.g., RP4 = 11 driest years), we define drought at each season to match the number of years that season's trigger actually fires. This asks a fairer question: *"Given that you trigger N times, are you triggering on the N worst years?"*
+
+```{r}
+#| label: load-data
+
+# ── Constants ──────────────────────────────────────────────────────────
+PRIMERA_MONTHS <- 5:8
+POSTRERA_MONTHS <- 9:11
+PRIMERA_ISSUED_MONTHS <- c(3, 4, 5)
+POSTRERA_ISSUED_MONTHS <- c(6, 7, 8, 9)
+AOI_PCODES <- c("HN07", "HN08")
+BASELINE_START <- 1981
+BASELINE_END <- 2024
+N_YEARS <- BASELINE_END - BASELINE_START + 1
+
+# ── Load data ──────────────────────────────────────────────────────────
+con <- pg_con()
+df_weights <- tbl(con, "polygon") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 1, pcode %in% AOI_PCODES) |>
+  select(pcode, seas5_n_upsampled_pixels) |>
+  collect()
+
+df_seas5_raw <- tbl(con, "seas5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 1, pcode %in% AOI_PCODES) |>
+  collect()
+
+df_era5_raw <- tbl(con, "era5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(pcode %in% AOI_PCODES) |>
+  collect()
+DBI::dbDisconnect(con)
+
+# ── Aggregate forecasts to seasonal totals ─────────────────────────────
+df_seas5_mm <- df_seas5_raw |>
+  mutate(value_mm = days_in_month(valid_date) * mean)
+
+df_seas5_seasonal <- bind_rows(
+  seas5_aggregate_forecast(df_seas5_mm, value = "value_mm", valid_months = PRIMERA_MONTHS,
+                           by = c("iso3", "pcode", "issued_date")) |> mutate(window = "primera"),
+  seas5_aggregate_forecast(df_seas5_mm, value = "value_mm", valid_months = POSTRERA_MONTHS,
+                           by = c("iso3", "pcode", "issued_date")) |> mutate(window = "postrera")
+) |>
+  rename(fcst_mm = value_mm) |>
+  mutate(year = year(issued_date), issued_month = month(issued_date)) |>
+  filter(
+    (window == "primera" & issued_month %in% PRIMERA_ISSUED_MONTHS) |
+    (window == "postrera" & issued_month %in% POSTRERA_ISSUED_MONTHS)
+  )
+
+# ── Aggregate observations to seasonal totals ──────────────────────────
+df_era5_monthly <- df_era5_raw |>
+  mutate(year = year(valid_date), month = month(valid_date),
+         value_mm = mean * days_in_month(valid_date))
+
+df_era5_seasonal <- bind_rows(
+  df_era5_monthly |> filter(month %in% PRIMERA_MONTHS) |>
+    group_by(pcode, iso3, year) |> summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "primera"),
+  df_era5_monthly |> filter(month %in% POSTRERA_MONTHS) |>
+    group_by(pcode, iso3, year) |> summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "postrera")
+)
+
+# ── Join and weight-average across departments ─────────────────────────
+df_joined <- df_seas5_seasonal |>
+  left_join(df_era5_seasonal |> select(pcode, year, window, obs_mm),
+            by = c("pcode", "year", "window")) |>
+  filter(!is.na(obs_mm)) |>
+  left_join(df_weights, by = "pcode") |>
+  group_by(year, window, leadtime) |>
+  summarise(
+    fcst_mm = weighted.mean(fcst_mm, w = seas5_n_upsampled_pixels),
+    obs_mm = weighted.mean(obs_mm, w = seas5_n_upsampled_pixels),
+    .groups = "drop"
+  ) |>
+  filter(year >= BASELINE_START, year <= BASELINE_END)
+
+# ── Helper: empirical RP threshold ────────────────────────────────────
+calc_rp_threshold <- function(x, rp_target = 4, direction = -1) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n < 3) return(NA_real_)
+  ranks <- rank(x * -direction, ties.method = "average")
+  rp <- (n + 1) / ranks
+  approx(rp, x, xout = rp_target, rule = 2)$y
+}
+
+# ── Observed years ranked by dryness (driest first) ───────────────────
+obs_by_year <- df_joined |> distinct(year, window, obs_mm)
+
+primera_ranked <- obs_by_year |>
+  filter(window == "primera") |> arrange(obs_mm) |> pull(year)
+postrera_ranked <- obs_by_year |>
+  filter(window == "postrera") |> arrange(obs_mm) |> pull(year)
+
+# ── Observed RP per year per season ───────────────────────────────────
+obs_rp_lookup <- obs_by_year |>
+  group_by(window) |>
+  mutate(
+    dry_rank = rank(obs_mm, ties.method = "first"),
+    obs_rp = (n() + 1) / dry_rank
+  ) |>
+  ungroup()
+```
+
+## Grid Search Methodology
+
+### Search Space Construction
+
+The trigger system uses ECMWF SEAS5 seasonal rainfall forecasts at multiple leadtimes. For each season, up to 3 leadtimes are available:
+
+| Season | LT0 (latest) | LT1 | LT2 (earliest) |
+|--------|:---:|:---:|:---:|
+| **Primera** (May-Aug) | May forecast | April forecast | March forecast |
+| **Postrera** (Sep-Nov) | September forecast | August forecast | — |
+
+For postrera, LT2 was evaluated but dropped from the optimization because July-issued forecasts for September-November rainfall showed minimal added value.
+
+Each leadtime is assigned an **RP threshold** from the empirical distribution of 44 years (1981-2024). With `r N_YEARS` years, the possible empirical return periods are $(N+1)/\text{rank}$:
+
+```{r}
+#| label: tbl-rp-options
+
+empirical_rps <- (N_YEARS + 1) / seq_len(N_YEARS)
+rp_opts <- empirical_rps[empirical_rps >= 2.8 & empirical_rps <= 15]
+
+tibble(
+  Rank = (N_YEARS + 1) / rp_opts,
+  `Return Period` = rp_opts,
+  `Trigger years (of 44)` = floor((N_YEARS + 1) / rp_opts)
+) |>
+  mutate(
+    across(`Return Period`, ~sprintf("%.2f", .x)),
+    across(Rank, as.integer)
+  ) |>
+  gt() |>
+  cols_align(align = "center") |>
+  tab_header(title = "Available RP threshold options")
+```
+
+### Constraints
+
+The grid search applies two key constraints:
+
+1. **Monotonic within season**: Earlier leadtimes must use thresholds at least as stringent (higher RP) as later leadtimes. Since earlier forecasts are less reliable, we require higher confidence to trigger early: $\text{LT0} \leq \text{LT1} \leq \text{LT2}$
+
+2. **Cross-season monotonicity**: The minimum postrera threshold must be at least as stringent as the minimum primera threshold: $\min(\text{postrera thresholds}) \geq \min(\text{primera thresholds})$
+
+3. **Annual RP target**: The combined annual return period (based on unique trigger years across both seasons via OR-logic) must fall within **[2.8, 5.0]** years.
+
+### Search Space Reduction
+
+```{r}
+#| label: compute-grid-sizes
+
+# Count combos at each stage
+n_3lt <- nrow(expand_grid(lt0 = rp_opts, lt1 = rp_opts, lt2 = rp_opts) |>
+                filter(lt1 >= lt0, lt2 >= lt1))
+n_2lt <- nrow(expand_grid(lt0 = rp_opts, lt1 = rp_opts) |> filter(lt1 >= lt0))
+n_per_season <- n_3lt + n_2lt
+n_full <- n_per_season^2
+
+# Load actual feasible results
+feasible <- read_csv(
+  file.path(rprojroot::find_rstudio_root_file(),
+           "artefacts/honduras_recommendation/results/feasible_configs_rp3to5.csv"),
+  show_col_types = FALSE
+)
+
+# Apply our filters
+constrained <- feasible |>
+  mutate(
+    min_p = pmin(p0, p1, if_else(is.na(p2), Inf, p2)),
+    min_s = pmin(s0, s1, if_else(is.na(s2), Inf, s2), if_else(is.na(s3), Inf, s3))
+  ) |>
+  filter(min_s >= min_p) |>
+  select(-min_p, -min_s)
+
+n_cross_season <- nrow(constrained)
+n_rp_feasible <- constrained |> filter(annual_rp >= 2.8, annual_rp <= 5.0) |> nrow()
+
+configs_314 <- constrained |>
+  filter(abs(annual_rp - 44 / 14) < 0.01) |>
+  select(-s3) |>
+  distinct(p0, p1, p2, s0, s1, s2, .keep_all = TRUE)
+n_rp314 <- nrow(configs_314)
+```
+
+```{r}
+#| label: fig-funnel
+#| fig-cap: "Configuration reduction at each constraint stage. The grid search starts with all monotonic threshold combinations and progressively filters to the target annual return period."
+#| fig-height: 4
+#| fig-width: 8
+
+funnel_data <- tibble(
+  stage = c(
+    "All monotonic combos",
+    "Cross-season constraint",
+    "Annual RP in [2.8, 5.0]",
+    "Annual RP = 3.14\n(drop postrera LT2)"
+  ),
+  n = c(n_full, n_cross_season, n_rp_feasible, n_rp314)
+) |>
+  mutate(stage = fct_inorder(stage))
+
+ggplot(funnel_data, aes(x = fct_rev(stage), y = n)) +
+  geom_col(fill = "steelblue", width = 0.6) +
+  geom_text(aes(label = format(n, big.mark = ",")), hjust = -0.1, size = 4) +
+  scale_y_continuous(
+    labels = label_comma(),
+    expand = expansion(mult = c(0, 0.2))
+  ) +
+  coord_flip() +
+  labs(x = NULL, y = "Number of configurations") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank())
+```
+
+The grid search produces `r format(n_full, big.mark = ",")` monotonic threshold combinations. After applying the cross-season constraint and filtering to annual RP in [2.8, 5.0], `r format(n_rp_feasible, big.mark = ",")` configurations remain. We focus on the **RP 3.14** target (44 years / 14 trigger years), which yields **`r format(n_rp314, big.mark = ",")`** unique configurations after dropping postrera LT2.
+
+## Trigger Mechanics
+
+### OR-Logic
+
+Within each season, the trigger fires if **any** leadtime's forecast falls below its RP threshold. A season's trigger years are the **union** across all its leadtimes:
+
+$$\text{Season triggers year } y \iff \exists \text{ LT } \in \{0, 1, 2\}: \text{forecast}_{\text{LT}}(y) \leq \text{threshold}_{\text{LT}}$$
+
+At the annual level, a year counts as "triggered" if **either** season fires.
+
+### Different Leadtimes Catch Different Years
+
+A critical insight: different leadtimes are different forecasts issued at different times. Even at the same RP threshold, they do not necessarily trigger the same years. Within the same leadtime, a more stringent RP produces a strict subset of a less stringent RP's trigger years. But across leadtimes, the sets can differ substantially.
+
+```{r}
+#| label: fig-lt-overlap
+#| fig-cap: "Trigger year overlap between leadtimes at RP 5.6 for Primera. Each leadtime triggers a different set of years -- they are different forecasts, not just earlier versions of the same forecast."
+#| fig-height: 3
+#| fig-width: 10
+
+# Build trigger lookup
+lt_list <- list(
+  list(window = "primera", leadtime = 0, id = "p0"),
+  list(window = "primera", leadtime = 1, id = "p1"),
+  list(window = "primera", leadtime = 2, id = "p2"),
+  list(window = "postrera", leadtime = 0, id = "s0"),
+  list(window = "postrera", leadtime = 1, id = "s1")
+)
+
+trigger_lookup <- list()
+for (lt_info in lt_list) {
+  df_lt <- df_joined |> filter(window == lt_info$window, leadtime == lt_info$leadtime)
+  n <- nrow(df_lt)
+  empirical_rps_lt <- (n + 1) / seq_len(n)
+  in_range <- empirical_rps_lt >= 2.8 & empirical_rps_lt <= 15
+  rp_opts_lt <- empirical_rps_lt[in_range]
+
+  for (rp in rp_opts_lt) {
+    fcst_thresh <- calc_rp_threshold(df_lt$fcst_mm, rp, -1)
+    trigger_years <- df_lt$year[df_lt$fcst_mm <= fcst_thresh]
+    key <- sprintf("%s_%.4f", lt_info$id, rp)
+    trigger_lookup[[key]] <- trigger_years
+  }
+}
+
+# Show overlap at RP ~5.6 for primera
+rp_demo <- 5.625
+p0_demo <- trigger_lookup[[sprintf("p0_%.4f", rp_demo)]]
+p1_demo <- trigger_lookup[[sprintf("p1_%.4f", rp_demo)]]
+p2_demo <- trigger_lookup[[sprintf("p2_%.4f", rp_demo)]]
+
+overlap_data <- tibble(year = BASELINE_START:BASELINE_END) |>
+  mutate(
+    LT0_May = year %in% p0_demo,
+    LT1_Apr = year %in% p1_demo,
+    LT2_Mar = year %in% p2_demo
+  ) |>
+  pivot_longer(-year, names_to = "lt", values_to = "triggered") |>
+  filter(triggered) |>
+  mutate(lt = factor(lt, levels = c("LT2_Mar", "LT1_Apr", "LT0_May")))
+
+# Only show years where at least one LT fires
+active <- overlap_data |> pull(year) |> unique()
+
+# Full grid for active years
+full_grid_overlap <- expand_grid(
+  year = active,
+  lt = factor(c("LT2_Mar", "LT1_Apr", "LT0_May"),
+              levels = c("LT2_Mar", "LT1_Apr", "LT0_May"))
+) |>
+  left_join(overlap_data, by = c("year", "lt")) |>
+  mutate(triggered = replace_na(triggered, FALSE))
+
+ggplot(full_grid_overlap, aes(x = factor(year), y = lt, fill = triggered)) +
+  geom_tile(color = "black", linewidth = 0.4) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "white"),
+                    labels = c("No", "Yes"), name = "Triggered") +
+  labs(
+    title = sprintf("Primera trigger years at RP %.1f by leadtime", rp_demo),
+    x = NULL, y = NULL
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    panel.grid = element_blank()
+  )
+```
+
+## Matched Return Period Evaluation
+
+### The Problem with Fixed Drought Definitions
+
+In @sec-threshold-optimization, drought was defined at a fixed RP4 threshold (11 driest years out of 44) regardless of how many years a config triggers. This creates a structural bias:
+
+- A config triggering 7 years can catch at most 7 of 11 drought years (recall capped at 64%)
+- A config triggering 15 years mechanically catches more drought years but accumulates more false positives
+
+### The Matched Approach
+
+Instead, we define drought **per season to match the trigger frequency**. If a config's primera triggers 10 years, we define primera drought as the 10 driest observed (ERA5) years. This asks: *"Of all the years you could have triggered on, did you pick the driest ones?"*
+
+```{r}
+#| label: fig-matched-concept
+#| fig-cap: "Matched-RP concept: drought definition adapts to trigger frequency. A config triggering 10 years gets compared against the 10 driest observed years (RP 4.4). Perfect overlap yields F1 = 1.0."
+#| fig-height: 4
+#| fig-width: 10
+
+# Illustrative example for primera
+obs_primera <- obs_by_year |>
+  filter(window == "primera") |>
+  arrange(obs_mm) |>
+  mutate(rank = row_number(), rp = (n() + 1) / rank)
+
+# A trigger set of 10 years
+demo_trigger <- trigger_lookup[[sprintf("p0_%.4f", 5.625)]]
+n_trig <- length(demo_trigger)
+drought_def <- head(primera_ranked, n_trig)
+
+concept_data <- obs_primera |>
+  mutate(
+    is_triggered = year %in% demo_trigger,
+    is_drought = year %in% drought_def,
+    category = case_when(
+      is_triggered & is_drought ~ "TP",
+      is_triggered & !is_drought ~ "FP",
+      !is_triggered & is_drought ~ "FN",
+      TRUE ~ "TN"
+    )
+  )
+
+ggplot(concept_data, aes(x = reorder(factor(year), obs_mm), y = obs_mm)) +
+  geom_col(aes(fill = category), width = 0.7) +
+  geom_hline(
+    yintercept = max(concept_data$obs_mm[concept_data$is_drought]),
+    linetype = "dashed", color = "red", linewidth = 0.8
+  ) +
+  annotate("text",
+    x = 3, y = max(concept_data$obs_mm[concept_data$is_drought]) + 10,
+    label = sprintf("Drought threshold (RP %.1f = %d driest years)",
+                    N_YEARS / n_trig, n_trig),
+    hjust = 0, size = 3.5, color = "red"
+  ) +
+  scale_fill_manual(
+    values = c("TP" = "#2ca02c", "FP" = "#d62728", "FN" = "#7f7f7f", "TN" = "#e0e0e0"),
+    name = NULL
+  ) +
+  labs(
+    title = "Matched-RP evaluation: Primera at LT0 (RP 5.6)",
+    subtitle = sprintf("Trigger fires %d years | Drought defined as %d driest | F1 compares overlap",
+                        n_trig, n_trig),
+    x = "Year (sorted by observed rainfall, driest left)",
+    y = "Observed seasonal rainfall (mm)"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+```{r}
+#| label: compute-matched-metrics
+
+# ── Compute matched-RP metrics for all configs at RP 3.14 ─────────────
+
+compute_matched <- function(row) {
+  p0_yrs <- trigger_lookup[[sprintf("p0_%.4f", row$p0)]]
+  p1_yrs <- trigger_lookup[[sprintf("p1_%.4f", row$p1)]]
+  p2_yrs <- if (!is.na(row$p2)) trigger_lookup[[sprintf("p2_%.4f", row$p2)]] else integer(0)
+  s0_yrs <- trigger_lookup[[sprintf("s0_%.4f", row$s0)]]
+  s1_yrs <- trigger_lookup[[sprintf("s1_%.4f", row$s1)]]
+
+  # Season-level trigger years (OR-union)
+  p_trigger_yrs <- Reduce(union, list(p0_yrs, p1_yrs, p2_yrs))
+  s_trigger_yrs <- union(s0_yrs, s1_yrs)
+
+  n_p <- length(p_trigger_yrs)
+  n_s <- length(s_trigger_yrs)
+
+  # Matched drought: N driest observed = N trigger years
+  p_drought <- head(primera_ranked, n_p)
+  s_drought <- head(postrera_ranked, n_s)
+
+  # Confusion matrix per season
+  p_tp <- length(intersect(p_trigger_yrs, p_drought))
+  p_fp <- length(setdiff(p_trigger_yrs, p_drought))
+  p_fn <- length(setdiff(p_drought, p_trigger_yrs))
+  s_tp <- length(intersect(s_trigger_yrs, s_drought))
+  s_fp <- length(setdiff(s_trigger_yrs, s_drought))
+  s_fn <- length(setdiff(s_drought, s_trigger_yrs))
+
+  p_prec <- if (p_tp + p_fp > 0) p_tp / (p_tp + p_fp) else 0
+  p_rec <- if (p_tp + p_fn > 0) p_tp / (p_tp + p_fn) else 0
+  p_f1 <- if (p_prec + p_rec > 0) 2 * p_prec * p_rec / (p_prec + p_rec) else 0
+
+  s_prec <- if (s_tp + s_fp > 0) s_tp / (s_tp + s_fp) else 0
+  s_rec <- if (s_tp + s_fn > 0) s_tp / (s_tp + s_fn) else 0
+  s_f1 <- if (s_prec + s_rec > 0) 2 * s_prec * s_rec / (s_prec + s_rec) else 0
+
+  # Early warning: TPs first caught at earlier LTs
+  p_tp_lt2 <- length(intersect(p2_yrs, p_drought))
+  p_tp_lt1_only <- length(setdiff(intersect(p1_yrs, p_drought), p2_yrs))
+  p_tp_lt0_only <- length(setdiff(intersect(p0_yrs, p_drought), union(p1_yrs, p2_yrs)))
+
+  p_fp_lt2_marg <- length(setdiff(setdiff(p2_yrs, p_drought), union(p0_yrs, p1_yrs)))
+  p_fp_lt1_marg <- length(setdiff(setdiff(p1_yrs, p_drought), p0_yrs))
+
+  s_tp_lt1 <- length(intersect(s1_yrs, s_drought))
+  s_tp_lt0_only <- length(setdiff(intersect(s0_yrs, s_drought), s1_yrs))
+  s_fp_lt1_marg <- length(setdiff(setdiff(s1_yrs, s_drought), s0_yrs))
+
+  tibble(
+    n_p_triggers = n_p, n_s_triggers = n_s,
+    p_seasonal_rp = N_YEARS / n_p, s_seasonal_rp = N_YEARS / n_s,
+    primera_tp = p_tp, primera_fp = p_fp, primera_fn = p_fn, primera_f1 = p_f1,
+    postrera_tp = s_tp, postrera_fp = s_fp, postrera_fn = s_fn, postrera_f1 = s_f1,
+    p_tp_earliest_lt2 = p_tp_lt2, p_tp_earliest_lt1 = p_tp_lt1_only,
+    p_tp_earliest_lt0 = p_tp_lt0_only,
+    p_fp_marginal_lt2 = p_fp_lt2_marg, p_fp_marginal_lt1 = p_fp_lt1_marg,
+    s_tp_earliest_lt1 = s_tp_lt1, s_tp_earliest_lt0 = s_tp_lt0_only,
+    s_fp_marginal_lt1 = s_fp_lt1_marg
+  )
+}
+
+matched <- map_dfr(seq_len(nrow(configs_314)), \(i) compute_matched(configs_314[i, ]))
+
+configs <- configs_314 |>
+  select(p0, p1, p2, s0, s1, s2, annual_rp) |>
+  bind_cols(matched) |>
+  mutate(
+    mean_f1 = (primera_f1 + postrera_f1) / 2,
+    f1_diff = abs(primera_f1 - postrera_f1),
+    rp_diff = s_seasonal_rp - p_seasonal_rp,
+    p_early_tp = p_tp_earliest_lt2 + p_tp_earliest_lt1,
+    s_early_tp = s_tp_earliest_lt1,
+    total_early_tp = p_early_tp + s_early_tp,
+    p_marginal_fp = p_fp_marginal_lt2 + p_fp_marginal_lt1,
+    s_marginal_fp = s_fp_marginal_lt1,
+    total_marginal_fp = p_marginal_fp + s_marginal_fp,
+    p_cv = pmap_dbl(list(p0, p1, p2), function(...) {
+      vals <- c(...) |> na.omit()
+      if (length(vals) < 2) return(0)
+      sd(vals) / mean(vals)
+    }),
+    s_cv = pmap_dbl(list(s0, s1), function(...) {
+      vals <- c(...) |> na.omit()
+      if (length(vals) < 2) return(0)
+      sd(vals) / mean(vals)
+    }),
+    mean_cv = (p_cv + s_cv) / 2
+  )
+
+# Early:MFP ratio
+max_ratio_fp <- configs |>
+  filter(total_marginal_fp > 0) |>
+  summarise(mr = max(total_early_tp / total_marginal_fp)) |>
+  pull(mr)
+
+configs <- configs |>
+  mutate(
+    early_mfp_ratio = if_else(
+      total_marginal_fp > 0,
+      total_early_tp / total_marginal_fp,
+      max_ratio_fp + total_early_tp
+    )
+  )
+```
+
+## Multi-Dimensional Evaluation
+
+With `r format(nrow(configs), big.mark = ",")` configurations at RP 3.14, we evaluate each across four dimensions:
+
+| Dimension | Goal | Description |
+|:--|:--|:--|
+| **Mean F1** | Higher = better | Average F1 across primera and postrera (matched RP) |
+| **\|F1 gap\|** | Lower = better | Balance between seasons — avoid configs that sacrifice one season |
+| **Early:MFP ratio** | Higher = better | Early warning TPs per marginal false positive added by earlier leadtimes |
+| **Threshold CV** | Lower = better | Mean coefficient of variation of thresholds within each season |
+
+```{r}
+#| label: fig-pairs-plot
+#| fig-cap: "Pairs plot of evaluation dimensions across all 7,410 configurations at RP 3.14. Diagonal: density distributions. Lower triangle: scatter plots. Upper triangle: Pearson correlations."
+#| fig-height: 10
+#| fig-width: 10
+
+dims <- list(
+  list(col = "mean_f1", lab = "Mean F1"),
+  list(col = "f1_diff", lab = "|F1 gap|"),
+  list(col = "early_mfp_ratio", lab = "Early:MFP ratio"),
+  list(col = "mean_cv", lab = "Mean CV")
+)
+nd <- length(dims)
+
+plots <- list()
+for (i in seq_len(nd)) {
+  for (j in seq_len(nd)) {
+    idx <- (i - 1) * nd + j
+    if (i == j) {
+      plots[[idx]] <- ggplot(configs, aes(x = .data[[dims[[i]]$col]])) +
+        geom_density(fill = "steelblue", alpha = 0.5) +
+        theme_minimal(base_size = 9) +
+        theme(axis.title = element_blank(), axis.text.y = element_blank()) +
+        ggtitle(dims[[i]]$lab)
+    } else if (i < j) {
+      r <- cor(configs[[dims[[i]]$col]], configs[[dims[[j]]$col]], use = "complete.obs")
+      plots[[idx]] <- ggplot() +
+        annotate("text", x = 0.5, y = 0.5, label = sprintf("r = %.2f", r), size = 4) +
+        theme_void() +
+        theme(panel.border = element_rect(fill = NA, color = "grey80"))
+    } else {
+      plots[[idx]] <- ggplot(configs, aes(x = .data[[dims[[j]]$col]], y = .data[[dims[[i]]$col]])) +
+        geom_point(alpha = 0.15, size = 0.4, color = "steelblue") +
+        theme_minimal(base_size = 9) +
+        theme(axis.title = element_blank())
+    }
+  }
+}
+
+wrap_plots(plots, ncol = nd) +
+  plot_annotation(
+    title = sprintf("Evaluation space: %s configs at RP 3.14",
+                    format(nrow(configs), big.mark = ",")),
+    theme = theme(plot.title = element_text(face = "bold", size = 13))
+  )
+```
+
+## Filtering Pipeline
+
+We apply a sequential filtering pipeline to narrow from `r format(nrow(configs), big.mark = ",")` configs to a single recommended configuration:
+
+```{r}
+#| label: compute-filtering
+
+# Step 1: Seasonal RP balance (postrera can be slightly more selective)
+step1 <- configs |> filter(rp_diff >= 0, rp_diff <= 0.5)
+
+# Step 2: Top mean F1
+max_f1 <- max(step1$mean_f1)
+step2 <- step1 |> filter(abs(mean_f1 - max_f1) < 0.001)
+
+# Step 3: Lowest mean CV
+min_cv <- min(step2$mean_cv)
+step3 <- step2 |> filter(abs(mean_cv - min_cv) < 0.001)
+```
+
+```{r}
+#| label: fig-filter-pipeline
+#| fig-cap: "Filtering pipeline from full search space to recommended configuration. Each step applies one criterion."
+#| fig-height: 4
+#| fig-width: 9
+
+pipeline <- tibble(
+  step = c(
+    "All configs\n(RP 3.14, no postrera LT2)",
+    "Seasonal RP balance\n(postrera RP - primera RP <= 0.5)",
+    sprintf("Top matched mean F1\n(= %.2f)", max_f1),
+    sprintf("Lowest mean CV\n(= %.3f)", min_cv)
+  ),
+  n = c(nrow(configs), nrow(step1), nrow(step2), nrow(step3))
+) |>
+  mutate(step = fct_inorder(step))
+
+ggplot(pipeline, aes(x = fct_rev(step), y = n)) +
+  geom_col(fill = c("#e0e0e0", "#a0c4e8", "#5b9bd5", "#2171b5") |> rev(), width = 0.6) +
+  geom_text(aes(label = format(n, big.mark = ",")), hjust = -0.1, size = 4.5, fontface = "bold") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.25))) +
+  coord_flip() +
+  labs(x = NULL, y = "Configurations remaining") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank())
+```
+
+### Filter 1: Seasonal RP Balance
+
+We require that postrera's combined seasonal RP is no more than 0.5 higher than primera's — both seasons should trigger at a similar frequency. This removes configs that are heavily biased toward one season.
+
+### Filter 2: Highest Matched Mean F1
+
+Among balanced configs, we select those achieving the maximum mean F1 score of **`r sprintf("%.2f", max_f1)`** (primera F1 = `r sprintf("%.2f", step2$primera_f1[1])`, postrera F1 = `r sprintf("%.2f", step2$postrera_f1[1])`).
+
+### Filter 3: Threshold Uniformity (Lowest Mean CV)
+
+Among tied-F1 configs, we select the one with the most uniform thresholds within each season, measured by the mean coefficient of variation across seasons. Lower CV means the thresholds are more similar, which is operationally simpler and suggests the forecast skill is consistent across leadtimes.
+
+## Recommended Configuration
+
+```{r}
+#| label: tbl-recommended
+#| tbl-cap: "Recommended trigger configuration for Honduras"
+
+winner <- step3[1, ]
+
+tibble(
+  Season = c("Primera (May-Aug)", "Postrera (Sep-Nov)"),
+  `LT0` = c(sprintf("RP %.1f", winner$p0), sprintf("RP %.1f", winner$s0)),
+  `LT1` = c(sprintf("RP %.1f", winner$p1), sprintf("RP %.1f", winner$s1)),
+  `LT2` = c(
+    if_else(is.na(winner$p2), "—", sprintf("RP %.1f", winner$p2)),
+    "—"
+  ),
+  `Seasonal RP` = c(sprintf("%.1f", winner$p_seasonal_rp), sprintf("%.1f", winner$s_seasonal_rp)),
+  `F1 (matched)` = c(sprintf("%.0f%%", winner$primera_f1 * 100),
+                      sprintf("%.0f%%", winner$postrera_f1 * 100))
+) |>
+  gt() |>
+  cols_align(align = "center", columns = -Season) |>
+  tab_footnote(
+    footnote = sprintf("Combined annual RP = %.2f (trigger in %d of %d years)",
+                        winner$annual_rp, round(N_YEARS / winner$annual_rp), N_YEARS)
+  )
+```
+
+```{r}
+#| label: compute-winner-details
+
+# Trigger years for winning config
+p0_yrs <- trigger_lookup[[sprintf("p0_%.4f", winner$p0)]]
+p1_yrs <- trigger_lookup[[sprintf("p1_%.4f", winner$p1)]]
+p2_yrs <- if (!is.na(winner$p2)) trigger_lookup[[sprintf("p2_%.4f", winner$p2)]] else integer(0)
+s0_yrs <- trigger_lookup[[sprintf("s0_%.4f", winner$s0)]]
+s1_yrs <- trigger_lookup[[sprintf("s1_%.4f", winner$s1)]]
+
+p_union <- Reduce(union, list(p0_yrs, p1_yrs, p2_yrs))
+s_union <- union(s0_yrs, s1_yrs)
+p_drought <- head(primera_ranked, length(p_union))
+s_drought <- head(postrera_ranked, length(s_union))
+
+all_years <- BASELINE_START:BASELINE_END
+```
+
+## Per-Leadtime Value Assessment
+
+The following visualization shows exactly what each leadtime contributes to the trigger system. For every year where something happens (trigger fires or drought observed), we classify each leadtime's role:
+
+- **TP (first caught)**: This leadtime is the earliest to correctly trigger for a drought year
+- **TP (already caught)**: Correctly triggers, but an earlier leadtime already caught it
+- **FP (marginal)**: False positive not triggered by any later leadtime — a genuine added cost
+- **FP (redundant)**: False positive, but the system would have triggered anyway from a later LT
+- **FN (missed)**: Drought year that this leadtime did not trigger
+- **TN**: Not a drought year, not triggered
+
+The bottom rows show the **season-level outcome** (did any LT fire?) and the **observed reality** (was it actually a drought year, colored by observed RP severity).
+
+```{r}
+#| label: fig-lt-value
+#| fig-cap: "Per-leadtime value assessment for the recommended configuration. Each row shows one leadtime's classification; 'Season trigger' shows the OR-union outcome; 'Observed' shows ERA5-based drought severity colored by return period."
+#| fig-height: 8
+#| fig-width: 14
+
+# ── Classify each LT per year ─────────────────────────────────────────
+classify_lt <- function(lt_yrs, later_lt_yrs, drought_yrs, lt_label, season_label) {
+  map_dfr(all_years, function(yr) {
+    triggered <- yr %in% lt_yrs
+    is_drought <- yr %in% drought_yrs
+    in_later <- yr %in% later_lt_yrs
+    status <- case_when(
+      triggered & is_drought & !in_later ~ "TP (first caught)",
+      triggered & is_drought & in_later  ~ "TP (already caught)",
+      triggered & !is_drought & !in_later ~ "FP (marginal)",
+      triggered & !is_drought & in_later  ~ "FP (redundant)",
+      !triggered & is_drought             ~ "FN (missed)",
+      TRUE                                ~ "TN"
+    )
+    tibble(year = yr, row = lt_label, season = season_label, status = status)
+  })
+}
+
+lt_data <- bind_rows(
+  classify_lt(p2_yrs, integer(0), p_drought, "LT2 (Mar)", "Primera"),
+  classify_lt(p1_yrs, p2_yrs,    p_drought, "LT1 (Apr)", "Primera"),
+  classify_lt(p0_yrs, union(p1_yrs, p2_yrs), p_drought, "LT0 (May)", "Primera"),
+  classify_lt(s1_yrs, integer(0), s_drought, "LT1 (Aug)", "Postrera"),
+  classify_lt(s0_yrs, s1_yrs,    s_drought, "LT0 (Sep)", "Postrera")
+)
+
+# ── Compute forecast RP per year per leadtime ─────────────────────────
+fcst_rp <- df_joined |>
+  group_by(window, leadtime) |>
+  mutate(
+    dry_rank = rank(fcst_mm, ties.method = "first"),
+    fcst_rp  = (n() + 1) / dry_rank
+  ) |>
+  ungroup() |>
+  mutate(
+    row = case_when(
+      window == "primera"  & leadtime == 2 ~ "LT2 (Mar)",
+      window == "primera"  & leadtime == 1 ~ "LT1 (Apr)",
+      window == "primera"  & leadtime == 0 ~ "LT0 (May)",
+      window == "postrera" & leadtime == 1 ~ "LT1 (Aug)",
+      window == "postrera" & leadtime == 0 ~ "LT0 (Sep)"
+    ),
+    season = if_else(window == "primera", "Primera", "Postrera"),
+    rp_label = sprintf("%.1f", fcst_rp)
+  ) |>
+  select(year, row, season, rp_label)
+
+lt_data <- lt_data |>
+  left_join(fcst_rp, by = c("year", "row", "season"))
+
+# ── Season-level trigger row ──────────────────────────────────────────
+season_trigger <- bind_rows(
+  tibble(year = all_years, season = "Primera",
+         triggered = year %in% p_union, drought = year %in% p_drought),
+  tibble(year = all_years, season = "Postrera",
+         triggered = year %in% s_union, drought = year %in% s_drought)
+) |>
+  mutate(
+    row = "Season trigger",
+    status = case_when(
+      triggered & drought  ~ "TP",
+      triggered & !drought ~ "FP",
+      !triggered & drought ~ "FN",
+      TRUE                 ~ "TN"
+    )
+  ) |>
+  select(year, row, season, status)
+
+# ── Observed drought row (discrete severity bins) ─────────────────────
+obs_row <- obs_rp_lookup |>
+  mutate(
+    season = if_else(window == "primera", "Primera", "Postrera"),
+    row = "Observed (ERA5)",
+    is_drought = (year %in% p_drought & season == "Primera") |
+                 (year %in% s_drought & season == "Postrera"),
+    status = case_when(
+      !is_drought  ~ "TN",
+      obs_rp >= 10 ~ "Drought (RP 10+)",
+      obs_rp >= 5  ~ "Drought (RP 5-10)",
+      TRUE         ~ "Drought (RP <5)"
+    ),
+    rp_label = sprintf("%.1f", obs_rp)
+  ) |>
+  select(year, row, season, status, rp_label)
+
+# ── Show all years for full temporal context ──────────────────────────
+active_years <- all_years
+
+# ── Unified color palette ─────────────────────────────────────────────
+all_colors <- c(
+  "TP (first caught)"  = "#2ca02c",
+  "TP (already caught)" = "#98df8a",
+  "FP (marginal)"      = "#d62728",
+  "FP (redundant)"     = "#ffbb78",
+  "FN (missed)"        = "#7f7f7f",
+  "TN"                 = "white",
+  "TP"                 = "#2ca02c",
+  "FP"                 = "#d62728",
+  "FN"                 = "#7f7f7f",
+  "Drought (RP 10+)"   = "#a50f15",
+  "Drought (RP 5-10)"  = "#de2d26",
+  "Drought (RP <5)"    = "#fee0d2"
+)
+
+# ── Build single plot per season (avoids patchwork x-axis misalignment) ──
+build_season_plot <- function(season_name, row_levels, show_x = FALSE) {
+  d <- bind_rows(
+    lt_data |> filter(season == season_name, year %in% active_years),
+    season_trigger |> filter(season == season_name, year %in% active_years),
+    obs_row |> filter(season == season_name, year %in% active_years)
+  ) |>
+    mutate(
+      year   = factor(year, levels = active_years),
+      row    = factor(row, levels = rev(row_levels)),
+      status = factor(status, levels = names(all_colors))
+    )
+
+  ggplot(d, aes(x = year, y = row, fill = status)) +
+    geom_tile(color = "black", linewidth = 0.4) +
+    geom_text(
+      data = d |> filter(!is.na(rp_label)),
+      aes(label = rp_label), size = 2
+    ) +
+    scale_fill_manual(values = all_colors, name = NULL, drop = FALSE) +
+    scale_x_discrete(drop = FALSE) +
+    labs(x = NULL, y = NULL, subtitle = season_name) +
+    theme_minimal(base_size = 10) +
+    theme(
+      axis.text.x = if (show_x) element_text(angle = 45, hjust = 1, size = 8)
+                     else element_blank(),
+      panel.grid    = element_blank(),
+      legend.position = "none",
+      plot.subtitle = element_text(face = "bold", size = 13)
+    )
+}
+
+p_primera <- build_season_plot(
+  "Primera",
+  c("LT2 (Mar)", "LT1 (Apr)", "LT0 (May)", "Season trigger", "Observed (ERA5)"),
+  show_x = FALSE
+)
+p_postrera <- build_season_plot(
+  "Postrera",
+  c("LT1 (Aug)", "LT0 (Sep)", "Season trigger", "Observed (ERA5)"),
+  show_x = TRUE
+)
+
+(p_primera / p_postrera) +
+  plot_layout(heights = c(5, 4)) +
+  plot_annotation(
+    title = sprintf(
+      "Trigger config: p0=%.1f  p1=%.0f  p2=%.0f  |  s0=%.1f  s1=%.1f",
+      winner$p0, winner$p1, winner$p2, winner$s0, winner$s1
+    ),
+    subtitle = sprintf(
+      "Annual RP = %.2f | Matched F1: primera = %.0f%%, postrera = %.0f%%, mean = %.0f%%",
+      winner$annual_rp, winner$primera_f1 * 100, winner$postrera_f1 * 100,
+      winner$mean_f1 * 100
+    ),
+    theme = theme(
+      plot.title    = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 11)
+    )
+  )
+```
+
+```{r}
+#| label: fig-lt-value-legend
+#| fig-cap: "Legend for per-leadtime value assessment"
+#| fig-height: 2.5
+#| fig-width: 10
+
+# ── Leadtime row legend ───────────────────────────────────────────────
+lt_cats <- c("TP (first caught)", "TP (already caught)", "FP (marginal)",
+             "FP (redundant)", "FN (missed)", "TN")
+leg_lt <- tibble(
+  status = factor(lt_cats, levels = lt_cats),
+  x = seq_along(lt_cats), y = 2
+)
+
+# ── Season trigger legend ─────────────────────────────────────────────
+trig_cats <- c("TP", "FP", "FN", "TN")
+leg_trig <- tibble(
+  status = factor(trig_cats, levels = trig_cats),
+  x = seq_along(trig_cats), y = 1
+)
+
+# ── Observed legend ───────────────────────────────────────────────────
+obs_cats <- c("Drought (RP 10+)", "Drought (RP 5-10)", "Drought (RP <5)", "TN")
+leg_obs <- tibble(
+  status = factor(obs_cats, levels = obs_cats),
+  x = seq_along(obs_cats), y = 0
+)
+
+leg_all <- bind_rows(leg_lt, leg_trig, leg_obs) |>
+  mutate(
+    label = as.character(status),
+    row_label = case_when(
+      y == 2 ~ "Leadtime rows",
+      y == 1 ~ "Season trigger",
+      y == 0 ~ "Observed (ERA5)"
+    )
+  )
+
+ggplot(leg_all, aes(x = x, y = y, fill = status)) +
+  geom_tile(color = "black", linewidth = 0.5, width = 0.9, height = 0.6) +
+  geom_text(aes(label = label), size = 2.8, vjust = -1.2) +
+  geom_text(
+    data = leg_all |> filter(x == 1),
+    aes(label = row_label), hjust = 1.1, size = 3.2, fontface = "bold"
+  ) +
+  scale_fill_manual(values = all_colors, drop = FALSE) +
+  theme_void() +
+  theme(legend.position = "none") +
+  coord_cartesian(xlim = c(-2.5, 7), ylim = c(-0.8, 3))
+```
+
+## Confusion Matrix Summary
+
+```{r}
+#| label: tbl-confusion-matrix
+#| tbl-cap: "Season-level confusion matrix for the recommended configuration (matched-RP evaluation)"
+
+tibble(
+  Season = c("Primera", "Postrera"),
+  `Trigger years` = c(winner$n_p_triggers, winner$n_s_triggers),
+  `Seasonal RP` = c(winner$p_seasonal_rp, winner$s_seasonal_rp),
+  TP = c(winner$primera_tp, winner$postrera_tp),
+  FP = c(winner$primera_fp, winner$postrera_fp),
+  FN = c(winner$primera_fn, winner$postrera_fn),
+  TN = c(N_YEARS - winner$n_p_triggers - winner$primera_fn,
+         N_YEARS - winner$n_s_triggers - winner$postrera_fn),
+  Precision = c(winner$primera_tp / (winner$primera_tp + winner$primera_fp),
+                winner$postrera_tp / (winner$postrera_tp + winner$postrera_fp)),
+  Recall = c(winner$primera_tp / (winner$primera_tp + winner$primera_fn),
+             winner$postrera_tp / (winner$postrera_tp + winner$postrera_fn)),
+  F1 = c(winner$primera_f1, winner$postrera_f1)
+) |>
+  gt() |>
+  fmt_number(columns = `Seasonal RP`, decimals = 1) |>
+  fmt_percent(columns = c(Precision, Recall, F1), decimals = 0) |>
+  cols_align(align = "center", columns = -Season)
+```
+
+## Early Warning Value
+
+```{r}
+#| label: fig-early-warning
+#| fig-cap: "Early warning breakdown: how many true positives are first detected at each leadtime, and the marginal false positive cost of adding earlier leadtimes."
+#| fig-height: 5
+#| fig-width: 9
+
+ew_data <- tibble(
+  Leadtime = c("LT2 (Mar)", "LT1 (Apr)", "LT0 (May)", "LT1 (Aug)", "LT0 (Sep)"),
+  Season = c(rep("Primera", 3), rep("Postrera", 2)),
+  `TPs first caught` = c(winner$p_tp_earliest_lt2, winner$p_tp_earliest_lt1,
+                          winner$p_tp_earliest_lt0,
+                          winner$s_tp_earliest_lt1, winner$s_tp_earliest_lt0),
+  `Marginal FPs` = c(winner$p_fp_marginal_lt2, winner$p_fp_marginal_lt1, 0,
+                      winner$s_fp_marginal_lt1, 0)
+) |>
+  pivot_longer(c(`TPs first caught`, `Marginal FPs`), names_to = "metric", values_to = "count") |>
+  mutate(
+    Leadtime = factor(Leadtime, levels = c("LT2 (Mar)", "LT1 (Apr)", "LT0 (May)",
+                                            "LT1 (Aug)", "LT0 (Sep)"))
+  )
+
+ggplot(ew_data, aes(x = Leadtime, y = count, fill = metric)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_text(aes(label = count), position = position_dodge(width = 0.7),
+            vjust = -0.3, size = 4) +
+  facet_grid(~ Season, scales = "free_x", space = "free_x") +
+  scale_fill_manual(values = c("TPs first caught" = "#2ca02c", "Marginal FPs" = "#d62728"),
+                    name = NULL) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(x = NULL, y = "Count (years)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank()
+  )
+```
+
+## Summary
+
+The Honduras-specific trigger optimization identifies a recommended configuration of:
+
+- **Primera**: LT0 = RP `r sprintf("%.1f", winner$p0)`, LT1 = RP `r sprintf("%.0f", winner$p1)`, LT2 = RP `r sprintf("%.0f", winner$p2)`
+- **Postrera**: LT0 = RP `r sprintf("%.1f", winner$s0)`, LT1 = RP `r sprintf("%.1f", winner$s1)`
+
+This was selected through a systematic pipeline:
+
+1. **Grid search** over `r format(n_full, big.mark = ",")` monotonic threshold combinations
+2. **Annual RP constraint** to 3.14 (trigger in 14 of 44 years) → `r format(n_rp314, big.mark = ",")` configs
+3. **Seasonal RP balance** (postrera RP within 0.5 of primera) → `r format(nrow(step1), big.mark = ",")` configs
+4. **Maximum matched F1** (= `r sprintf("%.2f", max_f1)`) → `r nrow(step2)` configs
+5. **Most uniform thresholds** (lowest mean CV) → `r nrow(step3)` config
+
+The **matched-RP evaluation** provides a fairer assessment than fixed-RP F1 (r = 0.26 between the two methods), ensuring configs are not penalized or rewarded simply for triggering more or fewer years.

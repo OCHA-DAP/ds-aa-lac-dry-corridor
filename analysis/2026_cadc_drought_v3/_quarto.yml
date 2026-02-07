@@ -4,7 +4,7 @@ project:
 
 book:
   title: "Seasonal Forecast Skill Assessment"
-  subtitle: "INSIVUMEH vs SEAS5 | Chiquimula, Guatemala"
+  subtitle: "INSIVUMEH vs SEAS5 | Central American Dry Corridor"
   author: "OCHA Centre for Humanitarian Data"
   date: today
   chapters:
@@ -15,6 +15,11 @@ book:
     - 03_chirps_tiebreaker.qmd
     - 04_forecast_drift.qmd
     - 05_inter_lt_correlation.qmd
+    # - 06_enso_stratification.qmd
+    - 07_multi_aoi_comparison.qmd
+    # - 08_enso_conditional_triggers.qmd
+    - 09_threshold_optimization.qmd
+    - 10_honduras_trigger.qmd
   appendices:
     - appendix_technical_notes.qmd
 
