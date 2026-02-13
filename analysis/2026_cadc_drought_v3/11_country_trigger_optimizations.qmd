@@ -9,6 +9,8 @@ library(lubridate)
 library(cumulus)
 library(gt)
 library(janitor)
+library(ggrepel)
+library(ggiraph)
 
 box::purge_cache()
 box::use(
@@ -497,7 +499,7 @@ target_rp_hnd <- (EVAL_END - EVAL_START + 1 + 1) / length(impact_yrs_hnd)
 
 Honduras uses departments El Paraiso (HN07) and Francisco Morazan (HN08) as the area of interest, with `r primera_lts_hnd` primera leadtimes and `r postrera_lts_hnd` postrera leadtimes. EM-DAT records `r length(impact_yrs_hnd)` impact years in `r EVAL_START`--`r EVAL_END`, giving an empirical impact RP of `r sprintf("%.1f", target_rp_hnd)` years.
 
-#### Impact Evaluation & Priority Filtering
+**Impact Evaluation & Priority Filtering**
 
 ```{r}
 #| label: hnd-impact-eval
@@ -534,7 +536,7 @@ hnd_candidates <- all_results_hnd |>
 After generating `r format(nrow(combos_hnd), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(hnd_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(hnd_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(hnd_candidates$should_hit_score) * 100)` of Priority 2 years.
 
 
-#### ERA5 Evaluation & Combined Scoring
+**ERA5 Evaluation & Combined Scoring**
 
 ```{r}
 #| label: hnd-era5-join
@@ -569,22 +571,145 @@ hnd_combined <- hnd_candidates |>
 
 
 ```{r}
-#| label: fig-hnd-tradeoff
-#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
+#| label: hnd-tradeoff-data
 
 hnd_tradeoff <- plot_f1_tradeoff(hnd_combined, target_rp = 3, n_nearest = 2)
+
+hnd_all_hl <- hnd_tradeoff$data |> filter(rp_group != "other")
+
+# Option A per RP: best avg_f1, tiebroken by lowest CV
+hnd_opt_a <- hnd_tradeoff$best_per_rp |>
+  group_by(annual_rp) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "A", selection = "max avg F1")
+
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+hnd_opt_b <- hnd_all_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "B", selection = "max ERA5 tol F1")
+
+hnd_final <- bind_rows(hnd_opt_a, hnd_opt_b) |>
+  # If A and B are the same config for an RP, keep one and label as "both"
+  group_by(annual_rp, across(all_of(threshold_cols_hnd))) |>
+  mutate(selection = if (n() > 1) "both" else selection) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  arrange(annual_rp, selection) |>
+  group_by(annual_rp) |>
+  mutate(option = LETTERS[row_number()]) |>
+  ungroup() |>
+  mutate(
+    config_label = sprintf("RP %.1f %s", annual_rp, option),
+    row_idx = row_number()
+  )
+
+# Pre-render GT activation tables for each final config
+hnd_activation_tables <- lapply(seq_len(nrow(hnd_final)), function(i) {
+  tbl <- build_trigger_activation_gt(
+    hnd_final[i, ], trigger_data_hnd, df_hnd,
+    df_cerf_drought, df_emdat_drought, "HND",
+    eval_start = EVAL_START, eval_end = EVAL_END,
+    df_emdat_interp = df_emdat_drought_interp,
+    must_hit_years = must_hit_years,
+    should_hit_years = should_hit_years,
+    sort_by = "activation"
+  )
+  as.character(gt::as_raw_html(tbl))
+})
+
+# Default selection: closest to RP 2.9
+hnd_default_idx <- which.min(abs(hnd_final$annual_rp - 2.9))
+```
+
+```{r}
+#| label: fig-hnd-tradeoff-static
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
+#| eval: false
+
 hnd_tradeoff$plot
 ```
 
-The tradeoff plot shows the relationship between impact-based and rainfall-based performance. Configurations near the top-right corner perform well on both metrics. From the optimal points at each RP level, we select the config with the lowest threshold CV:
-
 ```{r}
-#| label: hnd-final-selection
+#| label: fig-hnd-tradeoff-interactive
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras. Click a circled point to see its trigger activation detail below."
 
-hnd_final <- hnd_tradeoff$best_per_rp |>
-  group_by(annual_rp) |>
-  filter(mean_cv == min(mean_cv)) |>
-  ungroup()
+# Build interactive version of the tradeoff plot
+hnd_df <- hnd_tradeoff$data
+hnd_bg <- hnd_df |> filter(rp_group == "other")
+# Exclude hnd_final points from highlight layer to avoid double-plotting
+hnd_final_keys <- paste(hnd_final$era5_tol_f1, hnd_final$impact_f1)
+hnd_hl <- hnd_df |>
+  filter(rp_group != "other") |>
+  filter(!paste(era5_tol_f1, impact_f1) %in% hnd_final_keys)
+
+# Reconstruct color palette from rp_group factor levels
+rp_levels <- levels(hnd_df$rp_group)
+hl_levels <- setdiff(rp_levels, "other")
+hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+               "#ff7f00", "#a65628")[seq_along(hl_levels)]
+hnd_colors <- c(setNames(hl_colors, hl_levels), "other" = "grey80")
+
+# onclick JS: fully inline, no single quotes (ggiraph restriction)
+make_onclick_js <- function(idx, prefix) {
+  sprintf(
+    paste0(
+      'var els=document.getElementsByClassName("%s-activation-tbl");',
+      'for(var i=0;i<els.length;i++){els[i].style.display="none";}',
+      'document.getElementById("%s-tbl-%d").style.display="block";'
+    ),
+    prefix, prefix, idx
+  )
+}
+
+# Deduplicate labels: combine A/B when they share identical coordinates
+hnd_labels <- hnd_final |>
+  group_by(era5_tol_f1, impact_f1, rp_group) |>
+  summarise(
+    label = paste(config_label, collapse = " / "),
+    avg_f1 = max(avg_f1),
+    .groups = "drop"
+  ) |>
+  mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
+
+p_hnd <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = hnd_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = hnd_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point_interactive(
+    data = hnd_final,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f %s | avg F1 = %.3f | CV = %.3f\nClick to view activation table",
+                          annual_rp, option, avg_f1, mean_cv),
+        data_id = as.character(row_idx),
+        onclick = sapply(row_idx, make_onclick_js, prefix = "hnd")),
+    size = 5, shape = 1, stroke = 1.2, show.legend = FALSE
+  ) +
+  geom_label_repel(
+    data = hnd_labels,
+    aes(label = label, color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = hnd_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Honduras",
+       subtitle = "Click circled points to view trigger activation detail") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+
+girafe(ggobj = p_hnd,
+       options = list(
+         opts_hover(css = "cursor:pointer;stroke-width:3;"),
+         opts_selection(type = "single", css = "stroke-width:3;"),
+         opts_sizing(rescale = TRUE, width = 1)
+       ))
 ```
 
 ```{r}
@@ -593,6 +718,7 @@ hnd_final <- hnd_tradeoff$best_per_rp |>
 
 hnd_final |>
   select(
+    config_label, selection,
     any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")),
     annual_rp, p_seasonal_rp, s_seasonal_rp,
     impact_f1, era5_tol_f1, avg_f1, mean_cv
@@ -603,35 +729,213 @@ hnd_final |>
   ) |>
   gt() |>
   cols_align(align = "center") |>
+  cols_label(selection = "Criterion") |>
   tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
   tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
   tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
   tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv)) |>
   tab_header(
     title = "Honduras: Recommended Configurations",
-    subtitle = "Best avg(impact F1, ERA5 tolerant F1) per RP | Lowest CV tiebreak"
+    subtitle = "A = max avg F1 | B = max ERA5 tolerant F1 | per RP, lowest CV tiebreak"
   )
 ```
 
-#### Trigger Activation Detail
+**Trigger Activation Detail (per leadtime)**
 
-The table below shows the per-leadtime forecast empirical RP for each year under the selected configuration (annual RP closest to 2.8). Green cells indicate the trigger fires at that leadtime --- the forecast was dry enough to exceed the RP threshold shown in the column header.
+Click a circled point on the tradeoff plot above to swap the detailed per-leadtime activation table below.
 
 ```{r}
-#| label: tbl-hnd-activation
-#| tbl-cap: "Honduras trigger activation by leadtime. Green cells = trigger fires (forecast RP >= threshold). Column headers show the RP threshold for each leadtime."
+#| label: tbl-hnd-activation-interactive
 
-hnd_config <- hnd_final |> slice_min(abs(annual_rp - 2.9), n = 1, with_ties = FALSE)
+hnd_divs <- lapply(seq_along(hnd_activation_tables), function(i) {
+  display <- if (i == hnd_default_idx) "block" else "none"
+  htmltools::div(
+    id = sprintf("hnd-tbl-%d", i),
+    class = "hnd-activation-tbl",
+    style = sprintf("display:%s;", display),
+    htmltools::HTML(hnd_activation_tables[[i]])
+  )
+})
+htmltools::browsable(htmltools::tagList(hnd_divs))
+```
 
-build_trigger_activation_gt(
-  hnd_config, trigger_data_hnd, df_hnd,
-  df_cerf_drought, df_emdat_drought, "HND",
-  eval_start = EVAL_START, eval_end = EVAL_END,
-  df_emdat_interp = df_emdat_drought_interp,
-  must_hit_years = must_hit_years,
-  should_hit_years = should_hit_years,
-  sort_by = "activation"
-)
+**Activation Summary**
+
+```{r}
+#| label: tbl-hnd-activation-summary
+
+# Helper: compute seasonal activation years for a config
+get_seasonal_activation <- function(config_row, trigger_data, eval_start, eval_end) {
+  tl <- trigger_data$trigger_lookup
+  all_possible <- c("p0", "p1", "p2", "s0", "s1", "s2", "s3")
+  active_lts <- character(0)
+  for (col in all_possible) {
+    if (col %in% names(config_row) && !is.na(config_row[[col]])) {
+      active_lts <- c(active_lts, col)
+    }
+  }
+  p_lts <- active_lts[startsWith(active_lts, "p")]
+  s_lts <- active_lts[startsWith(active_lts, "s")]
+
+  get_trigger_yrs <- function(lts) {
+    yrs <- integer(0)
+    for (col in lts) {
+      key <- sprintf("%s_%.4f", col, config_row[[col]])
+      y <- tl[[key]]
+      if (!is.null(y)) yrs <- union(yrs, y)
+    }
+    yrs[yrs >= eval_start & yrs <= eval_end]
+  }
+  list(primera = get_trigger_yrs(p_lts), postrera = get_trigger_yrs(s_lts))
+}
+
+years <- EVAL_START:EVAL_END
+
+# ERA5 obs RP
+obs_by_year_hnd <- df_hnd |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year, window, obs_mm)
+
+hnd_obs_rps <- bind_rows(
+  obs_by_year_hnd |> filter(window == "primera") |>
+    mutate(obs_rp_pri = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_pri),
+  obs_by_year_hnd |> filter(window == "postrera") |>
+    mutate(obs_rp_post = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_post)
+) |> group_by(year) |> summarise(across(everything(), ~ max(.x, na.rm = TRUE)), .groups = "drop")
+
+# CERF + EM-DAT interp
+cerf_hnd <- df_cerf_drought |>
+  filter(iso3 == "HND", year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year) |> mutate(cerf = TRUE)
+
+emdat_interp_hnd <- df_emdat_drought_interp |>
+  filter(iso3 == "HND", year >= EVAL_START, year <= EVAL_END) |>
+  select(year, total_affected_interp)
+
+# Assemble base table
+hnd_summary <- tibble(year = years) |>
+  mutate(
+    priority = case_when(
+      year %in% must_hit_years ~ "P1",
+      year %in% should_hit_years ~ "P2",
+      TRUE ~ ""
+    )
+  ) |>
+  left_join(cerf_hnd, by = "year") |>
+  mutate(cerf = replace_na(cerf, FALSE),
+         cerf_label = if_else(cerf, "\u2713", "")) |>
+  left_join(emdat_interp_hnd, by = "year") |>
+  left_join(hnd_obs_rps, by = "year")
+
+# Add activation column per config: "P", "S", "P+S", or ""
+for (i in seq_len(nrow(hnd_final))) {
+  activation <- get_seasonal_activation(hnd_final[i, ], trigger_data_hnd,
+                                         EVAL_START, EVAL_END)
+  col_name <- hnd_final$config_label[i]
+  p_hit <- hnd_summary$year %in% activation$primera
+  s_hit <- hnd_summary$year %in% activation$postrera
+  hnd_summary[[col_name]] <- case_when(
+    p_hit & s_hit ~ "Pr+Pst",
+    p_hit ~ "Pr",
+    s_hit ~ "Pst",
+    TRUE ~ ""
+  )
+}
+
+config_labels <- hnd_final$config_label
+
+# Sort: activated years first, then by year
+hnd_summary <- hnd_summary |>
+  mutate(.any_active = if_any(all_of(config_labels), ~ .x != "")) |>
+  arrange(desc(.any_active), year) |>
+  select(-.any_active)
+
+hnd_display <- hnd_summary |>
+  select(year, priority, cerf_label, total_affected_interp,
+         obs_rp_pri, obs_rp_post, all_of(config_labels))
+
+# Compact number label
+fmt_compact <- function(v) {
+  if_else(is.na(v), "",
+    if_else(v >= 1e6, sprintf("%.1fM", v / 1e6),
+      if_else(v >= 1e3, sprintf("%.0fK", v / 1e3),
+        as.character(as.integer(v)))))
+}
+
+# Bar transform for EM-DAT affected
+make_bar_transform <- function(color, max_val) {
+  function(x) {
+    vals <- suppressWarnings(as.numeric(x))
+    lapply(vals, function(v) {
+      if (is.na(v)) return(gt::html(""))
+      pct <- max(v / max_val * 100, 3)
+      lbl <- fmt_compact(v)
+      txt_col <- if (pct > 25) "white" else "#333"
+      gt::html(sprintf(
+        paste0(
+          '<div style="position:relative;width:100%%;height:16px;">',
+          '<div style="background:%s;height:100%%;width:%.0f%%;',
+          'border-radius:2px;"></div>',
+          '<span style="position:absolute;left:4px;top:0;',
+          'font-size:10px;line-height:16px;font-weight:bold;',
+          'color:%s;white-space:nowrap;">%s</span></div>'
+        ),
+        color, pct, txt_col, lbl
+      ))
+    })
+  }
+}
+
+hnd_max_bar <- max(hnd_display$total_affected_interp, na.rm = TRUE)
+
+# Build GT
+tbl <- hnd_display |>
+  gt() |>
+  cols_label(
+    year = "Year", priority = "P", cerf_label = "CERF",
+    total_affected_interp = "EM-DAT",
+    obs_rp_pri = "Pri", obs_rp_post = "Post"
+  ) |>
+  fmt_number(columns = c(obs_rp_pri, obs_rp_post), decimals = 1) |>
+  sub_missing(columns = c(obs_rp_pri, obs_rp_post), missing_text = "") |>
+  text_transform(
+    locations = cells_body(columns = total_affected_interp),
+    fn = make_bar_transform("#e6550d", hnd_max_bar)
+  ) |>
+  tab_spanner(label = "ERA5 Obs RP", columns = c(obs_rp_pri, obs_rp_post)) |>
+  tab_spanner(label = "Activation", columns = all_of(config_labels))
+
+# Style: activation cells green when non-empty
+for (col in config_labels) {
+  active_rows <- which(hnd_display[[col]] != "")
+  if (length(active_rows) > 0) {
+    tbl <- tbl |>
+      tab_style(
+        style = list(cell_fill(color = "#d4edda"), cell_text(weight = "bold")),
+        locations = cells_body(columns = !!col, rows = active_rows)
+      )
+  }
+}
+
+tbl |>
+  tab_style(style = cell_fill(color = "#fde0dd"),
+            locations = cells_body(columns = priority, rows = priority == "P1")) |>
+  tab_style(style = cell_fill(color = "#fff7bc"),
+            locations = cells_body(columns = priority, rows = priority == "P2")) |>
+  tab_style(style = cell_fill(color = "#d4edda"),
+            locations = cells_body(columns = cerf_label, rows = cerf_label == "\u2713")) |>
+  data_color(columns = c(obs_rp_pri, obs_rp_post),
+             palette = c("#FDEBD0", "#8B4513"),
+             domain = c(1, max(c(hnd_display$obs_rp_pri, hnd_display$obs_rp_post), na.rm = TRUE)),
+             na_color = "white") |>
+  cols_align(align = "center") |>
+  tab_header(
+    title = "Honduras: Activation Summary",
+    subtitle = "Pr = primera only | Pst = postrera only | Pr+Pst = both seasons"
+  ) |>
+  tab_options(table.font.size = px(11), data_row.padding = px(2))
 ```
 
 
@@ -650,7 +954,7 @@ target_rp_slv <- 3
 
 El Salvador uses country-level (admin 0) aggregation with `r primera_lts_slv` primera leadtimes and `r postrera_lts_slv` postrera leadtimes. EM-DAT records `r length(impact_yrs_slv)` impact years. We use a target RP of `r target_rp_slv`.
 
-#### Impact Evaluation & Priority Filtering
+**Impact Evaluation & Priority Filtering**
 
 ```{r}
 #| label: slv-impact-eval
@@ -687,7 +991,7 @@ slv_candidates <- all_results_slv |>
 After priority filtering, **`r format(nrow(slv_candidates), big.mark = ",")`** candidates remain, hitting `r sprintf("%.0f%%", max(slv_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(slv_candidates$should_hit_score) * 100)` of Priority 2 years.
 
 
-#### ERA5 Evaluation & Combined Scoring
+**ERA5 Evaluation & Combined Scoring**
 
 ```{r}
 #| label: slv-era5-join
@@ -722,20 +1026,128 @@ slv_combined <- slv_candidates |>
 
 
 ```{r}
-#| label: fig-slv-tradeoff
-#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
+#| label: slv-tradeoff-data
 
 slv_tradeoff <- plot_f1_tradeoff(slv_combined, target_rp = target_rp_slv, n_nearest = 2)
+
+slv_all_hl <- slv_tradeoff$data |> filter(rp_group != "other")
+
+# Option A per RP: best avg_f1, tiebroken by lowest CV
+slv_opt_a <- slv_tradeoff$best_per_rp |>
+  group_by(annual_rp) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "A", selection = "max avg F1")
+
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+slv_opt_b <- slv_all_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "B", selection = "max ERA5 tol F1")
+
+slv_final <- bind_rows(slv_opt_a, slv_opt_b) |>
+  group_by(annual_rp, across(all_of(threshold_cols_slv))) |>
+  mutate(selection = if (n() > 1) "both" else selection) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  arrange(annual_rp, selection) |>
+  group_by(annual_rp) |>
+  mutate(option = LETTERS[row_number()]) |>
+  ungroup() |>
+  mutate(
+    config_label = sprintf("RP %.1f %s", annual_rp, option),
+    row_idx = row_number()
+  )
+
+# Pre-render GT activation tables for each final config
+slv_activation_tables <- lapply(seq_len(nrow(slv_final)), function(i) {
+  tbl <- build_trigger_activation_gt(
+    slv_final[i, ], trigger_data_slv, df_slv,
+    df_cerf_drought, df_emdat_drought, "SLV",
+    eval_start = EVAL_START, eval_end = EVAL_END,
+    df_emdat_interp = df_emdat_drought_interp,
+    must_hit_years = must_hit_years,
+    should_hit_years = should_hit_years,
+    sort_by = "activation"
+  )
+  as.character(gt::as_raw_html(tbl))
+})
+
+slv_default_idx <- which.min(abs(slv_final$annual_rp - 2.9))
+```
+
+```{r}
+#| label: fig-slv-tradeoff-static
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador candidate configurations."
+#| eval: false
+
 slv_tradeoff$plot
 ```
 
 ```{r}
-#| label: slv-final-selection
+#| label: fig-slv-tradeoff-interactive
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador. Click a circled point to see its trigger activation detail below."
 
-slv_final <- slv_tradeoff$best_per_rp |>
-  group_by(annual_rp) |>
-  filter(mean_cv == min(mean_cv)) |>
-  ungroup()
+slv_df <- slv_tradeoff$data
+slv_bg <- slv_df |> filter(rp_group == "other")
+slv_final_keys <- paste(slv_final$era5_tol_f1, slv_final$impact_f1)
+slv_hl <- slv_df |>
+  filter(rp_group != "other") |>
+  filter(!paste(era5_tol_f1, impact_f1) %in% slv_final_keys)
+
+slv_rp_levels <- levels(slv_df$rp_group)
+slv_hl_levels <- setdiff(slv_rp_levels, "other")
+slv_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                    "#ff7f00", "#a65628")[seq_along(slv_hl_levels)]
+slv_colors <- c(setNames(slv_hl_colors, slv_hl_levels), "other" = "grey80")
+
+# Deduplicate labels: combine A/B when they share identical coordinates
+slv_labels <- slv_final |>
+  group_by(era5_tol_f1, impact_f1, rp_group) |>
+  summarise(
+    label = paste(config_label, collapse = " / "),
+    avg_f1 = max(avg_f1),
+    .groups = "drop"
+  ) |>
+  mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
+
+p_slv <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = slv_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = slv_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point_interactive(
+    data = slv_final,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f %s | avg F1 = %.3f | CV = %.3f\nClick to view activation table",
+                          annual_rp, option, avg_f1, mean_cv),
+        data_id = as.character(row_idx),
+        onclick = sapply(row_idx, make_onclick_js, prefix = "slv")),
+    size = 5, shape = 1, stroke = 1.2, show.legend = FALSE
+  ) +
+  geom_label_repel(
+    data = slv_labels,
+    aes(label = label, color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = slv_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — El Salvador",
+       subtitle = "Click circled points to view trigger activation detail") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+
+girafe(ggobj = p_slv,
+       options = list(
+         opts_hover(css = "cursor:pointer;stroke-width:3;"),
+         opts_selection(type = "single", css = "stroke-width:3;"),
+         opts_sizing(rescale = TRUE, width = 1)
+       ))
 ```
 
 ```{r}
@@ -744,6 +1156,7 @@ slv_final <- slv_tradeoff$best_per_rp |>
 
 slv_final |>
   select(
+    config_label, selection,
     any_of(c("p0", "p1", "p2", "s0", "s1")),
     annual_rp, p_seasonal_rp, s_seasonal_rp,
     impact_f1, era5_tol_f1, avg_f1, mean_cv
@@ -754,33 +1167,147 @@ slv_final |>
   ) |>
   gt() |>
   cols_align(align = "center") |>
+  cols_label(selection = "Criterion") |>
   tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
   tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
   tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
   tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv)) |>
   tab_header(
     title = "El Salvador: Recommended Configurations",
-    subtitle = "Best avg(impact F1, ERA5 tolerant F1) per RP | Lowest CV tiebreak"
+    subtitle = "A = max avg F1 | B = max ERA5 tolerant F1 | per RP, lowest CV tiebreak"
   )
 ```
 
-#### Trigger Activation Detail
+**Trigger Activation Detail (per leadtime)**
+
+Click a circled point on the tradeoff plot above to swap the detailed per-leadtime activation table below.
 
 ```{r}
-#| label: tbl-slv-activation
-#| tbl-cap: "El Salvador trigger activation by leadtime. Green cells = trigger fires (forecast RP >= threshold). Column headers show the RP threshold for each leadtime."
+#| label: tbl-slv-activation-interactive
 
-slv_config <- slv_final |> slice_min(abs(annual_rp - 2.8), n = 1, with_ties = FALSE)
+slv_divs <- lapply(seq_along(slv_activation_tables), function(i) {
+  display <- if (i == slv_default_idx) "block" else "none"
+  htmltools::div(
+    id = sprintf("slv-tbl-%d", i),
+    class = "slv-activation-tbl",
+    style = sprintf("display:%s;", display),
+    htmltools::HTML(slv_activation_tables[[i]])
+  )
+})
+htmltools::browsable(htmltools::tagList(slv_divs))
+```
 
-build_trigger_activation_gt(
-  slv_config, trigger_data_slv, df_slv,
-  df_cerf_drought, df_emdat_drought, "SLV",
-  eval_start = EVAL_START, eval_end = EVAL_END,
-  df_emdat_interp = df_emdat_drought_interp,
-  must_hit_years = must_hit_years,
-  should_hit_years = should_hit_years,
-  sort_by = "activation"
-)
+**Activation Summary**
+
+```{r}
+#| label: tbl-slv-activation-summary
+
+obs_by_year_slv <- df_slv |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year, window, obs_mm)
+
+slv_obs_rps <- bind_rows(
+  obs_by_year_slv |> filter(window == "primera") |>
+    mutate(obs_rp_pri = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_pri),
+  obs_by_year_slv |> filter(window == "postrera") |>
+    mutate(obs_rp_post = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_post)
+) |> group_by(year) |> summarise(across(everything(), ~ max(.x, na.rm = TRUE)), .groups = "drop")
+
+cerf_slv <- df_cerf_drought |>
+  filter(iso3 == "SLV", year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year) |> mutate(cerf = TRUE)
+
+emdat_interp_slv <- df_emdat_drought_interp |>
+  filter(iso3 == "SLV", year >= EVAL_START, year <= EVAL_END) |>
+  select(year, total_affected_interp)
+
+slv_summary <- tibble(year = years) |>
+  mutate(
+    priority = case_when(
+      year %in% must_hit_years ~ "P1",
+      year %in% should_hit_years ~ "P2",
+      TRUE ~ ""
+    )
+  ) |>
+  left_join(cerf_slv, by = "year") |>
+  mutate(cerf = replace_na(cerf, FALSE),
+         cerf_label = if_else(cerf, "\u2713", "")) |>
+  left_join(emdat_interp_slv, by = "year") |>
+  left_join(slv_obs_rps, by = "year")
+
+for (i in seq_len(nrow(slv_final))) {
+  activation <- get_seasonal_activation(slv_final[i, ], trigger_data_slv,
+                                         EVAL_START, EVAL_END)
+  col_name <- slv_final$config_label[i]
+  p_hit <- slv_summary$year %in% activation$primera
+  s_hit <- slv_summary$year %in% activation$postrera
+  slv_summary[[col_name]] <- case_when(
+    p_hit & s_hit ~ "Pr+Pst",
+    p_hit ~ "Pr",
+    s_hit ~ "Pst",
+    TRUE ~ ""
+  )
+}
+
+slv_config_labels <- slv_final$config_label
+
+slv_summary <- slv_summary |>
+  mutate(.any_active = if_any(all_of(slv_config_labels), ~ .x != "")) |>
+  arrange(desc(.any_active), year) |>
+  select(-.any_active)
+
+slv_display <- slv_summary |>
+  select(year, priority, cerf_label, total_affected_interp,
+         obs_rp_pri, obs_rp_post, all_of(slv_config_labels))
+
+slv_max_bar <- max(slv_display$total_affected_interp, na.rm = TRUE)
+
+tbl_slv <- slv_display |>
+  gt() |>
+  cols_label(
+    year = "Year", priority = "P", cerf_label = "CERF",
+    total_affected_interp = "EM-DAT",
+    obs_rp_pri = "Pri", obs_rp_post = "Post"
+  ) |>
+  fmt_number(columns = c(obs_rp_pri, obs_rp_post), decimals = 1) |>
+  sub_missing(columns = c(obs_rp_pri, obs_rp_post), missing_text = "") |>
+  text_transform(
+    locations = cells_body(columns = total_affected_interp),
+    fn = make_bar_transform("#e6550d", slv_max_bar)
+  ) |>
+  tab_spanner(label = "ERA5 Obs RP", columns = c(obs_rp_pri, obs_rp_post)) |>
+  tab_spanner(label = "Activation", columns = all_of(slv_config_labels))
+
+for (col in slv_config_labels) {
+  active_rows <- which(slv_display[[col]] != "")
+  if (length(active_rows) > 0) {
+    tbl_slv <- tbl_slv |>
+      tab_style(
+        style = list(cell_fill(color = "#d4edda"), cell_text(weight = "bold")),
+        locations = cells_body(columns = !!col, rows = active_rows)
+      )
+  }
+}
+
+tbl_slv |>
+  tab_style(style = cell_fill(color = "#fde0dd"),
+            locations = cells_body(columns = priority, rows = priority == "P1")) |>
+  tab_style(style = cell_fill(color = "#fff7bc"),
+            locations = cells_body(columns = priority, rows = priority == "P2")) |>
+  tab_style(style = cell_fill(color = "#d4edda"),
+            locations = cells_body(columns = cerf_label, rows = cerf_label == "\u2713")) |>
+  data_color(columns = c(obs_rp_pri, obs_rp_post),
+             palette = c("#FDEBD0", "#8B4513"),
+             domain = c(1, max(c(slv_display$obs_rp_pri, slv_display$obs_rp_post), na.rm = TRUE)),
+             na_color = "white") |>
+  cols_align(align = "center") |>
+  tab_header(
+    title = "El Salvador: Activation Summary",
+    subtitle = "Pr = primera only | Pst = postrera only | Pr+Pst = both seasons"
+  ) |>
+  tab_options(table.font.size = px(11), data_row.padding = px(2))
 ```
 
 :::
