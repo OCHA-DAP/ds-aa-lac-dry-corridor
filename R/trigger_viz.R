@@ -1,14 +1,15 @@
 box::use(
   dplyr[...],
-  tidyr[expand_grid, replace_na, pivot_longer],
+  tidyr[expand_grid, replace_na, pivot_longer, pivot_wider],
   purrr[map_dfr],
-  stats[setNames, na.omit],
-  utils[head],
+  stats[setNames, na.omit, sd],
+  utils[head, tail],
   ggplot2[...],
-  ggrepel[geom_label_repel],
+  ggrepel[geom_label_repel, geom_text_repel],
   patchwork[...],
   ggnewscale[new_scale_fill],
-  gt[...]
+  gt[...],
+  pROC[roc, auc, coords, ci.auc]
 )
 
 # ── Internal color palettes ──────────────────────────────────────────────────
@@ -1042,10 +1043,27 @@ compare_configs_lt_value <- function(config_rows, trigger_data) {
 #' @return list with `plot` (ggplot) and `pareto` (tibble with config_id, thresholds, metrics)
 #' @export
 plot_pareto_f1_rp <- function(df, target_rp = NULL, max_rp_display = 10,
-                               closest_n_target = NULL) {
-  df <- df |>
-    filter(annual_rp <= max_rp_display) |>
-    mutate(lt_set = sprintf("P:%d / S:%d", p_lt_count, s_lt_count))
+                               closest_n_target = NULL,
+                               y_col = "mean_f1",
+                               y_label = NULL) {
+
+  if (is.null(y_label)) {
+    y_label <- switch(y_col,
+      mean_f1 = "Mean F1 (impact)",
+      era5_tol_f1 = "ERA5 Tolerant F1",
+      era5_matched_f1 = "ERA5 Matched-RP F1",
+      y_col
+    )
+  }
+
+  # If lt_set columns not present (e.g. combined df), add dummy
+  if (!all(c("p_lt_count", "s_lt_count") %in% names(df))) {
+    df <- df |> mutate(lt_set = "all")
+  } else {
+    df <- df |> mutate(lt_set = sprintf("P:%d / S:%d", p_lt_count, s_lt_count))
+  }
+
+  df <- df |> filter(annual_rp <= max_rp_display)
 
   # Zoom to closest N unique RP values around target
   if (!is.null(closest_n_target) && !is.null(target_rp)) {
@@ -1056,17 +1074,16 @@ plot_pareto_f1_rp <- function(df, target_rp = NULL, max_rp_display = 10,
     df <- df |> filter(annual_rp %in% keep_rps)
   }
 
-  # Best F1 per (lt_set, annual_rp) — n_configs counts ties at that max F1
-  # This is exactly: df |> filter(lt_set==X, annual_rp==Y) |> filter_top_f1()
+  # Use .data pronoun for flexible y column
   top_f1 <- df |>
     group_by(lt_set, annual_rp) |>
-    filter(mean_f1 == max(mean_f1)) |>
+    filter(.data[[y_col]] == max(.data[[y_col]])) |>
     ungroup()
 
   best_per_rp <- top_f1 |>
     group_by(lt_set, annual_rp) |>
     summarise(
-      mean_f1 = first(mean_f1),
+      y_val = first(.data[[y_col]]),
       n_configs = n(),
       .groups = "drop"
     )
@@ -1077,15 +1094,15 @@ plot_pareto_f1_rp <- function(df, target_rp = NULL, max_rp_display = 10,
       group_by(lt_set) |>
       slice_min(abs(annual_rp - target_rp), n = 1, with_ties = FALSE) |>
       ungroup() |>
-      select(lt_set, target_f1 = mean_f1, target_annual_rp = annual_rp)
+      select(lt_set, target_f1 = y_val, target_annual_rp = annual_rp)
 
     best_per_rp <- best_per_rp |>
       left_join(target_f1, by = "lt_set") |>
       mutate(
-        f1_delta = mean_f1 - target_f1,
+        f1_delta = y_val - target_f1,
         is_target = annual_rp == target_annual_rp,
         rp_label = case_when(
-          is_target ~ sprintf("F1=%.2f\nn=%d", mean_f1, n_configs),
+          is_target ~ sprintf("F1=%.2f\nn=%d", y_val, n_configs),
           TRUE ~ sprintf("%+.2f F1\nn=%d", f1_delta, n_configs)
         )
       )
@@ -1097,21 +1114,28 @@ plot_pareto_f1_rp <- function(df, target_rp = NULL, max_rp_display = 10,
       )
   }
 
-  p <- ggplot(df, aes(x = annual_rp, y = mean_f1)) +
-    geom_point(aes(color = rp_diff), alpha = 0.5, size = 2, shape = 16) +
+  # Check for rp_diff column (not present in combined dfs)
+  has_rp_diff <- "rp_diff" %in% names(df)
+
+  p <- ggplot(df, aes(x = annual_rp, y = .data[[y_col]])) +
+    {if (has_rp_diff)
+      geom_point(aes(color = rp_diff), alpha = 0.5, size = 2, shape = 16)
+    else
+      geom_point(alpha = 0.5, size = 2, shape = 16, color = "grey50")
+    } +
     geom_point(
       data = best_per_rp |> filter(!is_target),
-      aes(x = annual_rp, y = mean_f1),
+      aes(x = annual_rp, y = y_val),
       color = "#0063B3", size = 1.5
     ) +
     geom_point(
       data = best_per_rp |> filter(is_target),
-      aes(x = annual_rp, y = mean_f1),
+      aes(x = annual_rp, y = y_val),
       color = "#0063B3", size = 4, shape = 18
     ) +
     geom_label_repel(
       data = best_per_rp,
-      aes(x = annual_rp, y = mean_f1, label = rp_label),
+      aes(x = annual_rp, y = y_val, label = rp_label),
       size = 2.5, color = "#0063B3", fill = "white",
       label.size = 0.2, max.overlaps = 20,
       segment.color = "grey60", segment.size = 0.3,
@@ -1119,16 +1143,17 @@ plot_pareto_f1_rp <- function(df, target_rp = NULL, max_rp_display = 10,
     ) +
     scale_x_continuous(breaks = sort(unique(df$annual_rp)),
                        labels = function(x) sprintf("%.1f", x)) +
-    scale_color_gradient2(
-      low = "#1b7837", mid = "#fee08b", high = "#d73027",
-      midpoint = 0, name = "RP balance\n(post - pri)"
-    ) +
+    {if (has_rp_diff)
+      scale_color_gradient2(
+        low = "#1b7837", mid = "#fee08b", high = "#d73027",
+        midpoint = 0, name = "RP balance\n(post - pri)")
+    } +
     facet_wrap(~lt_set, scales = "free_y") +
     labs(
       x = "Annual RP (years)",
-      y = "Mean F1 (matched-RP)",
-      title = "Best F1 vs Annual Return Period by LT Set",
-      subtitle = "Diamond = target RP | Labels show F1 delta from target & number of configs at that optimum"
+      y = y_label,
+      title = sprintf("Best %s vs Annual Return Period", y_label),
+      subtitle = "Diamond = target RP | Labels show F1 delta from target & config count"
     ) +
     theme_minimal(base_size = 10) +
     theme(
@@ -1616,4 +1641,1038 @@ summarise_archetypes <- function(df, n_years = NULL, trigger_data = NULL) {
   list(table = tbl, plot = p_combined,
        plot_f1 = p_dumbbell, plot_confusion = p_confusion,
        archetypes = df_tagged, representatives = representatives)
+}
+
+
+#' Impact validation ground truth table
+#'
+#' GT table showing year-by-year alignment of CERF allocations, EM-DAT
+#' total_affected, and ERA5 seasonal dry ranks for one country. Uses
+#' inline bar charts for EM-DAT affected and ERA5 ranks.
+#'
+#' @param df_joined data.frame with year, window, obs_mm (from load_country_data)
+#' @param df_cerf_drought tibble with iso3, year columns (drought CERF allocations)
+#' @param df_emdat_drought tibble with iso3, year, total_affected columns
+#' @param iso3_code character, e.g. "HND"
+#' @param eval_start integer, first year (default 1991)
+#' @param eval_end integer, last year (default 2024)
+#' @param df_emdat_interp optional tibble with iso3, year, total_affected_interp
+#'   columns. When EM-DAT events span multiple years (start_year != end_year),
+#'   total_affected is divided equally across all years in the range.
+#' @param sort_by character, column to sort by (descending for numeric cols,
+#'   ascending for "year"). Available columns:
+#'   - "year": chronological order (ascending)
+#'   - "total_affected": EM-DAT reported affected (desc)
+#'   - "total_affected_interp": EM-DAT interpolated affected (desc, requires df_emdat_interp)
+#'   - "primera_rp": ERA5 primera obs RP (desc, highest RP first)
+#'   - "postrera_rp": ERA5 postrera obs RP (desc)
+#'   - "max_rp": max of primera/postrera RP (desc)
+#'   - "primera_cum_rp": cumulative primera RP (desc)
+#'   - "postrera_cum_rp": cumulative postrera RP (desc)
+#'   - "max_cum_rp": max of cumulative primera/postrera RP (desc)
+#' @return gt table object
+#' @export
+build_impact_validation_gt <- function(df_joined, df_cerf_drought, df_emdat_drought,
+                                        iso3_code, eval_start = 1991, eval_end = 2024,
+                                        df_emdat_interp = NULL,
+                                        cerf_hypothesis_years = NULL,
+                                        sort_by = "total_affected") {
+  years <- eval_start:eval_end
+
+  # ERA5 dry ranks per season (rank 1 = driest)
+  obs_by_year <- df_joined |>
+    filter(year >= eval_start, year <= eval_end) |>
+    distinct(year, window, obs_mm)
+
+  primera_rps <- obs_by_year |>
+    filter(window == "primera") |>
+    mutate(
+      dry_rank = rank(obs_mm, ties.method = "first"),
+      primera_rp = (n() + 1) / dry_rank
+    ) |>
+    select(year, primera_rp)
+
+  postrera_rps <- obs_by_year |>
+    filter(window == "postrera") |>
+    mutate(
+      dry_rank = rank(obs_mm, ties.method = "first"),
+      postrera_rp = (n() + 1) / dry_rank
+    ) |>
+    select(year, postrera_rp)
+
+  n_years <- nrow(primera_rps)
+
+  # CERF: country-specific and regional (any dry corridor country)
+  cerf_country <- df_cerf_drought |>
+    filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+    distinct(year) |>
+    mutate(cerf_country = TRUE)
+
+  cerf_regional <- df_cerf_drought |>
+    filter(year >= eval_start, year <= eval_end) |>
+    distinct(year) |>
+    mutate(cerf_regional = TRUE)
+
+  # CERF hypothesis years (optional)
+  has_hyp <- !is.null(cerf_hypothesis_years) && length(cerf_hypothesis_years) > 0
+  if (has_hyp) {
+    cerf_hyp <- tibble(
+      year = as.integer(cerf_hypothesis_years),
+      cerf_hyp = TRUE
+    ) |> filter(year >= eval_start, year <= eval_end)
+  }
+
+  # EM-DAT: total affected
+  emdat_data <- df_emdat_drought |>
+    filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+    select(year, total_affected)
+
+  # EM-DAT interpolated (optional)
+  has_interp <- !is.null(df_emdat_interp)
+  if (has_interp) {
+    emdat_interp_data <- df_emdat_interp |>
+      filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+      select(year, total_affected_interp)
+  }
+
+  # Assemble
+  tbl_data <- tibble(year = years) |>
+    left_join(cerf_country, by = "year") |>
+    left_join(cerf_regional, by = "year") |>
+    left_join(emdat_data, by = "year") |>
+    left_join(primera_rps, by = "year") |>
+    left_join(postrera_rps, by = "year") |>
+    mutate(
+      cerf_country = replace_na(cerf_country, FALSE),
+      cerf_regional = replace_na(cerf_regional, FALSE),
+      cerf_c = if_else(cerf_country, "\u2713", ""),
+      cerf_r = if_else(cerf_regional, "\u2713", ""),
+      max_rp = pmax(primera_rp, postrera_rp, na.rm = TRUE)
+    )
+
+  if (has_hyp) {
+    tbl_data <- tbl_data |>
+      left_join(cerf_hyp, by = "year") |>
+      mutate(
+        cerf_hyp = replace_na(cerf_hyp, FALSE),
+        cerf_h = if_else(cerf_hyp, "\u2713", "")
+      )
+  }
+
+  if (has_interp) {
+    tbl_data <- tbl_data |> left_join(emdat_interp_data, by = "year")
+  }
+
+  max_affected <- max(tbl_data$total_affected, na.rm = TRUE)
+  if (is.infinite(max_affected) || is.na(max_affected)) max_affected <- 1
+  # Use same max for both bars so they're on the same scale
+  if (has_interp) {
+    max_bar <- max(max_affected,
+                   max(tbl_data$total_affected_interp, na.rm = TRUE),
+                   na.rm = TRUE)
+  } else {
+    max_bar <- max_affected
+  }
+
+  # Sort by chosen column (desc for numeric, asc for year)
+  # sort_by options: "year", "total_affected", "total_affected_interp",
+  #                  "primera_rp", "postrera_rp", "max_rp"
+  if (sort_by == "year") {
+    display <- tbl_data |> arrange(year)
+  } else {
+    display <- tbl_data |>
+      arrange(desc(replace_na(.data[[sort_by]], -Inf)), year)
+  }
+
+  cerf_cols <- if (has_hyp) c("cerf_c", "cerf_r", "cerf_h") else c("cerf_c", "cerf_r")
+
+  if (has_interp) {
+    display <- display |>
+      select(year, all_of(cerf_cols), total_affected, total_affected_interp,
+             primera_rp, postrera_rp, max_rp)
+  } else {
+    display <- display |>
+      select(year, all_of(cerf_cols), total_affected,
+             primera_rp, postrera_rp, max_rp)
+  }
+
+  # Compact number label (1.3M, 47K, 800)
+  fmt_compact <- function(v) {
+    if (v >= 1e6) sprintf("%.1fM", v / 1e6)
+    else if (v >= 1e3) sprintf("%.0fK", v / 1e3)
+    else as.character(as.integer(v))
+  }
+
+  # Track row order for conditional styling
+  is_cerf_c <- display$year %in% tbl_data$year[tbl_data$cerf_country]
+  is_cerf_r <- display$year %in% tbl_data$year[tbl_data$cerf_regional]
+  if (has_hyp) {
+    is_cerf_h <- display$year %in% tbl_data$year[tbl_data$cerf_hyp]
+  }
+
+  # Inline bar with overlaid label
+  make_bar_transform <- function(col_name, color, max_val) {
+    text_transform_fn <- function(x) {
+      vals <- suppressWarnings(as.numeric(x))
+      lapply(vals, function(v) {
+        if (is.na(v)) return(html(""))
+        pct <- max(v / max_val * 100, 3)
+        lbl <- fmt_compact(v)
+        txt_col <- if (pct > 25) "white" else "#333"
+        html(sprintf(
+          paste0(
+            '<div style="position:relative;width:100%%;height:16px;">',
+            '<div style="background:%s;height:100%%;width:%.0f%%;',
+            'border-radius:2px;"></div>',
+            '<span style="position:absolute;left:4px;top:0;',
+            'font-size:10px;line-height:16px;font-weight:bold;',
+            'color:%s;white-space:nowrap;">%s</span></div>'
+          ),
+          color, pct, txt_col, lbl
+        ))
+      })
+    }
+    text_transform_fn
+  }
+
+  # RP color domain
+  max_rp_val <- max(display$max_rp, na.rm = TRUE)
+  if (is.infinite(max_rp_val) || is.na(max_rp_val)) max_rp_val <- n_years
+
+  rp_cols <- c("primera_rp", "postrera_rp", "max_rp")
+
+  cerf_label_list <- list(cerf_c = "Country", cerf_r = "Regional")
+  if (has_hyp) cerf_label_list[["cerf_h"]] <- "Hypothesis"
+
+  tbl <- display |>
+    gt() |>
+    cols_label(
+      year = "Year",
+      !!!cerf_label_list,
+      total_affected = "Reported",
+      primera_rp = "Pri",
+      postrera_rp = "Post",
+      max_rp = "Max"
+    ) |>
+    fmt_number(columns = all_of(rp_cols), decimals = 1) |>
+    # CERF: green highlight
+    tab_style(
+      style = cell_fill(color = "#d4edda"),
+      locations = cells_body(columns = cerf_c, rows = is_cerf_c)
+    ) |>
+    tab_style(
+      style = cell_fill(color = "#d4edda"),
+      locations = cells_body(columns = cerf_r, rows = is_cerf_r)
+    ) |>
+    # EM-DAT reported: inline bar
+    text_transform(
+      locations = cells_body(columns = total_affected),
+      fn = make_bar_transform("total_affected", "#de2d26", max_bar)
+    ) |>
+    # ERA5 obs RP: brown gradient (higher RP = darker)
+    sub_missing(columns = all_of(rp_cols), missing_text = "") |>
+    data_color(
+      columns = all_of(rp_cols),
+      palette = c("#FDEBD0", "#8B4513"),
+      domain = c(1, max_rp_val),
+      na_color = "white"
+    ) |>
+    tab_spanner(label = "CERF", columns = all_of(cerf_cols)) |>
+    tab_spanner(label = "ERA5 Obs RP", columns = all_of(rp_cols))
+
+  # Add interpolated column if provided
+  if (has_interp) {
+    tbl <- tbl |>
+      cols_label(total_affected_interp = "Interpolated") |>
+      text_transform(
+        locations = cells_body(columns = total_affected_interp),
+        fn = make_bar_transform("total_affected_interp", "#e6550d", max_bar)
+      ) |>
+      tab_spanner(
+        label = "EM-DAT Affected",
+        columns = c(total_affected, total_affected_interp)
+      )
+  } else {
+    tbl <- tbl |>
+      cols_label(total_affected = "EM-DAT Affected")
+  }
+
+  # CERF hypothesis: pink fill (matches impact summary P1 color)
+  if (has_hyp) {
+    tbl <- tbl |>
+      tab_style(
+        style = cell_fill(color = "#fde0dd"),
+        locations = cells_body(columns = cerf_h, rows = is_cerf_h)
+      )
+  }
+
+  tbl <- tbl |>
+    tab_header(
+      title = sprintf("Impact Validation: %s (%d\u2013%d)", iso3_code, eval_start, eval_end),
+      subtitle = paste0("Sorted by ", sort_by, " (desc)")
+    ) |>
+    cols_align(
+      align = "center",
+      columns = c(all_of(cerf_cols), all_of(rp_cols))
+    ) |>
+    cols_width(
+      total_affected ~ px(150),
+      any_of("total_affected_interp") ~ px(150)
+    ) |>
+    tab_options(table.font.size = px(11), data_row.padding = px(2))
+
+  tbl
+}
+
+
+#' ROC-AUC analysis: ERA5 seasonal RP as predictor of EM-DAT drought impact
+#'
+#' Produces 3 ROC curves side-by-side: primera, postrera, and annual (empirical
+#' combined). Per-season curves use seasonal empirical RP as predictor. Annual
+#' curve uses max(primera_rp, postrera_rp) ranked empirically — no independence
+#' assumption. Binary truth = EM-DAT drought record exists (regardless of
+#' total_affected value).
+#'
+#' @param df_joined data.frame with year, window, obs_mm (from load_country_data)
+#' @param df_emdat_drought tibble with iso3, year columns (drought events from EM-DAT)
+#' @param iso3_code character, e.g. "HND"
+#' @param eval_start integer, first year (default 1991)
+#' @param eval_end integer, last year (default 2024)
+#' @return list with components: roc_primera, roc_postrera, roc_annual (each a
+#'   pROC roc object), plot (patchwork of 3 panels), best_thresholds (tibble
+#'   with season, threshold, sensitivity, specificity, auc), roc_data
+#' @export
+plot_impact_roc <- function(df_joined, df_emdat_drought,
+                            iso3_code, eval_start = 1991, eval_end = 2024) {
+
+  # ERA5 obs → empirical RP per season
+  obs_by_year <- df_joined |>
+    filter(year >= eval_start, year <= eval_end) |>
+    distinct(year, window, obs_mm)
+
+  primera_rps <- obs_by_year |>
+    filter(window == "primera") |>
+    mutate(
+      dry_rank = rank(obs_mm, ties.method = "first"),
+      primera_rp = (n() + 1) / dry_rank
+    ) |>
+    select(year, primera_rp)
+
+  postrera_rps <- obs_by_year |>
+    filter(window == "postrera") |>
+    mutate(
+      dry_rank = rank(obs_mm, ties.method = "first"),
+      postrera_rp = (n() + 1) / dry_rank
+    ) |>
+    select(year, postrera_rp)
+
+  n_years <- length(eval_start:eval_end)
+
+  # Binary truth: EM-DAT drought record exists for this country-year
+  emdat_years <- df_emdat_drought |>
+    filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+    pull(year) |>
+    unique()
+
+  # Assemble data
+  roc_data <- tibble(year = eval_start:eval_end) |>
+    left_join(primera_rps, by = "year") |>
+    left_join(postrera_rps, by = "year") |>
+    mutate(
+      max_rp = pmax(primera_rp, postrera_rp, na.rm = TRUE),
+      annual_rank = rank(-max_rp, ties.method = "first"),
+      annual_rp = (n_years + 1) / annual_rank,
+      impact = year %in% emdat_years
+    )
+
+  # Helper: build one ROC panel
+  build_roc_panel <- function(predictor_col, label, color) {
+    roc_obj <- roc(roc_data$impact, roc_data[[predictor_col]],
+                   direction = "<", quiet = TRUE)
+    auc_val <- auc(roc_obj)
+    auc_ci <- ci.auc(roc_obj, method = "delong")
+    best <- coords(roc_obj, "best",
+                   ret = c("threshold", "sensitivity", "specificity"),
+                   best.method = "youden")
+
+    roc_df <- tibble(
+      fpr = 1 - roc_obj$specificities,
+      tpr = roc_obj$sensitivities
+    )
+
+    p <- ggplot(roc_df, aes(x = fpr, y = tpr)) +
+      geom_line(color = color, linewidth = 1) +
+      geom_abline(linetype = "dashed", color = "grey50") +
+      geom_point(
+        data = tibble(fpr = 1 - best$specificity, tpr = best$sensitivity),
+        size = 3, color = color
+      ) +
+      annotate(
+        "text", x = 0.5, y = 0.2,
+        label = sprintf(
+          "AUC = %.2f [%.2f, %.2f]\nOptimal RP >= %.1f\nSens = %.0f%%, Spec = %.0f%%",
+          auc_val, auc_ci[1], auc_ci[3],
+          best$threshold, best$sensitivity * 100, best$specificity * 100
+        ),
+        hjust = 0, size = 3, lineheight = 1
+      ) +
+      labs(title = label, x = "FPR", y = "TPR") +
+      coord_equal() +
+      theme_minimal(base_size = 10)
+
+    list(roc_obj = roc_obj, plot = p, best = best, auc = auc_val)
+  }
+
+  # Build 3 panels
+  p_res <- build_roc_panel("primera_rp", "Primera", "#1b9e77")
+  s_res <- build_roc_panel("postrera_rp", "Postrera", "#d95f02")
+  a_res <- build_roc_panel("annual_rp", "Annual (either)", "#de2d26")
+
+  # Combine with patchwork
+  combined <- p_res$plot + s_res$plot + a_res$plot +
+    patchwork::plot_annotation(
+      title = sprintf("ROC: ERA5 Obs RP \u2192 EM-DAT Drought Impact (%s)", iso3_code),
+      subtitle = sprintf(
+        "%d\u2013%d | %d impact years out of %d",
+        eval_start, eval_end, length(emdat_years), n_years
+      )
+    )
+
+  # Summary table of optimal thresholds
+  best_thresholds <- tibble(
+    season = c("primera", "postrera", "annual"),
+    threshold = c(p_res$best$threshold, s_res$best$threshold, a_res$best$threshold),
+    sensitivity = c(p_res$best$sensitivity, s_res$best$sensitivity, a_res$best$sensitivity),
+    specificity = c(p_res$best$specificity, s_res$best$specificity, a_res$best$specificity),
+    auc = c(as.numeric(p_res$auc), as.numeric(s_res$auc), as.numeric(a_res$auc))
+  )
+
+  list(
+    roc_primera = p_res$roc_obj,
+    roc_postrera = s_res$roc_obj,
+    roc_annual = a_res$roc_obj,
+    plot = combined,
+    best_thresholds = best_thresholds,
+    roc_data = roc_data
+  )
+}
+
+
+#' Seasonal rainfall anomaly bar chart with EM-DAT drought markers
+#'
+#' Dodged bar chart of primera/postrera rainfall anomalies (% departure from
+#' mean) per year, faceted by country. EM-DAT drought years (expanded across
+#' start_year:end_year) are marked with stars above the bars.
+#'
+#' @param df_obs_list named list of data frames from load_country_data(),
+#'   keyed by ISO3 code (e.g. list(HND = df_hnd, GTM = df_gtm, SLV = df_slv))
+#' @param df_emdat_impact tibble with iso3, year columns (expanded EM-DAT
+#'   drought years, where multi-year events span start_year:end_year)
+#' @param eval_start integer, first year (default 1991)
+#' @param eval_end integer, last year (default 2024)
+#' @return ggplot object
+#' @export
+plot_seasonal_anomaly <- function(df_obs_list, df_emdat_impact,
+                                  eval_start = 1991, eval_end = 2024) {
+
+  # Build combined obs anomaly data across all countries
+  obs_all <- map_dfr(names(df_obs_list), function(iso) {
+    df <- df_obs_list[[iso]]
+    df |>
+      filter(year >= eval_start, year <= eval_end) |>
+      distinct(year, window, obs_mm) |>
+      group_by(window) |>
+      mutate(
+        mean_mm = mean(obs_mm),
+        anomaly_pct = (obs_mm - mean_mm) / mean_mm * 100
+      ) |>
+      ungroup() |>
+      mutate(iso3 = iso)
+  })
+
+  # EM-DAT: country-level drought flag
+  emdat_yrs <- df_emdat_impact |>
+    filter(year >= eval_start, year <= eval_end) |>
+    distinct(iso3, year) |>
+    mutate(emdat = TRUE)
+
+  plot_data <- obs_all |>
+    left_join(emdat_yrs, by = c("iso3", "year")) |>
+    mutate(
+      emdat = replace_na(emdat, FALSE),
+      window = factor(window, levels = c("primera", "postrera")),
+      year_label = sprintf("'%02d", year %% 100)
+    )
+
+  # Stars at fixed vertical position below bars for EM-DAT years
+  y_ranges <- plot_data |>
+    group_by(iso3) |>
+    summarise(y_min = min(anomaly_pct, na.rm = TRUE), .groups = "drop")
+
+  # One star per year-country (not per season) — centered on the year
+  star_data <- plot_data |>
+    filter(emdat) |>
+    distinct(iso3, year) |>
+    left_join(y_ranges, by = "iso3") |>
+    mutate(star_y = y_min - 5)
+
+  p <- ggplot(plot_data, aes(x = year, y = anomaly_pct, fill = window)) +
+    geom_col(
+      position = position_dodge(width = 0.8),
+      width = 0.7,
+      color = NA
+    ) +
+    # Filled markers at fixed y position for EM-DAT years
+    geom_point(
+      data = star_data,
+      aes(x = year, y = star_y),
+      inherit.aes = FALSE,
+      shape = 17, size = 2.5, color = "#e41a1c",
+      show.legend = FALSE
+    ) +
+    scale_fill_manual(
+      values = c("primera" = "#1b9e77", "postrera" = "#d95f02"),
+      name = "Season"
+    ) +
+    geom_hline(yintercept = 0, linewidth = 0.3) +
+    scale_x_continuous(
+      breaks = eval_start:eval_end,
+      labels = sprintf("'%02d", (eval_start:eval_end) %% 100)
+    ) +
+    facet_wrap(~iso3, ncol = 1, scales = "free_y") +
+    labs(
+      title = "ERA5 Seasonal Rainfall Anomaly",
+      subtitle = sprintf(
+        "%d\u2013%d | \u25b2 = EM-DAT drought year (country-level, expanded)",
+        eval_start, eval_end
+      ),
+      x = NULL,
+      y = "Anomaly (% of mean)"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      legend.position = "top",
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 7)
+    )
+
+  p
+}
+
+#' Scatter plot of primera vs postrera anomaly by year
+#'
+#' Each point is a year, colored by EM-DAT status.
+#' Year labels on points. Faceted by country.
+#'
+#' @param df_obs_list Named list (iso3 → trigger_data from build_trigger_lookup)
+#' @param df_emdat_impact Tibble with iso3, year columns for drought events
+#' @param eval_start,eval_end Integer year bounds
+#' @return ggplot
+#' @export
+plot_seasonal_scatter <- function(df_obs_list, df_emdat_impact,
+                                  eval_start = 1991, eval_end = 2024) {
+
+  # Build wide obs data: one row per country-year with primera & postrera anomaly
+  obs_all <- map_dfr(names(df_obs_list), function(iso) {
+    df <- df_obs_list[[iso]]
+    df |>
+      filter(year >= eval_start, year <= eval_end) |>
+      distinct(year, window, obs_mm) |>
+      group_by(window) |>
+      mutate(
+        mean_mm = mean(obs_mm),
+        anomaly_pct = (obs_mm - mean_mm) / mean_mm * 100
+      ) |>
+      ungroup() |>
+      mutate(iso3 = iso)
+  })
+
+  obs_wide <- obs_all |>
+    select(iso3, year, window, anomaly_pct) |>
+    tidyr::pivot_wider(names_from = window, values_from = anomaly_pct)
+
+  # EM-DAT flag
+  emdat_yrs <- df_emdat_impact |>
+    filter(year >= eval_start, year <= eval_end) |>
+    distinct(iso3, year) |>
+    mutate(emdat = TRUE)
+
+  plot_data <- obs_wide |>
+    left_join(emdat_yrs, by = c("iso3", "year")) |>
+    mutate(
+      emdat = replace_na(emdat, FALSE),
+      year_label = sprintf("'%02d", year %% 100)
+    )
+
+  p <- ggplot(plot_data, aes(x = primera, y = postrera)) +
+    geom_hline(yintercept = 0, linewidth = 0.3, color = "grey50") +
+    geom_vline(xintercept = 0, linewidth = 0.3, color = "grey50") +
+    geom_point(
+      aes(color = emdat),
+      size = 2.5
+    ) +
+    ggrepel::geom_text_repel(
+      aes(label = year_label, color = emdat),
+      size = 3, max.overlaps = 30,
+      show.legend = FALSE
+    ) +
+    scale_color_manual(
+      values = c("FALSE" = "grey50", "TRUE" = "#e41a1c"),
+      labels = c("FALSE" = "No EM-DAT record", "TRUE" = "EM-DAT drought"),
+      name = NULL
+    ) +
+    facet_wrap(~iso3, scales = "free") +
+    labs(
+      title = "Primera vs Postrera Rainfall Anomaly",
+      subtitle = sprintf(
+        "%d\u2013%d | Red = EM-DAT drought year",
+        eval_start, eval_end
+      ),
+      x = "Primera anomaly (% of mean)",
+      y = "Postrera anomaly (% of mean)"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      legend.position = "top"
+    )
+
+  p
+}
+
+#' Scatter: ERA5 tolerant F1 vs Impact F1, colored by annual RP
+#'
+#' Highlights configs near a target RP with distinct colors. RPs far from
+#' target are muted grey; the nearest RP levels above and below target
+#' get bright, high-contrast colors.
+#'
+#' @param df Combined dataframe with era5_tol_f1, impact_f1, annual_rp
+#' @param target_rp Numeric target RP (used to center the color scale)
+#' @param n_nearest Integer, how many RP levels above/below target to highlight (default 2)
+#' @return ggplot
+#' @export
+plot_f1_tradeoff <- function(df, target_rp = 3, n_nearest = 2) {
+
+  unique_rps <- sort(unique(df$annual_rp))
+
+  # Find the n nearest RPs below and above target
+  below <- tail(unique_rps[unique_rps <= target_rp], n_nearest)
+  above <- head(unique_rps[unique_rps > target_rp], n_nearest)
+  highlight_rps <- c(below, above)
+
+  # Assign discrete labels: highlighted RPs get their value, others -> "other"
+  df <- df |>
+    mutate(
+      rp_group = if_else(annual_rp %in% highlight_rps,
+                         sprintf("RP %.1f", annual_rp), "other"),
+      rp_group = factor(rp_group,
+                        levels = c(sprintf("RP %.1f", sort(highlight_rps)), "other"))
+    )
+
+  # Bright distinct palette for highlighted RPs, grey for rest
+  n_highlight <- length(highlight_rps)
+  highlight_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                        "#ff7f00", "#a65628")[seq_len(n_highlight)]
+  all_colors <- c(setNames(highlight_colors, sprintf("RP %.1f", sort(highlight_rps))),
+                  "other" = "grey80")
+
+  # Average F1 across both metrics
+  df <- df |> mutate(avg_f1 = (era5_tol_f1 + impact_f1) / 2)
+
+  df_highlight <- df |> filter(rp_group != "other")
+  df_bg <- df |> filter(rp_group == "other")
+
+  # Best avg F1 per highlighted RP group (for circled points)
+  df_best <- df_highlight |>
+    group_by(rp_group) |>
+    filter(avg_f1 == max(avg_f1)) |>
+    ungroup()
+
+  # One label per RP group with n count
+  df_best_labels <- df_best |>
+    group_by(rp_group, avg_f1) |>
+    summarise(
+      era5_tol_f1 = mean(era5_tol_f1),
+      impact_f1 = mean(impact_f1),
+      n = n(),
+      .groups = "drop"
+    )
+
+  p <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+    geom_point(data = df_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+    geom_point(data = df_highlight, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+    # Circle around best avg F1 per RP group
+    geom_point(data = df_best, aes(color = rp_group),
+               size = 5, shape = 1, stroke = 1.2, show.legend = FALSE) +
+    geom_label_repel(
+      data = df_best_labels,
+      aes(label = sprintf("avg=%.2f\nn=%d", avg_f1, n), color = rp_group),
+      size = 2.8, fill = "white", label.size = 0.2,
+      show.legend = FALSE, max.overlaps = 30,
+      segment.color = "grey50", segment.size = 0.3,
+      min.segment.length = 0, force = 5,
+      nudge_x = 0.01
+    ) +
+    scale_color_manual(values = all_colors, name = "Annual RP") +
+    labs(
+      x = "ERA5 Tolerant F1",
+      y = "Impact F1 (EM-DAT)",
+      title = "ERA5 vs Impact F1 Tradeoff",
+      subtitle = sprintf(
+        "Target RP \u2248 %.1f | Circles = best avg(ERA5, Impact) F1 per RP",
+        target_rp)
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      legend.position = "right",
+      panel.grid.minor = element_blank()
+    )
+
+  list(plot = p, best_per_rp = df_best, data = df)
+}
+
+
+#' GT table showing trigger activation per leadtime for a given config
+#'
+#' Similar layout to build_impact_validation_gt but replaces cumulative RP
+#' columns with per-leadtime forecast empirical RP values. Cells are highlighted
+#' green when the trigger fires at that leadtime (forecast RP >= threshold RP).
+#'
+#' @param config_row single-row tibble with threshold columns (p0, p1, ...)
+#' @param trigger_data list from build_trigger_lookup()
+#' @param df_joined data.frame with year, window, leadtime, fcst_mm, obs_mm
+#' @param df_cerf_drought tibble with iso3, year
+#' @param df_emdat_drought tibble with iso3, year, total_affected
+#' @param iso3_code character e.g. "HND"
+#' @param eval_start integer
+#' @param eval_end integer
+#' @param df_emdat_interp optional tibble with iso3, year, total_affected_interp
+#' @param must_hit_years integer vector of P1 years
+#' @param should_hit_years integer vector of P2 years
+#' @param sort_by column to sort by (default "year")
+#' @param lt_labels named character vector mapping LT ids to display labels
+#' @return gt table
+#' @export
+build_trigger_activation_gt <- function(config_row, trigger_data, df_joined,
+                                        df_cerf_drought, df_emdat_drought,
+                                        iso3_code, eval_start = 1991, eval_end = 2024,
+                                        df_emdat_interp = NULL,
+                                        must_hit_years = integer(0),
+                                        should_hit_years = integer(0),
+                                        sort_by = "year",
+                                        lt_labels = NULL) {
+  years <- eval_start:eval_end
+  tl <- trigger_data$trigger_lookup
+
+  if (is.null(lt_labels)) {
+    lt_labels <- c(
+      p0 = "LT0 (May)", p1 = "LT1 (Apr)", p2 = "LT2 (Mar)",
+      s0 = "LT0 (Sep)", s1 = "LT1 (Aug)", s2 = "LT2 (Jul)", s3 = "LT3 (Jun)"
+    )
+  }
+
+  # Detect active LT columns from config (non-NA thresholds)
+  all_possible <- c("p0", "p1", "p2", "s0", "s1", "s2", "s3")
+  active_lts <- character(0)
+  for (col in all_possible) {
+    if (col %in% names(config_row) && !is.na(config_row[[col]])) {
+      active_lts <- c(active_lts, col)
+    }
+  }
+  p_lts <- active_lts[startsWith(active_lts, "p")]
+  s_lts <- active_lts[startsWith(active_lts, "s")]
+
+  # Get trigger years per LT
+  trigger_yrs_per_lt <- setNames(
+    lapply(active_lts, function(col) {
+      key <- sprintf("%s_%.4f", col, config_row[[col]])
+      yrs <- tl[[key]]
+      if (is.null(yrs)) return(integer(0))
+      yrs[yrs >= eval_start & yrs <= eval_end]
+    }),
+    active_lts
+  )
+
+  # Forecast empirical RP per year per LT (computed from full dataset)
+  fcst_rp_wide <- df_joined |>
+    group_by(window, leadtime) |>
+    mutate(
+      dry_rank = rank(fcst_mm, ties.method = "first"),
+      fcst_rp = (n() + 1) / dry_rank
+    ) |>
+    ungroup() |>
+    mutate(lt_id = paste0(if_else(window == "primera", "p", "s"), leadtime)) |>
+    filter(lt_id %in% active_lts, year >= eval_start, year <= eval_end) |>
+    select(year, lt_id, fcst_rp) |>
+    pivot_wider(names_from = lt_id, values_from = fcst_rp, names_prefix = "rp_")
+
+  # ERA5 obs RP per season
+  obs_by_year <- df_joined |>
+    filter(year >= eval_start, year <= eval_end) |>
+    distinct(year, window, obs_mm)
+
+  primera_rps <- obs_by_year |>
+    filter(window == "primera") |>
+    mutate(dry_rank = rank(obs_mm, ties.method = "first"),
+           obs_rp_primera = (n() + 1) / dry_rank) |>
+    select(year, obs_rp_primera)
+
+  postrera_rps <- obs_by_year |>
+    filter(window == "postrera") |>
+    mutate(dry_rank = rank(obs_mm, ties.method = "first"),
+           obs_rp_postrera = (n() + 1) / dry_rank) |>
+    select(year, obs_rp_postrera)
+
+  n_years <- nrow(primera_rps)
+
+  # Impact data
+  cerf_country <- df_cerf_drought |>
+    filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+    distinct(year) |>
+    mutate(cerf = TRUE)
+
+  emdat_data <- df_emdat_drought |>
+    filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+    select(year, total_affected)
+
+  has_interp <- !is.null(df_emdat_interp)
+  if (has_interp) {
+    emdat_interp_data <- df_emdat_interp |>
+      filter(iso3 == iso3_code, year >= eval_start, year <= eval_end) |>
+      select(year, total_affected_interp)
+  }
+
+  # Assemble
+  tbl_data <- tibble(year = years) |>
+    left_join(cerf_country, by = "year") |>
+    left_join(emdat_data, by = "year") |>
+    left_join(fcst_rp_wide, by = "year") |>
+    left_join(primera_rps, by = "year") |>
+    left_join(postrera_rps, by = "year") |>
+    mutate(
+      cerf = replace_na(cerf, FALSE),
+      cerf_label = if_else(cerf, "\u2713", ""),
+      hit_priority = case_when(
+        year %in% must_hit_years ~ 1L,
+        year %in% should_hit_years ~ 2L,
+        TRUE ~ NA_integer_
+      ),
+      max_obs_rp = pmax(obs_rp_primera, obs_rp_postrera, na.rm = TRUE)
+    )
+
+  if (has_interp) {
+    tbl_data <- tbl_data |> left_join(emdat_interp_data, by = "year")
+  }
+
+  # Mark triggered per LT
+  for (col in active_lts) {
+    trig_col <- paste0("trig_", col)
+    tbl_data[[trig_col]] <- tbl_data$year %in% trigger_yrs_per_lt[[col]]
+  }
+
+  # Annual activation: TRUE if any LT triggered for this year
+  trig_cols_all <- paste0("trig_", active_lts)
+  tbl_data <- tbl_data |>
+    rowwise() |>
+    mutate(annual_activated = any(c_across(all_of(trig_cols_all)))) |>
+    ungroup()
+
+  # Sort
+  if (sort_by == "activation") {
+    display <- tbl_data |> arrange(desc(annual_activated), year)
+  } else if (sort_by == "year") {
+    display <- tbl_data |> arrange(year)
+  } else {
+    display <- tbl_data |>
+      arrange(desc(replace_na(.data[[sort_by]], -Inf)), year)
+  }
+
+  # Column order: LT0 on left, increasing to right (p0, p1, p2, s0, s1, s2)
+  p_lts_ordered <- sort(p_lts)
+  s_lts_ordered <- sort(s_lts)
+  active_lts_ordered <- c(p_lts_ordered, s_lts_ordered)
+  rp_cols <- paste0("rp_", active_lts_ordered)
+  trig_cols <- paste0("trig_", active_lts)
+  obs_cols <- c("obs_rp_primera", "obs_rp_postrera")
+
+  # Select columns for display
+  display_cols <- c("year", "hit_priority", "cerf_label")
+  if (has_interp) {
+    display_cols <- c(display_cols, "total_affected", "total_affected_interp")
+  } else {
+    display_cols <- c(display_cols, "total_affected")
+  }
+  display_cols <- c(display_cols, rp_cols, obs_cols)
+  display <- display |> select(all_of(c(display_cols, trig_cols)))
+
+  # Helpers
+  max_affected <- max(display$total_affected, na.rm = TRUE)
+  if (is.infinite(max_affected) || is.na(max_affected)) max_affected <- 1
+  max_bar <- max_affected
+  if (has_interp) {
+    max_bar <- max(max_bar,
+                   max(display$total_affected_interp, na.rm = TRUE),
+                   na.rm = TRUE)
+  }
+
+  fmt_compact <- function(v) {
+    if (v >= 1e6) sprintf("%.1fM", v / 1e6)
+    else if (v >= 1e3) sprintf("%.0fK", v / 1e3)
+    else as.character(as.integer(v))
+  }
+
+  make_bar_transform <- function(color, max_val) {
+    function(x) {
+      vals <- suppressWarnings(as.numeric(x))
+      lapply(vals, function(v) {
+        if (is.na(v)) return(html(""))
+        pct <- max(v / max_val * 100, 3)
+        lbl <- fmt_compact(v)
+        txt_col <- if (pct > 25) "white" else "#333"
+        html(sprintf(
+          paste0(
+            '<div style="position:relative;width:100%%;height:16px;">',
+            '<div style="background:%s;height:100%%;width:%.0f%%;',
+            'border-radius:2px;"></div>',
+            '<span style="position:absolute;left:4px;top:0;',
+            'font-size:10px;line-height:16px;font-weight:bold;',
+            'color:%s;white-space:nowrap;">%s</span></div>'
+          ),
+          color, pct, txt_col, lbl
+        ))
+      })
+    }
+  }
+
+  # Build GT
+  tbl <- display |>
+    gt() |>
+    cols_hide(columns = all_of(trig_cols)) |>
+    cols_label(
+      year = "Year",
+      hit_priority = "P",
+      cerf_label = "CERF",
+      total_affected = "Reported",
+      obs_rp_primera = "Pri",
+      obs_rp_postrera = "Post"
+    ) |>
+    fmt_number(columns = all_of(c(rp_cols, obs_cols)), decimals = 1) |>
+    sub_missing(columns = c(hit_priority, all_of(rp_cols), all_of(obs_cols)),
+                missing_text = "")
+
+  # Label LT columns with threshold RP in header
+  for (col in active_lts_ordered) {
+    rp_col_name <- paste0("rp_", col)
+    threshold_val <- config_row[[col]]
+    label <- sprintf("%s\nRP %.1f", lt_labels[[col]], threshold_val)
+    tbl <- tbl |> cols_label(!!rp_col_name := label)
+  }
+
+  # Spanners
+  p_rp_cols <- paste0("rp_", p_lts_ordered)
+  s_rp_cols <- paste0("rp_", s_lts_ordered)
+
+  p_spanner <- "Primera Forecast RP"
+  s_spanner <- "Postrera Forecast RP"
+  if ("p_seasonal_rp" %in% names(config_row) && !is.na(config_row$p_seasonal_rp)) {
+    p_spanner <- sprintf("Primera Forecast RP (%.1f)", config_row$p_seasonal_rp)
+  }
+  if ("s_seasonal_rp" %in% names(config_row) && !is.na(config_row$s_seasonal_rp)) {
+    s_spanner <- sprintf("Postrera Forecast RP (%.1f)", config_row$s_seasonal_rp)
+  }
+
+  tbl <- tbl |>
+    tab_spanner(label = p_spanner, columns = all_of(p_rp_cols)) |>
+    tab_spanner(label = s_spanner, columns = all_of(s_rp_cols)) |>
+    tab_spanner(label = "ERA5 Obs RP", columns = all_of(obs_cols))
+
+  # EM-DAT bar
+  tbl <- tbl |>
+    text_transform(
+      locations = cells_body(columns = total_affected),
+      fn = make_bar_transform("#de2d26", max_bar)
+    )
+
+  if (has_interp) {
+    tbl <- tbl |>
+      cols_label(total_affected_interp = "Interpolated") |>
+      text_transform(
+        locations = cells_body(columns = total_affected_interp),
+        fn = make_bar_transform("#e6550d", max_bar)
+      ) |>
+      tab_spanner(
+        label = "EM-DAT Affected",
+        columns = c(total_affected, total_affected_interp)
+      )
+  }
+
+  # Style: triggered cells green + bold
+  for (col in active_lts_ordered) {
+    rp_col_name <- paste0("rp_", col)
+    trig_col_name <- paste0("trig_", col)
+    triggered_rows <- which(display[[trig_col_name]])
+    if (length(triggered_rows) > 0) {
+      tbl <- tbl |>
+        tab_style(
+          style = list(cell_fill(color = "#d4edda"), cell_text(weight = "bold")),
+          locations = cells_body(columns = !!rp_col_name, rows = triggered_rows)
+        )
+    }
+  }
+
+  # Style: CERF green
+  is_cerf <- which(display$cerf_label == "\u2713")
+  if (length(is_cerf) > 0) {
+    tbl <- tbl |>
+      tab_style(
+        style = cell_fill(color = "#d4edda"),
+        locations = cells_body(columns = cerf_label, rows = is_cerf)
+      )
+  }
+
+  # Style: priority coloring
+  is_p1 <- which(!is.na(display$hit_priority) & display$hit_priority == 1)
+  is_p2 <- which(!is.na(display$hit_priority) & display$hit_priority == 2)
+  if (length(is_p1) > 0) {
+    tbl <- tbl |>
+      tab_style(style = cell_fill(color = "#fde0dd"),
+                locations = cells_body(columns = hit_priority, rows = is_p1))
+  }
+  if (length(is_p2) > 0) {
+    tbl <- tbl |>
+      tab_style(style = cell_fill(color = "#fff7bc"),
+                locations = cells_body(columns = hit_priority, rows = is_p2))
+  }
+
+  # Style: obs RP brown gradient
+  max_rp_val <- max(c(display$obs_rp_primera, display$obs_rp_postrera), na.rm = TRUE)
+  if (is.infinite(max_rp_val) || is.na(max_rp_val)) max_rp_val <- n_years
+
+  tbl <- tbl |>
+    data_color(
+      columns = all_of(obs_cols),
+      palette = c("#FDEBD0", "#8B4513"),
+      domain = c(1, max_rp_val),
+      na_color = "white"
+    )
+
+  # Title
+  annual_rp_str <- if ("annual_rp" %in% names(config_row)) {
+    sprintf(" | Annual RP = %.2f", config_row$annual_rp)
+  } else ""
+
+  tbl <- tbl |>
+    tab_header(
+      title = sprintf("Trigger Activation: %s (%d\u2013%d)",
+                      iso3_code, eval_start, eval_end),
+      subtitle = sprintf("Green = trigger fires at that leadtime%s", annual_rp_str)
+    ) |>
+    cols_align(align = "center", columns = -year) |>
+    cols_width(
+      total_affected ~ px(130),
+      any_of("total_affected_interp") ~ px(130)
+    ) |>
+    tab_options(table.font.size = px(11), data_row.padding = px(2))
+
+  tbl
 }

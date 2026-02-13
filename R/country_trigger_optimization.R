@@ -286,11 +286,11 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
     n_p <- length(p_trigger_yrs)
     n_s <- length(s_trigger_yrs)
 
-    # Seasonal and annual RPs
-    p_rp <- if (n_p > 0) n_years / n_p else Inf
-    s_rp <- if (n_s > 0) n_years / n_s else Inf
+    # Seasonal and annual RPs (Weibull plotting position: (n+1)/count)
+    p_rp <- if (n_p > 0) (n_years + 1) / n_p else Inf
+    s_rp <- if (n_s > 0) (n_years + 1) / n_s else Inf
     annual_triggers <- union(p_trigger_yrs, s_trigger_yrs)
-    annual_rp <- if (length(annual_triggers) > 0) n_years / length(annual_triggers) else Inf
+    annual_rp <- if (length(annual_triggers) > 0) (n_years + 1) / length(annual_triggers) else Inf
 
     # Matched drought definition: N driest observed = N trigger years
     p_drought <- head(primera_ranked, n_p)
@@ -499,6 +499,60 @@ filter_top_f1 <- function(df, n = 1) {
 }
 
 
+#' Add must-hit and should-hit coverage scores
+#'
+#' For each config, computes the fraction of must-hit and should-hit years
+#' that are covered by the config's combined trigger years (primera OR postrera).
+#' Must-hit years = severe regional droughts (all 3 countries in EM-DAT).
+#' Should-hit years = moderate regional droughts (2+ countries).
+#'
+#' @param df tibble from evaluate_configs() or evaluate_configs_impact(),
+#'   must include threshold columns (p0, p1, ..., s0, s1, ...)
+#' @param trigger_data list from build_trigger_lookup()
+#' @param must_hit_years integer vector of must-hit years (3/3 countries)
+#' @param should_hit_years integer vector of should-hit years (2+/3 countries)
+#' @param eval_start integer, first year of evaluation window (default 1991)
+#' @param eval_end integer, last year of evaluation window (default 2024)
+#' @return df with added `must_hit_score` (0-1) and `should_hit_score` (0-1)
+#' @export
+add_hit_scores <- function(df, trigger_data, must_hit_years,
+                           should_hit_years,
+                           eval_start = 1991, eval_end = 2024) {
+  tl <- trigger_data$trigger_lookup
+  eval_window <- eval_start:eval_end
+  must_hit <- intersect(must_hit_years, eval_window)
+  should_hit <- intersect(should_hit_years, eval_window)
+
+  p_cols <- intersect(c("p0", "p1", "p2"), names(df))
+  s_cols <- intersect(c("s0", "s1", "s2", "s3"), names(df))
+
+  scores <- t(vapply(seq_len(nrow(df)), function(i) {
+    row <- df[i, ]
+
+    get_yrs <- function(id, val) {
+      if (is.na(val)) return(integer(0))
+      key <- sprintf("%s_%.4f", id, val)
+      yrs <- tl[[key]] %||% integer(0)
+      intersect(yrs, eval_window)
+    }
+
+    p_yrs <- Reduce(union, lapply(p_cols, function(col) get_yrs(col, row[[col]])))
+    s_yrs <- Reduce(union, lapply(s_cols, function(col) get_yrs(col, row[[col]])))
+    all_trigger_yrs <- union(p_yrs, s_yrs)
+
+    mh <- if (length(must_hit) > 0) sum(must_hit %in% all_trigger_yrs) / length(must_hit) else 1
+    sh <- if (length(should_hit) > 0) sum(should_hit %in% all_trigger_yrs) / length(should_hit) else 1
+    c(mh, sh)
+  }, numeric(2)))
+
+  df |>
+    mutate(
+      must_hit_score = scores[, 1],
+      should_hit_score = scores[, 2]
+    )
+}
+
+
 #' Add a column classifying each config's active leadtime set
 #'
 #' Adds `p_lt_count` and `s_lt_count` columns counting how many
@@ -574,15 +628,17 @@ get_trigger_years <- function(config, trigger_data) {
 #' Recommend a single config from evaluated results
 #'
 #' Applies opinionated heuristics to select one threshold set:
-#' 1. Filter to target LT set and closest annual RP(s)
-#' 2. Keep configs with best mean F1 (at each RP)
-#' 3. Pick archetype closest to target RP with highest F1
-#' 4. Within that archetype, prefer simplest config:
-#'    flat thresholds (CV=0) > lowest CV > fewest marginal FPs
+#' 1. Filter to target LT set and RP balance
+#' 2. Maximize must_hit_score, then should_hit_score (if columns present)
+#' 3. Among top hit-score configs: best mean F1 at each RP
+#' 4. Pick archetype closest to target RP with highest F1
+#' 5. Within archetype: prefer flat (CV=0) > lowest CV > fewest marginal FPs
 #'
 #' Returns the single config row with a text rationale.
 #'
-#' @param df tibble from evaluate_configs() (must have add_lt_set() applied)
+#' @param df tibble from evaluate_configs() (must have add_lt_set() applied).
+#'   If must_hit_score/should_hit_score columns are present (from add_hit_scores()),
+#'   they are used as priority criteria before F1 selection.
 #' @param target_rp numeric, target annual return period
 #' @param p_lt integer, number of primera leadtimes to use
 #' @param s_lt integer, number of postrera leadtimes to use
@@ -597,6 +653,29 @@ recommend_config <- function(df, target_rp, p_lt, s_lt, max_rp_balance = 2) {
 
   if (nrow(candidates) == 0) {
     stop("No configs match the LT set and RP balance constraints.")
+  }
+
+  # Priority filtering if hit scores present:
+  # 1. Hard gate: must hit ALL priority 1 years (must_hit_score == 1)
+  # 2. Among those: keep configs with max priority 2 hits (should_hit_score)
+  # Fallback: if no config hits all priority 1, keep max must_hit_score
+  has_hit_scores <- all(c("must_hit_score", "should_hit_score") %in% names(candidates))
+  hit_filtered <- FALSE
+  if (has_hit_scores) {
+    perfect_must <- candidates |> filter(must_hit_score == 1)
+    if (nrow(perfect_must) > 0) {
+      candidates <- perfect_must
+      hit_filtered <- TRUE
+    } else {
+      best_mh <- max(candidates$must_hit_score)
+      candidates <- candidates |> filter(must_hit_score == best_mh)
+      warning(sprintf(
+        "No configs hit all priority 1 years. Best must_hit_score = %.0f%%.",
+        best_mh * 100
+      ))
+    }
+    best_sh <- max(candidates$should_hit_score)
+    candidates <- candidates |> filter(should_hit_score == best_sh)
   }
 
   # Best F1 at each RP level
@@ -622,6 +701,15 @@ recommend_config <- function(df, target_rp, p_lt, s_lt, max_rp_balance = 2) {
   s_cols <- intersect(c("s0", "s1", "s2", "s3"), names(pick))
   fmt <- function(x) if (is.na(x)) "\u2014" else sprintf("%.2f", x)
 
+  hit_line <- ""
+  if (has_hit_scores) {
+    hit_line <- sprintf(
+      "  Priority 1 (must-hit): %.0f%% | Priority 2 (should-hit): %.0f%%%s\n",
+      pick$must_hit_score * 100, pick$should_hit_score * 100,
+      if (hit_filtered) " [hard-filtered to 100% P1]" else " [fallback: best available]"
+    )
+  }
+
   rationale <- paste0(
     "Selected config_id ", pick$config_id, ":\n",
     "  Annual RP: ", sprintf("%.2f", pick$annual_rp),
@@ -632,6 +720,7 @@ recommend_config <- function(df, target_rp, p_lt, s_lt, max_rp_balance = 2) {
     "  Mean F1: ", sprintf("%.3f", pick$mean_f1),
     " (pri=", sprintf("%.3f", pick$primera_f1),
     ", post=", sprintf("%.3f", pick$postrera_f1), ")\n",
+    hit_line,
     "  Thresholds (RP): primera=[",
     paste(sapply(pick[p_cols], fmt), collapse = ", "), "], postrera=[",
     paste(sapply(pick[s_cols], fmt), collapse = ", "), "]\n",
@@ -735,4 +824,180 @@ build_config_detail <- function(config, trigger_data) {
   )
 
   map_dfr(all_rows, as_tibble)
+}
+
+
+#' Evaluate configs against fixed impact years (e.g. EM-DAT)
+#'
+#' Same grid search input and output schema as `evaluate_configs()`, but
+#' evaluates against fixed impact years instead of ERA5 matched-RP drought.
+#' F1 is standard (not matched-RP): TP = trigger AND impact year.
+#' Impact years are duplicated to both seasons (EM-DAT is annual).
+#'
+#' @param combos tibble with threshold columns (p0, p1, [p2], s0, s1, s2, [s3])
+#' @param trigger_data list from build_trigger_lookup()
+#' @param impact_years integer vector of impact event years (e.g. from EM-DAT)
+#' @param eval_start integer, first year of evaluation window (default 1991)
+#' @param eval_end integer, last year of evaluation window (default 2024)
+#' @return combos tibble enriched with all metric columns (same schema as
+#'   evaluate_configs output)
+#' @export
+evaluate_configs_impact <- function(combos, trigger_data,
+                                     impact_years,
+                                     eval_start = 1991,
+                                     eval_end = 2024) {
+  tl <- trigger_data$trigger_lookup
+  n_years <- eval_end - eval_start + 1
+  eval_window <- eval_start:eval_end
+
+  # Fixed drought = impact years within evaluation window (same for both seasons)
+  impact_yrs <- sort(intersect(impact_years, eval_window))
+
+  p_cols <- intersect(c("p0", "p1", "p2"), names(combos))
+  s_cols <- intersect(c("s0", "s1", "s2", "s3"), names(combos))
+
+  results <- map_dfr(seq_len(nrow(combos)), function(i) {
+    row <- combos[i, ]
+
+    # --- Look up trigger years per LT, filtered to eval window ---
+    get_yrs <- function(id, val) {
+      if (is.na(val)) return(integer(0))
+      key <- sprintf("%s_%.4f", id, val)
+      yrs <- tl[[key]] %||% integer(0)
+      intersect(yrs, eval_window)
+    }
+
+    p_lt_yrs <- lapply(p_cols, function(col) get_yrs(col, row[[col]]))
+    s_lt_yrs <- lapply(s_cols, function(col) get_yrs(col, row[[col]]))
+
+    # Season-level trigger years (OR-union)
+    p_trigger_yrs <- Reduce(union, p_lt_yrs, accumulate = FALSE)
+    s_trigger_yrs <- Reduce(union, s_lt_yrs, accumulate = FALSE)
+
+    n_p <- length(p_trigger_yrs)
+    n_s <- length(s_trigger_yrs)
+
+    # Seasonal and annual RPs (Weibull plotting position: (n+1)/count)
+    p_rp <- if (n_p > 0) (n_years + 1) / n_p else Inf
+    s_rp <- if (n_s > 0) (n_years + 1) / n_s else Inf
+    annual_triggers <- intersect(union(p_trigger_yrs, s_trigger_yrs), eval_window)
+    annual_rp <- if (length(annual_triggers) > 0) (n_years + 1) / length(annual_triggers) else Inf
+
+    # --- Standard F1 against fixed impact years ---
+    p_tp <- length(intersect(p_trigger_yrs, impact_yrs))
+    p_fp <- length(setdiff(p_trigger_yrs, impact_yrs))
+    p_fn <- length(setdiff(impact_yrs, p_trigger_yrs))
+    s_tp <- length(intersect(s_trigger_yrs, impact_yrs))
+    s_fp <- length(setdiff(s_trigger_yrs, impact_yrs))
+    s_fn <- length(setdiff(impact_yrs, s_trigger_yrs))
+
+    p_prec <- if (p_tp + p_fp > 0) p_tp / (p_tp + p_fp) else 0
+    p_rec <- if (p_tp + p_fn > 0) p_tp / (p_tp + p_fn) else 0
+    p_f1 <- if (p_prec + p_rec > 0) 2 * p_prec * p_rec / (p_prec + p_rec) else 0
+
+    s_prec <- if (s_tp + s_fp > 0) s_tp / (s_tp + s_fp) else 0
+    s_rec <- if (s_tp + s_fn > 0) s_tp / (s_tp + s_fn) else 0
+    s_f1 <- if (s_prec + s_rec > 0) 2 * s_prec * s_rec / (s_prec + s_rec) else 0
+
+    # --- Early warning: TPs first caught at earlier LTs ---
+    # Classified against impact_years instead of ERA5 ranked
+    p_yrs_list <- rev(p_lt_yrs)
+    p_cumulative <- integer(0)
+    p_tp_earliest <- integer(length(p_lt_yrs))
+    p_fp_marginal <- integer(length(p_lt_yrs))
+    for (j in seq_along(p_yrs_list)) {
+      these_yrs <- p_yrs_list[[j]]
+      new_tp <- length(setdiff(intersect(these_yrs, impact_yrs), p_cumulative))
+      new_fp <- length(setdiff(setdiff(these_yrs, impact_yrs), p_cumulative))
+      p_tp_earliest[j] <- new_tp
+      p_fp_marginal[j] <- new_fp
+      p_cumulative <- union(p_cumulative, these_yrs)
+    }
+
+    s_yrs_list <- rev(s_lt_yrs)
+    s_cumulative <- integer(0)
+    s_tp_earliest <- integer(length(s_lt_yrs))
+    s_fp_marginal <- integer(length(s_lt_yrs))
+    for (j in seq_along(s_yrs_list)) {
+      these_yrs <- s_yrs_list[[j]]
+      new_tp <- length(setdiff(intersect(these_yrs, impact_yrs), s_cumulative))
+      new_fp <- length(setdiff(setdiff(these_yrs, impact_yrs), s_cumulative))
+      s_tp_earliest[j] <- new_tp
+      s_fp_marginal[j] <- new_fp
+      s_cumulative <- union(s_cumulative, these_yrs)
+    }
+
+    # --- Threshold CV per season ---
+    p_vals <- unlist(row[p_cols]) |> na.omit()
+    s_vals <- unlist(row[s_cols]) |> na.omit()
+    p_cv <- if (length(p_vals) >= 2) sd(p_vals) / mean(p_vals) else 0
+    s_cv <- if (length(s_vals) >= 2) sd(s_vals) / mean(s_vals) else 0
+
+    # Build early warning column names dynamically
+    p_ew_names <- paste0("p_tp_earliest_lt", rev(seq_along(p_lt_yrs)) - 1)
+    p_fp_names <- paste0("p_fp_marginal_lt", rev(seq_along(p_lt_yrs)) - 1)
+    s_ew_names <- paste0("s_tp_earliest_lt", rev(seq_along(s_lt_yrs)) - 1)
+    s_fp_names <- paste0("s_fp_marginal_lt", rev(seq_along(s_lt_yrs)) - 1)
+
+    ew_vals <- c(
+      setNames(as.list(p_tp_earliest), p_ew_names),
+      setNames(as.list(p_fp_marginal), p_fp_names),
+      setNames(as.list(s_tp_earliest), s_ew_names),
+      setNames(as.list(s_fp_marginal), s_fp_names)
+    )
+
+    tibble(
+      n_p_triggers = n_p,
+      n_s_triggers = n_s,
+      p_seasonal_rp = p_rp,
+      s_seasonal_rp = s_rp,
+      annual_rp = annual_rp,
+      primera_tp = p_tp, primera_fp = p_fp, primera_fn = p_fn, primera_f1 = p_f1,
+      postrera_tp = s_tp, postrera_fp = s_fp, postrera_fn = s_fn, postrera_f1 = s_f1,
+      primera_tol_f1 = p_f1, postrera_tol_f1 = s_f1,
+      mean_tol_f1 = (p_f1 + s_f1) / 2,
+      !!!ew_vals,
+      mean_f1 = (p_f1 + s_f1) / 2,
+      f1_diff = abs(p_f1 - s_f1),
+      rp_diff = s_rp - p_rp,
+      p_cv = p_cv,
+      s_cv = s_cv,
+      mean_cv = (p_cv + s_cv) / 2
+    )
+  })
+
+  # Compute early:MFP ratio (same post-processing as evaluate_configs)
+  p_ew_cols <- grep("^p_tp_earliest_lt[^0]", names(results), value = TRUE)
+  s_ew_cols <- grep("^s_tp_earliest_lt[^0]", names(results), value = TRUE)
+  p_fp_cols <- grep("^p_fp_marginal_lt[^0]", names(results), value = TRUE)
+  s_fp_cols <- grep("^s_fp_marginal_lt[^0]", names(results), value = TRUE)
+
+  results <- results |>
+    mutate(
+      p_early_tp = rowSums(across(any_of(p_ew_cols)), na.rm = TRUE),
+      s_early_tp = rowSums(across(any_of(s_ew_cols)), na.rm = TRUE),
+      total_early_tp = p_early_tp + s_early_tp,
+      p_marginal_fp = rowSums(across(any_of(p_fp_cols)), na.rm = TRUE),
+      s_marginal_fp = rowSums(across(any_of(s_fp_cols)), na.rm = TRUE),
+      total_marginal_fp = p_marginal_fp + s_marginal_fp
+    )
+
+  max_ratio_fp <- results |>
+    filter(total_marginal_fp > 0) |>
+    summarise(mr = max(total_early_tp / total_marginal_fp, na.rm = TRUE)) |>
+    pull(mr)
+
+  if (length(max_ratio_fp) == 0 || is.na(max_ratio_fp)) max_ratio_fp <- 0
+
+  results <- results |>
+    mutate(
+      early_mfp_ratio = if_else(
+        total_marginal_fp > 0,
+        total_early_tp / total_marginal_fp,
+        max_ratio_fp + total_early_tp
+      )
+    )
+
+  bind_cols(combos, results) |>
+    mutate(config_id = row_number(), .before = 1)
 }

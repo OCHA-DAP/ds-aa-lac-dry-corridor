@@ -1,0 +1,828 @@
+# Trigger Configuration: HND & SLV {#sec-trigger-config}
+
+```{r}
+#| label: setup-trigger-config
+#| include: false
+
+library(tidyverse)
+library(lubridate)
+library(cumulus)
+library(gt)
+library(janitor)
+
+box::purge_cache()
+box::use(
+  ../../R/country_trigger_optimization[...],
+  ../../R/trigger_viz[...]
+)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Overview
+
+@sec-honduras-trigger developed a purely rainfall-based trigger optimization for Honduras, defining drought as the N driest ERA5 years (matched return period). This chapter takes a different approach: we begin with **humanitarian impact data** to identify which years *must* be triggered, then layer in ERA5 rainfall skill to select the final configuration.
+
+The key insight motivating this approach is that seasonal rainfall forecasts are an imperfect proxy for drought impact. EM-DAT records and CERF allocations provide direct evidence of when humanitarian consequences occurred. Rather than optimizing solely against observed rainfall, we first ensure our trigger catches the most consequential events, then optimize for rainfall prediction accuracy among configurations that meet that constraint.
+
+This chapter covers Honduras and El Salvador. Guatemala requires additional considerations and is addressed in a separate chapter
+
+
+```{r}
+#| label: load-impact-data
+
+iso_lookup <- c(HND = "Honduras", GTM = "Guatemala", SLV = "El Salvador")
+
+df_cerf <- cumulus::load_cerf_from_blob() |> clean_names()
+df_emdat <- cumulus::load_emdat_from_blob() |> clean_names()
+
+# CERF drought allocations
+df_cerf_drought <- df_cerf |>
+  filter(
+    country_code %in% names(iso_lookup),
+    window_full_name == "Rapid Response",
+    emergency_type_name == "Drought"
+  ) |>
+  mutate(year = year(date_usg_signature)) |>
+  distinct(iso3 = country_code, year)
+
+# CERF Hypothesis:
+# 2016 is a late drought response — allocations in 2016 associated with
+# the 2-year drought in 2014-2015.
+# 2019 is a late response associated with the 2018 drought.
+# 2025 excluded as an outlier.
+cerf_start_drought_years <- c("2018", "2015", "2014", "2009")
+
+# EM-DAT with total_affected (for validation table)
+df_emdat_drought <- df_emdat |>
+  filter(
+    iso %in% names(iso_lookup),
+    disaster_type == "Drought"
+  ) |>
+  group_by(iso3 = iso, year = start_year) |>
+  summarise(total_affected = sum(total_affected, na.rm = TRUE), .groups = "drop")
+
+# EM-DAT interpolated: spread total_affected evenly across start_year:end_year
+df_emdat_drought_interp <- df_emdat |>
+  filter(
+    iso %in% names(iso_lookup),
+    disaster_type == "Drought"
+  ) |>
+  mutate(
+    end_yr = if_else(is.na(end_year), start_year, end_year),
+    n_event_years = end_yr - start_year + 1,
+    affected_per_year = total_affected / n_event_years
+  ) |>
+  rowwise() |>
+  mutate(year = list(seq(start_year, end_yr))) |>
+  tidyr::unnest(year) |>
+  ungroup() |>
+  group_by(iso3 = iso, year) |>
+  summarise(total_affected_interp = sum(affected_per_year, na.rm = TRUE), .groups = "drop")
+
+# EM-DAT distinct impact years (expanded across multi-year events)
+df_emdat_impact <- df_emdat |>
+  filter(
+    iso %in% names(iso_lookup),
+    disaster_type == "Drought"
+  ) |>
+  mutate(end_yr = if_else(is.na(end_year), start_year, end_year)) |>
+  rowwise() |>
+  mutate(year = list(seq(start_year, end_yr))) |>
+  tidyr::unnest(year) |>
+  ungroup() |>
+  distinct(iso3 = iso, year)
+
+EVAL_START <- 1991
+EVAL_END <- 2024
+BASELINE_START <- 1991
+BASELINE_END <- 2024
+
+# Per-country impact years
+impact_by_country <- split(
+  df_emdat_impact |> filter(year >= EVAL_START, year <= EVAL_END),
+  df_emdat_impact |> filter(year >= EVAL_START, year <= EVAL_END) |> pull(iso3)
+)
+
+# Cross-country overlap
+impact_year_counts <- df_emdat_impact |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  count(year) |>
+  arrange(desc(n), year)
+
+# Priority year definitions
+cerf_hyp_years <- as.integer(cerf_start_drought_years)
+all3_years <- impact_year_counts |> filter(n == 3) |> pull(year)
+must_hit_years <- cerf_hyp_years
+should_hit_years <- setdiff(all3_years, cerf_hyp_years)
+```
+
+## Impact Data Landscape
+
+Before defining trigger thresholds, we examine the historical record of drought impacts across the dry corridor. From this evidence we define two priority classes for the trigger optimization:
+
+- **Priority 1 (must-hit)**: The CERF hypothesis years --- `r paste(sort(must_hit_years), collapse = ", ")`. These are the years where CERF actually allocated drought funding (adjusted for delayed response timing). They represent donor-validated humanitarian crises where we have the strongest obligation to trigger.
+
+- **Priority 2 (should-hit)**: Years where all 3 countries appear in EM-DAT expanded drought records but are not CERF hypothesis years --- `r paste(sort(should_hit_years), collapse = ", ")`. Regional consensus across all three countries indicates widespread drought conditions, even without CERF activation.
+
+@tbl-impact-summary shows the full landscape of CERF allocations, EM-DAT entries (both as-reported and expanded across multi-year events), and the resulting priority classification for `r EVAL_START`--`r EVAL_END`.
+
+```{r}
+#| label: tbl-impact-summary
+#| tbl-cap: "Impact data summary across CERF, EM-DAT, and CERF hypothesis years. Priority 1 (pink) = CERF hypothesis drought years. Priority 2 (yellow) = years where all 3 countries appear in EM-DAT expanded."
+
+impact_summary_years <- EVAL_START:EVAL_END
+
+cerf_by_iso <- df_cerf_drought |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(iso3, year) |>
+  mutate(val = TRUE) |>
+  pivot_wider(names_from = iso3, values_from = val, names_prefix = "cerf_") |>
+  complete(year = impact_summary_years)
+
+emdat_reported <- df_emdat_drought |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(iso3, year) |>
+  mutate(val = TRUE) |>
+  pivot_wider(names_from = iso3, values_from = val, names_prefix = "emdat_") |>
+  complete(year = impact_summary_years)
+
+emdat_expanded <- df_emdat_impact |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(iso3, year) |>
+  mutate(val = TRUE) |>
+  pivot_wider(names_from = iso3, values_from = val, names_prefix = "emdat_exp_") |>
+  complete(year = impact_summary_years)
+
+cerf_hyp <- tibble(year = cerf_hyp_years, cerf_hypothesis = TRUE)
+
+impact_summary <- tibble(year = impact_summary_years) |>
+  left_join(cerf_by_iso, by = "year") |>
+  left_join(emdat_reported, by = "year") |>
+  left_join(emdat_expanded, by = "year") |>
+  left_join(cerf_hyp, by = "year") |>
+  mutate(across(-year, ~ if_else(replace_na(.x, FALSE), "\u2713", ""))) |>
+  mutate(
+    hit_priority = case_when(
+      year %in% cerf_hyp_years ~ 1L,
+      year %in% all3_years     ~ 2L,
+      TRUE ~ NA_integer_
+    )
+  )
+
+tick_cols <- c("cerf_HND", "cerf_GTM", "cerf_SLV",
+               "emdat_HND", "emdat_GTM", "emdat_SLV",
+               "emdat_exp_HND", "emdat_exp_GTM", "emdat_exp_SLV",
+               "cerf_hypothesis")
+
+impact_summary |>
+  gt() |>
+  cols_label(
+    year = "Year",
+    cerf_HND = "HND", cerf_GTM = "GTM", cerf_SLV = "SLV",
+    emdat_HND = "HND", emdat_GTM = "GTM", emdat_SLV = "SLV",
+    emdat_exp_HND = "HND", emdat_exp_GTM = "GTM", emdat_exp_SLV = "SLV",
+    cerf_hypothesis = "Hypothesis",
+    hit_priority = "Priority"
+  ) |>
+  cols_move(columns = cerf_hypothesis, after = cerf_SLV) |>
+  tab_spanner(label = "CERF", columns = c(cerf_HND, cerf_GTM, cerf_SLV, cerf_hypothesis)) |>
+  tab_spanner(label = "EM-DAT (reported)", columns = c(emdat_HND, emdat_GTM, emdat_SLV)) |>
+  tab_spanner(label = "EM-DAT (expanded)", columns = c(emdat_exp_HND, emdat_exp_GTM, emdat_exp_SLV)) |>
+  cols_align(align = "center", columns = -year) |>
+  sub_missing(columns = hit_priority, missing_text = "") |>
+  tab_style(
+    style = cell_fill(color = "#d4edda"),
+    locations = cells_body(columns = all_of(tick_cols), rows = TRUE)
+  ) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = cerf_HND, rows = cerf_HND == "")) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = cerf_GTM, rows = cerf_GTM == "")) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = cerf_SLV, rows = cerf_SLV == "")) |>
+  # EM-DAT (reported): muted — light grey fill + faded text for entire column
+  tab_style(
+    style = list(cell_fill(color = "#f0f0f0"), cell_text(color = "#999999")),
+    locations = list(
+      cells_body(columns = c(emdat_HND, emdat_GTM, emdat_SLV)),
+      cells_column_labels(columns = c(emdat_HND, emdat_GTM, emdat_SLV)),
+      cells_column_spanners(spanners = "EM-DAT (reported)")
+    )
+  ) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = emdat_exp_HND, rows = emdat_exp_HND == "")) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = emdat_exp_GTM, rows = emdat_exp_GTM == "")) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = emdat_exp_SLV, rows = emdat_exp_SLV == "")) |>
+  tab_style(style = cell_fill(color = "white"),
+    locations = cells_body(columns = cerf_hypothesis, rows = cerf_hypothesis == "")) |>
+  tab_style(style = cell_fill(color = "#fde0dd"),
+    locations = cells_body(columns = hit_priority, rows = hit_priority == 1)) |>
+  tab_style(style = cell_fill(color = "#fff7bc"),
+    locations = cells_body(columns = hit_priority, rows = hit_priority == 2)) |>
+  # Vertical dividers between spanner groups
+  tab_style(
+    style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
+    locations = list(
+      cells_body(columns = cerf_HND),
+      cells_column_labels(columns = cerf_HND),
+      cells_column_spanners(spanners = "CERF")
+    )
+  ) |>
+  tab_style(
+    style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
+    locations = list(
+      cells_body(columns = emdat_HND),
+      cells_column_labels(columns = emdat_HND),
+      cells_column_spanners(spanners = "EM-DAT (reported)")
+    )
+  ) |>
+  tab_style(
+    style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
+    locations = list(
+      cells_body(columns = emdat_exp_HND),
+      cells_column_labels(columns = emdat_exp_HND),
+      cells_column_spanners(spanners = "EM-DAT (expanded)")
+    )
+  ) |>
+  tab_style(
+    style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
+    locations = list(
+      cells_body(columns = hit_priority),
+      cells_column_labels(columns = hit_priority)
+    )
+  ) |>
+  tab_header(
+    title = "Impact Data Summary (CERF, EM-DAT, CERF Hypothesis)",
+    subtitle = sprintf(
+      "%d\u2013%d | Priority 1 = CERF hypothesis | Priority 2 = 3/3 countries EM-DAT expanded",
+      EVAL_START, EVAL_END)
+  ) |>
+  opt_stylize(style = 1)
+```
+
+
+## Rainfall vs Impact Alignment
+
+A key question is whether seasonal rainfall alone can predict humanitarian impact. The tables below show per-country validation: for each year, we compare ERA5 observed rainfall ranking with CERF allocations, EM-DAT records, and total affected population.
+
+```{r}
+#| label: load-country-data
+#| cache: true
+
+countries <- list(
+  HND = list(
+    aoi_pcodes = c("HN07", "HN08"),
+    primera_months = 5:8,
+    postrera_months = 9:11,
+    primera_issued_months = c(3, 4, 5),
+    postrera_issued_months = c(6, 7, 8, 9)
+  ),
+  GTM = list(
+    aoi_pcodes = c("GT20", "GT16"),
+    primera_months = 5:8,
+    postrera_months = 9:11,
+    primera_issued_months = c(3, 4, 5),
+    postrera_issued_months = c(6, 7, 8, 9)
+  ),
+  SLV = list(
+    iso3 = "SLV",
+    adm_level = 0,
+    primera_months = 5:8,
+    postrera_months = 9:11,
+    primera_issued_months = c(3, 4, 5),
+    postrera_issued_months = c(6, 7, 8, 9)
+  )
+)
+
+load_country_data <- function(cfg) {
+  con <- pg_con()
+  on.exit(DBI::dbDisconnect(con))
+
+  use_adm0 <- isTRUE(cfg$adm_level == 0)
+
+  if (use_adm0) {
+    df_seas5_raw <- tbl(con, "seas5") |>
+      filter(iso3 == cfg$iso3, adm_level == 0) |> collect()
+    df_era5_raw <- tbl(con, "era5") |>
+      filter(iso3 == cfg$iso3, adm_level == 0) |> collect()
+  } else {
+    df_seas5_raw <- tbl(con, "seas5") |>
+      mutate(across(pcode, as.character)) |>
+      filter(adm_level == 1, pcode %in% cfg$aoi_pcodes) |> collect()
+    df_era5_raw <- tbl(con, "era5") |>
+      mutate(across(pcode, as.character)) |>
+      filter(pcode %in% cfg$aoi_pcodes) |> collect()
+  }
+
+  df_seas5_mm <- df_seas5_raw |>
+    mutate(value_mm = days_in_month(valid_date) * mean)
+
+  if (use_adm0) {
+    df_seas5_seasonal <- bind_rows(
+      seas5_aggregate_forecast(df_seas5_mm, value = "value_mm",
+        valid_months = cfg$primera_months, by = c("iso3", "issued_date")
+      ) |> mutate(window = "primera"),
+      seas5_aggregate_forecast(df_seas5_mm, value = "value_mm",
+        valid_months = cfg$postrera_months, by = c("iso3", "issued_date")
+      ) |> mutate(window = "postrera")
+    ) |>
+      rename(fcst_mm = value_mm) |>
+      mutate(year = year(issued_date), issued_month = month(issued_date)) |>
+      filter(
+        (window == "primera" & issued_month %in% cfg$primera_issued_months) |
+        (window == "postrera" & issued_month %in% cfg$postrera_issued_months)
+      )
+
+    df_era5_monthly <- df_era5_raw |>
+      mutate(year = year(valid_date), month = month(valid_date),
+             value_mm = mean * days_in_month(valid_date))
+
+    df_era5_seasonal <- bind_rows(
+      df_era5_monthly |> filter(month %in% cfg$primera_months) |>
+        group_by(iso3, year) |>
+        summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+        mutate(window = "primera"),
+      df_era5_monthly |> filter(month %in% cfg$postrera_months) |>
+        group_by(iso3, year) |>
+        summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+        mutate(window = "postrera")
+    )
+
+    df_joined <- df_seas5_seasonal |>
+      left_join(df_era5_seasonal |> select(iso3, year, window, obs_mm),
+                by = c("iso3", "year", "window")) |>
+      filter(!is.na(obs_mm)) |>
+      group_by(year, window, leadtime) |>
+      summarise(fcst_mm = mean(fcst_mm), obs_mm = mean(obs_mm), .groups = "drop") |>
+      filter(year >= BASELINE_START, year <= BASELINE_END)
+  } else {
+    df_weights <- tbl(con, "polygon") |>
+      mutate(across(pcode, as.character)) |>
+      filter(adm_level == 1, pcode %in% cfg$aoi_pcodes) |>
+      select(pcode, seas5_n_upsampled_pixels) |> collect()
+
+    df_seas5_seasonal <- bind_rows(
+      seas5_aggregate_forecast(df_seas5_mm, value = "value_mm",
+        valid_months = cfg$primera_months, by = c("iso3", "pcode", "issued_date")
+      ) |> mutate(window = "primera"),
+      seas5_aggregate_forecast(df_seas5_mm, value = "value_mm",
+        valid_months = cfg$postrera_months, by = c("iso3", "pcode", "issued_date")
+      ) |> mutate(window = "postrera")
+    ) |>
+      rename(fcst_mm = value_mm) |>
+      mutate(year = year(issued_date), issued_month = month(issued_date)) |>
+      filter(
+        (window == "primera" & issued_month %in% cfg$primera_issued_months) |
+        (window == "postrera" & issued_month %in% cfg$postrera_issued_months)
+      )
+
+    df_era5_monthly <- df_era5_raw |>
+      mutate(year = year(valid_date), month = month(valid_date),
+             value_mm = mean * days_in_month(valid_date))
+
+    df_era5_seasonal <- bind_rows(
+      df_era5_monthly |> filter(month %in% cfg$primera_months) |>
+        group_by(pcode, iso3, year) |>
+        summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+        mutate(window = "primera"),
+      df_era5_monthly |> filter(month %in% cfg$postrera_months) |>
+        group_by(pcode, iso3, year) |>
+        summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+        mutate(window = "postrera")
+    )
+
+    df_joined <- df_seas5_seasonal |>
+      left_join(df_era5_seasonal |> select(pcode, year, window, obs_mm),
+                by = c("pcode", "year", "window")) |>
+      filter(!is.na(obs_mm)) |>
+      left_join(df_weights, by = "pcode") |>
+      group_by(year, window, leadtime) |>
+      summarise(
+        fcst_mm = weighted.mean(fcst_mm, w = seas5_n_upsampled_pixels),
+        obs_mm  = weighted.mean(obs_mm,  w = seas5_n_upsampled_pixels),
+        .groups = "drop"
+      ) |>
+      filter(year >= BASELINE_START, year <= BASELINE_END)
+  }
+
+  df_joined |>
+    group_by(window) |>
+    mutate(leadtime = leadtime - min(leadtime)) |>
+    ungroup()
+}
+
+df_hnd <- load_country_data(countries$HND)
+df_gtm <- load_country_data(countries$GTM)
+df_slv <- load_country_data(countries$SLV)
+```
+
+The validation tables below cross-reference each year's primera and postrera rainfall dry rank with CERF allocations, EM-DAT records, and total affected population. Years are sorted by maximum seasonal dryness rank so the most extreme rainfall years appear first. A mismatch between dry rank and impact columns indicates that rainfall alone is not a reliable predictor of humanitarian consequences.
+
+::: {.panel-tabset}
+
+### Honduras
+
+```{r}
+#| label: tbl-validation-hnd
+build_impact_validation_gt(df_hnd, df_cerf_drought, df_emdat_drought, "HND",
+                           eval_start = EVAL_START, eval_end = EVAL_END,
+                           df_emdat_interp = df_emdat_drought_interp,
+                           cerf_hypothesis_years = cerf_hyp_years,
+                           sort_by = "max_rp")
+```
+
+### El Salvador
+
+```{r}
+#| label: tbl-validation-slv
+build_impact_validation_gt(df_slv, df_cerf_drought, df_emdat_drought, "SLV",
+                           eval_start = EVAL_START, eval_end = EVAL_END,
+                           df_emdat_interp = df_emdat_drought_interp,
+                           cerf_hypothesis_years = cerf_hyp_years,
+                           sort_by = "max_rp")
+```
+
+### Guatemala
+
+```{r}
+#| label: tbl-validation-gtm
+build_impact_validation_gt(df_gtm, df_cerf_drought, df_emdat_drought, "GTM",
+                           eval_start = EVAL_START, eval_end = EVAL_END,
+                           df_emdat_interp = df_emdat_drought_interp,
+                           cerf_hypothesis_years = cerf_hyp_years,
+                           sort_by = "max_rp")
+```
+
+:::
+
+These tables demonstrate a recurring pattern: some of the most impactful drought years (e.g. those with CERF allocations or high total affected) do not always coincide with the driest rainfall years, and vice versa. This imperfect correlation between rainfall and impact is the primary motivation for our hybrid optimization approach.
+
+
+## Optimization Strategy
+
+Given that rainfall is an imperfect predictor of humanitarian impact, we adopt a staged optimization that prioritizes impact evidence first, then maximizes rainfall prediction skill:
+
+1. **Impact-first filtering**: Evaluate all threshold configurations against EM-DAT impact years using standard F1. Keep only configs that trigger in all Priority 1 years (must-hit). Among those, keep configs with the maximum Priority 2 hits (should-hit).
+
+2. **ERA5 rainfall evaluation**: For the surviving candidate pool, evaluate against ERA5 observed rainfall using the tolerant matched-RP F1 from @sec-honduras-trigger. This tells us how well each config predicts actual rainfall anomalies, independent of the impact definition.
+
+3. **Combined selection**: Plot impact F1 against ERA5 tolerant F1 to visualize the tradeoff. Compute an average of both F1 scores and identify the best-performing config at each return period level. Among tied configs, select the one with the lowest threshold coefficient of variation (most operationally uniform thresholds).
+
+The rationale is straightforward: since SEAS5 forecasts are our only trigger variable, and they predict rainfall rather than impact directly, it makes sense to first ensure we capture the most consequential events (via impact filtering), then optimize for what the forecast actually predicts well (rainfall). After the priority-hit filters are satisfied, a high ERA5 tolerant F1 indicates the trigger is selecting genuinely dry years rather than succeeding on impact years by coincidence.
+
+
+## Country-Specific Results
+
+::: {.panel-tabset}
+
+### Honduras
+
+```{r}
+#| label: hnd-setup
+
+cfg_hnd <- countries$HND
+primera_lts_hnd <- 3
+postrera_lts_hnd <- 3
+
+impact_yrs_hnd <- impact_by_country$HND$year
+target_rp_hnd <- (EVAL_END - EVAL_START + 1 + 1) / length(impact_yrs_hnd)
+```
+
+Honduras uses departments El Paraiso (HN07) and Francisco Morazan (HN08) as the area of interest, with `r primera_lts_hnd` primera leadtimes and `r postrera_lts_hnd` postrera leadtimes. EM-DAT records `r length(impact_yrs_hnd)` impact years in `r EVAL_START`--`r EVAL_END`, giving an empirical impact RP of `r sprintf("%.1f", target_rp_hnd)` years.
+
+#### Impact Evaluation & Priority Filtering
+
+```{r}
+#| label: hnd-impact-eval
+#| cache: true
+
+combos_hnd <- generate_combos(length(unique(df_hnd$year)),
+                               primera_lts = primera_lts_hnd,
+                               postrera_lts = postrera_lts_hnd) |>
+  grid_constrain_season_monotonic() |>
+  grid_constrain_inter_season_monotonic() |>
+  grid_constrain_lt_rp_range(min_rp = 4, max_rp = 15)
+
+trigger_data_hnd <- build_trigger_lookup(df_hnd, min_rp = 2.8, max_rp = 15,
+                                          primera_lts = primera_lts_hnd,
+                                          postrera_lts = postrera_lts_hnd)
+
+all_results_hnd <- evaluate_configs_impact(
+  combos_hnd, trigger_data_hnd,
+  impact_years = impact_yrs_hnd,
+  eval_start = EVAL_START, eval_end = EVAL_END
+)
+
+all_results_hnd <- all_results_hnd |>
+  add_hit_scores(trigger_data_hnd, must_hit_years, should_hit_years,
+                 eval_start = EVAL_START, eval_end = EVAL_END) |>
+  add_lt_set()
+
+hnd_candidates <- all_results_hnd |>
+  filter(p_lt_count == primera_lts_hnd, s_lt_count == postrera_lts_hnd) |>
+  filter(must_hit_score == max(must_hit_score)) |>
+  filter(should_hit_score == max(should_hit_score))
+```
+
+After generating `r format(nrow(combos_hnd), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(hnd_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(hnd_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(hnd_candidates$should_hit_score) * 100)` of Priority 2 years.
+
+
+#### ERA5 Evaluation & Combined Scoring
+
+```{r}
+#| label: hnd-era5-join
+#| cache: true
+
+hnd_candidate_combos <- hnd_candidates |>
+  select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")))
+
+hnd_era5 <- evaluate_configs(hnd_candidate_combos, trigger_data_hnd, rp_buffer = 1)
+
+threshold_cols_hnd <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
+                                names(hnd_candidates))
+
+hnd_combined <- hnd_candidates |>
+  select(config_id, all_of(threshold_cols_hnd),
+         impact_f1 = mean_f1,
+         impact_primera_f1 = primera_f1,
+         impact_postrera_f1 = postrera_f1,
+         must_hit_score, should_hit_score,
+         annual_rp, p_seasonal_rp, s_seasonal_rp) |>
+  left_join(
+    hnd_era5 |>
+      select(all_of(threshold_cols_hnd),
+             era5_matched_f1 = mean_f1,
+             era5_tol_f1 = mean_tol_f1,
+             era5_primera_tol_f1 = primera_tol_f1,
+             era5_postrera_tol_f1 = postrera_tol_f1,
+             mean_cv, total_early_tp, total_marginal_fp),
+    by = threshold_cols_hnd
+  )
+```
+
+
+```{r}
+#| label: fig-hnd-tradeoff
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
+
+hnd_tradeoff <- plot_f1_tradeoff(hnd_combined, target_rp = 3, n_nearest = 2)
+hnd_tradeoff$plot
+```
+
+The tradeoff plot shows the relationship between impact-based and rainfall-based performance. Configurations near the top-right corner perform well on both metrics. From the optimal points at each RP level, we select the config with the lowest threshold CV:
+
+```{r}
+#| label: hnd-final-selection
+
+hnd_final <- hnd_tradeoff$best_per_rp |>
+  group_by(annual_rp) |>
+  filter(mean_cv == min(mean_cv)) |>
+  ungroup()
+```
+
+```{r}
+#| label: tbl-hnd-final
+#| tbl-cap: "Honduras recommended configurations: best average F1 per return period, tiebroken by lowest threshold CV."
+
+hnd_final |>
+  select(
+    any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")),
+    annual_rp, p_seasonal_rp, s_seasonal_rp,
+    impact_f1, era5_tol_f1, avg_f1, mean_cv
+  ) |>
+  mutate(
+    across(c(impact_f1, era5_tol_f1, avg_f1, mean_cv), \(x) round(x, 3)),
+    across(c(annual_rp, p_seasonal_rp, s_seasonal_rp), \(x) round(x, 2))
+  ) |>
+  gt() |>
+  cols_align(align = "center") |>
+  tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
+  tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
+  tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
+  tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv)) |>
+  tab_header(
+    title = "Honduras: Recommended Configurations",
+    subtitle = "Best avg(impact F1, ERA5 tolerant F1) per RP | Lowest CV tiebreak"
+  )
+```
+
+#### Trigger Activation Detail
+
+The table below shows the per-leadtime forecast empirical RP for each year under the selected configuration (annual RP closest to 2.8). Green cells indicate the trigger fires at that leadtime --- the forecast was dry enough to exceed the RP threshold shown in the column header.
+
+```{r}
+#| label: tbl-hnd-activation
+#| tbl-cap: "Honduras trigger activation by leadtime. Green cells = trigger fires (forecast RP >= threshold). Column headers show the RP threshold for each leadtime."
+
+hnd_config <- hnd_final |> slice_min(abs(annual_rp - 2.9), n = 1, with_ties = FALSE)
+
+build_trigger_activation_gt(
+  hnd_config, trigger_data_hnd, df_hnd,
+  df_cerf_drought, df_emdat_drought, "HND",
+  eval_start = EVAL_START, eval_end = EVAL_END,
+  df_emdat_interp = df_emdat_drought_interp,
+  must_hit_years = must_hit_years,
+  should_hit_years = should_hit_years,
+  sort_by = "activation"
+)
+```
+
+
+### El Salvador
+
+```{r}
+#| label: slv-setup
+
+cfg_slv <- countries$SLV
+primera_lts_slv <- 3
+postrera_lts_slv <- 2
+
+impact_yrs_slv <- impact_by_country$SLV$year
+target_rp_slv <- 3
+```
+
+El Salvador uses country-level (admin 0) aggregation with `r primera_lts_slv` primera leadtimes and `r postrera_lts_slv` postrera leadtimes. EM-DAT records `r length(impact_yrs_slv)` impact years. We use a target RP of `r target_rp_slv`.
+
+#### Impact Evaluation & Priority Filtering
+
+```{r}
+#| label: slv-impact-eval
+#| cache: true
+
+combos_slv <- generate_combos(length(unique(df_slv$year)),
+                               primera_lts = primera_lts_slv,
+                               postrera_lts = postrera_lts_slv) |>
+  grid_constrain_season_monotonic() |>
+  grid_constrain_inter_season_monotonic() |>
+  grid_constrain_lt_rp_range(min_rp = 4, max_rp = 15)
+
+trigger_data_slv <- build_trigger_lookup(df_slv, min_rp = 2.8, max_rp = 15,
+                                          primera_lts = primera_lts_slv,
+                                          postrera_lts = postrera_lts_slv)
+
+all_results_slv <- evaluate_configs_impact(
+  combos_slv, trigger_data_slv,
+  impact_years = impact_yrs_slv,
+  eval_start = EVAL_START, eval_end = EVAL_END
+)
+
+all_results_slv <- all_results_slv |>
+  add_hit_scores(trigger_data_slv, must_hit_years, should_hit_years,
+                 eval_start = EVAL_START, eval_end = EVAL_END) |>
+  add_lt_set()
+
+slv_candidates <- all_results_slv |>
+  filter(p_lt_count == primera_lts_slv, s_lt_count == postrera_lts_slv) |>
+  filter(must_hit_score == max(must_hit_score)) |>
+  filter(should_hit_score == max(should_hit_score))
+```
+
+After priority filtering, **`r format(nrow(slv_candidates), big.mark = ",")`** candidates remain, hitting `r sprintf("%.0f%%", max(slv_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(slv_candidates$should_hit_score) * 100)` of Priority 2 years.
+
+
+#### ERA5 Evaluation & Combined Scoring
+
+```{r}
+#| label: slv-era5-join
+#| cache: true
+
+slv_candidate_combos <- slv_candidates |>
+  select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")))
+
+slv_era5 <- evaluate_configs(slv_candidate_combos, trigger_data_slv, rp_buffer = 1)
+
+threshold_cols_slv <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
+                                names(slv_candidates))
+
+slv_combined <- slv_candidates |>
+  select(config_id, all_of(threshold_cols_slv),
+         impact_f1 = mean_f1,
+         impact_primera_f1 = primera_f1,
+         impact_postrera_f1 = postrera_f1,
+         must_hit_score, should_hit_score,
+         annual_rp, p_seasonal_rp, s_seasonal_rp) |>
+  left_join(
+    slv_era5 |>
+      select(all_of(threshold_cols_slv),
+             era5_matched_f1 = mean_f1,
+             era5_tol_f1 = mean_tol_f1,
+             era5_primera_tol_f1 = primera_tol_f1,
+             era5_postrera_tol_f1 = postrera_tol_f1,
+             mean_cv, total_early_tp, total_marginal_fp),
+    by = threshold_cols_slv
+  )
+```
+
+
+```{r}
+#| label: fig-slv-tradeoff
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
+
+slv_tradeoff <- plot_f1_tradeoff(slv_combined, target_rp = target_rp_slv, n_nearest = 2)
+slv_tradeoff$plot
+```
+
+```{r}
+#| label: slv-final-selection
+
+slv_final <- slv_tradeoff$best_per_rp |>
+  group_by(annual_rp) |>
+  filter(mean_cv == min(mean_cv)) |>
+  ungroup()
+```
+
+```{r}
+#| label: tbl-slv-final
+#| tbl-cap: "El Salvador recommended configurations: best average F1 per return period, tiebroken by lowest threshold CV."
+
+slv_final |>
+  select(
+    any_of(c("p0", "p1", "p2", "s0", "s1")),
+    annual_rp, p_seasonal_rp, s_seasonal_rp,
+    impact_f1, era5_tol_f1, avg_f1, mean_cv
+  ) |>
+  mutate(
+    across(c(impact_f1, era5_tol_f1, avg_f1, mean_cv), \(x) round(x, 3)),
+    across(c(annual_rp, p_seasonal_rp, s_seasonal_rp), \(x) round(x, 2))
+  ) |>
+  gt() |>
+  cols_align(align = "center") |>
+  tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
+  tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
+  tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
+  tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv)) |>
+  tab_header(
+    title = "El Salvador: Recommended Configurations",
+    subtitle = "Best avg(impact F1, ERA5 tolerant F1) per RP | Lowest CV tiebreak"
+  )
+```
+
+#### Trigger Activation Detail
+
+```{r}
+#| label: tbl-slv-activation
+#| tbl-cap: "El Salvador trigger activation by leadtime. Green cells = trigger fires (forecast RP >= threshold). Column headers show the RP threshold for each leadtime."
+
+slv_config <- slv_final |> slice_min(abs(annual_rp - 2.8), n = 1, with_ties = FALSE)
+
+build_trigger_activation_gt(
+  slv_config, trigger_data_slv, df_slv,
+  df_cerf_drought, df_emdat_drought, "SLV",
+  eval_start = EVAL_START, eval_end = EVAL_END,
+  df_emdat_interp = df_emdat_drought_interp,
+  must_hit_years = must_hit_years,
+  should_hit_years = should_hit_years,
+  sort_by = "activation"
+)
+```
+
+:::
+
+
+## Appendix: ROC Analysis {.appendix}
+
+The ROC-style analysis below examines how well ERA5 observed rainfall (at various RP thresholds) predicts EM-DAT drought events. Low AUC values confirm the weak relationship between rainfall severity ranking and humanitarian impact, further supporting the hybrid optimization approach used in this chapter.
+
+::: {.panel-tabset}
+
+### Honduras
+
+```{r}
+#| label: fig-roc-hnd
+#| fig-cap: "ROC-style curve for Honduras: ERA5 rainfall RP threshold vs EM-DAT drought detection."
+
+roc_hnd <- plot_impact_roc(df_hnd, df_emdat_drought, "HND",
+                            eval_start = EVAL_START, eval_end = EVAL_END)
+roc_hnd$plot
+```
+
+### El Salvador
+
+```{r}
+#| label: fig-roc-slv
+#| fig-cap: "ROC-style curve for El Salvador: ERA5 rainfall RP threshold vs EM-DAT drought detection."
+
+roc_slv <- plot_impact_roc(df_slv, df_emdat_drought, "SLV",
+                            eval_start = EVAL_START, eval_end = EVAL_END)
+roc_slv$plot
+```
+
+### Guatemala
+
+```{r}
+#| label: fig-roc-gtm
+#| fig-cap: "ROC-style curve for Guatemala: ERA5 rainfall RP threshold vs EM-DAT drought detection."
+
+roc_gtm <- plot_impact_roc(df_gtm, df_emdat_drought, "GTM",
+                            eval_start = EVAL_START, eval_end = EVAL_END)
+roc_gtm$plot
+```
+
+:::
