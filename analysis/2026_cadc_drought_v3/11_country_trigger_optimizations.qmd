@@ -31,7 +31,7 @@ knitr::opts_chunk$set(
 
 The key insight motivating this approach is that seasonal rainfall forecasts are an imperfect proxy for drought impact. EM-DAT records and CERF allocations provide direct evidence of when humanitarian consequences occurred. Rather than optimizing solely against observed rainfall, we first ensure our trigger catches the most consequential events, then optimize for rainfall prediction accuracy among configurations that meet that constraint.
 
-This chapter covers Honduras and El Salvador. Guatemala requires additional considerations and is addressed in a separate chapter
+This chapter covers Honduras and El Salvador. Guatemala requires additional considerations and is addressed in a separate chapter.
 
 
 ```{r}
@@ -642,11 +642,11 @@ hnd_tradeoff$plot
 # Build interactive version of the tradeoff plot
 hnd_df <- hnd_tradeoff$data
 hnd_bg <- hnd_df |> filter(rp_group == "other")
-# Exclude hnd_final points from highlight layer to avoid double-plotting
-hnd_final_keys <- paste(hnd_final$era5_tol_f1, hnd_final$impact_f1)
-hnd_hl <- hnd_df |>
-  filter(rp_group != "other") |>
-  filter(!paste(era5_tol_f1, impact_f1) %in% hnd_final_keys)
+hnd_hl <- hnd_df |> filter(rp_group != "other")
+
+# Flag configs with all equal thresholds (uniform across LTs and seasons)
+hnd_uniform <- hnd_df |>
+  filter(apply(hnd_df[, threshold_cols_hnd], 1, function(x) length(unique(x)) == 1))
 
 # Reconstruct color palette from rp_group factor levels
 rp_levels <- levels(hnd_df$rp_group)
@@ -678,8 +678,23 @@ hnd_labels <- hnd_final |>
   mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
 
 p_hnd <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
-  geom_point(data = hnd_bg, color = "grey80", size = 1.5, alpha = 0.4) +
-  geom_point(data = hnd_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point_interactive(
+    data = hnd_bg,
+    aes(tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    color = "grey80", size = 1.5, alpha = 0.4
+  ) +
+  geom_point_interactive(
+    data = hnd_hl,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    size = 2.5, alpha = 0.8
+  ) +
+  {if (nrow(hnd_uniform) > 0) geom_point(
+    data = hnd_uniform, color = "#ffd700", size = 9,
+    shape = 16, alpha = 0.5, show.legend = FALSE
+  )} +
   geom_point_interactive(
     data = hnd_final,
     aes(color = rp_group,
@@ -687,7 +702,7 @@ p_hnd <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
                           annual_rp, option, avg_f1, mean_cv),
         data_id = as.character(row_idx),
         onclick = sapply(row_idx, make_onclick_js, prefix = "hnd")),
-    size = 5, shape = 1, stroke = 1.2, show.legend = FALSE
+    size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE
   ) +
   geom_label_repel(
     data = hnd_labels,
@@ -700,7 +715,7 @@ p_hnd <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
   scale_color_manual(values = hnd_colors, name = "Annual RP") +
   labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
        title = "ERA5 vs Impact F1 Tradeoff — Honduras",
-       subtitle = "Click circled points to view trigger activation detail") +
+       subtitle = "Click circled points for detail | Yellow = uniform thresholds across all LTs") +
   theme_minimal(base_size = 11) +
   theme(legend.position = "right", panel.grid.minor = element_blank())
 
@@ -1094,10 +1109,11 @@ slv_tradeoff$plot
 
 slv_df <- slv_tradeoff$data
 slv_bg <- slv_df |> filter(rp_group == "other")
-slv_final_keys <- paste(slv_final$era5_tol_f1, slv_final$impact_f1)
-slv_hl <- slv_df |>
-  filter(rp_group != "other") |>
-  filter(!paste(era5_tol_f1, impact_f1) %in% slv_final_keys)
+slv_hl <- slv_df |> filter(rp_group != "other")
+
+# Flag configs with all equal thresholds
+slv_uniform <- slv_df |>
+  filter(apply(slv_df[, threshold_cols_slv], 1, function(x) length(unique(x)) == 1))
 
 slv_rp_levels <- levels(slv_df$rp_group)
 slv_hl_levels <- setdiff(slv_rp_levels, "other")
@@ -1116,8 +1132,23 @@ slv_labels <- slv_final |>
   mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
 
 p_slv <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
-  geom_point(data = slv_bg, color = "grey80", size = 1.5, alpha = 0.4) +
-  geom_point(data = slv_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point_interactive(
+    data = slv_bg,
+    aes(tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    color = "grey80", size = 1.5, alpha = 0.4
+  ) +
+  geom_point_interactive(
+    data = slv_hl,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    size = 2.5, alpha = 0.8
+  ) +
+  {if (nrow(slv_uniform) > 0) geom_point(
+    data = slv_uniform, color = "#ffd700", size = 9,
+    shape = 16, alpha = 0.5, show.legend = FALSE
+  )} +
   geom_point_interactive(
     data = slv_final,
     aes(color = rp_group,
@@ -1125,7 +1156,7 @@ p_slv <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
                           annual_rp, option, avg_f1, mean_cv),
         data_id = as.character(row_idx),
         onclick = sapply(row_idx, make_onclick_js, prefix = "slv")),
-    size = 5, shape = 1, stroke = 1.2, show.legend = FALSE
+    size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE
   ) +
   geom_label_repel(
     data = slv_labels,
@@ -1138,7 +1169,7 @@ p_slv <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
   scale_color_manual(values = slv_colors, name = "Annual RP") +
   labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
        title = "ERA5 vs Impact F1 Tradeoff — El Salvador",
-       subtitle = "Click circled points to view trigger activation detail") +
+       subtitle = "Click circled points for detail | Yellow = uniform thresholds across all LTs") +
   theme_minimal(base_size = 11) +
   theme(legend.position = "right", panel.grid.minor = element_blank())
 
@@ -1311,6 +1342,67 @@ tbl_slv |>
 ```
 
 :::
+
+
+## Recommended Configurations
+
+```{r}
+#| label: recommended-configs
+
+# Extract recommended configs by selection criterion, closest to RP 2.9
+# HND: prefer "max ERA5 tol F1" or "both"; SLV: prefer "max avg F1" or "both"
+pick_rec <- function(df_final, selection_pref, target_rp = 2.9) {
+  candidates <- df_final |>
+    filter(selection %in% c(selection_pref, "both")) |>
+    slice_min(abs(annual_rp - target_rp), n = 1, with_ties = FALSE)
+  # Fallback: if no match, take closest RP regardless of selection
+
+  if (nrow(candidates) == 0) {
+    candidates <- df_final |>
+      slice_min(abs(annual_rp - target_rp), n = 1, with_ties = FALSE)
+  }
+  # Convert to list for safe scalar extraction
+  as.list(candidates[1, ])
+}
+
+hnd_rec <- pick_rec(hnd_final, "max ERA5 tol F1")
+hnd_alt <- pick_rec(hnd_final, "max avg F1", target_rp = 2.7)
+slv_rec <- pick_rec(slv_final, "max avg F1")
+
+# Helper: format thresholds as "LT0=X, LT1=Y, ..."
+fmt_thresholds <- function(rec, prefix, n_lts) {
+  cols <- paste0(prefix, 0:(n_lts - 1))
+  vals <- sapply(cols, function(c) sprintf("%.1f", rec[[c]]))
+  paste(sprintf("LT%d = %s", 0:(n_lts - 1), vals), collapse = ", ")
+}
+```
+
+Based on the tradeoff analysis above, we recommend the following trigger configurations:
+
+**Honduras: `r hnd_rec$config_label`** (`r hnd_rec$selection`)
+
+- Primera thresholds (RP): `r fmt_thresholds(hnd_rec, "p", primera_lts_hnd)`
+- Postrera thresholds (RP): `r fmt_thresholds(hnd_rec, "s", postrera_lts_hnd)`
+- Seasonal RPs: primera = `r sprintf("%.1f", hnd_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", hnd_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", hnd_rec$annual_rp)`
+- Impact F1 = `r sprintf("%.3f", hnd_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", hnd_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", hnd_rec$avg_f1)` | CV = `r sprintf("%.3f", hnd_rec$mean_cv)`
+
+Honduras has `r length(impact_yrs_hnd)` EM-DAT impact years in `r EVAL_START`--`r EVAL_END` --- a relatively high event frequency. With this many impact years, the impact F1 scores are tightly clustered among candidate configurations at a given RP, so impact F1 alone does not discriminate well between options. Selecting the max ERA5 tolerant F1 option ensures the trigger is aligned with actual rainfall anomalies, choosing the configuration that best predicts genuinely dry years rather than succeeding on the impact metric by coincidence.
+
+It is worth noting that **`r hnd_alt$config_label`** (`r hnd_alt$selection`) is a strong alternative. At a lower annual RP of `r sprintf("%.1f", hnd_alt$annual_rp)`, this configuration picks up 2012 --- a year missed by the RP 2.9 options --- with an avg F1 of `r sprintf("%.3f", hnd_alt$avg_f1)` and ERA5 tolerant F1 of `r sprintf("%.3f", hnd_alt$era5_tol_f1)`. However, this RP may fall below the target annual return period constraint, implying a higher trigger frequency than operationally desired.
+
+- Primera thresholds (RP): `r fmt_thresholds(hnd_alt, "p", primera_lts_hnd)`
+- Postrera thresholds (RP): `r fmt_thresholds(hnd_alt, "s", postrera_lts_hnd)`
+- Seasonal RPs: primera = `r sprintf("%.1f", hnd_alt$p_seasonal_rp)`, postrera = `r sprintf("%.1f", hnd_alt$s_seasonal_rp)`, annual = `r sprintf("%.1f", hnd_alt$annual_rp)`
+- Impact F1 = `r sprintf("%.3f", hnd_alt$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", hnd_alt$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", hnd_alt$avg_f1)` | CV = `r sprintf("%.3f", hnd_alt$mean_cv)`
+
+**El Salvador: `r slv_rec$config_label`** (`r slv_rec$selection`)
+
+- Primera thresholds (RP): `r fmt_thresholds(slv_rec, "p", primera_lts_slv)`
+- Postrera thresholds (RP): `r fmt_thresholds(slv_rec, "s", postrera_lts_slv)`
+- Seasonal RPs: primera = `r sprintf("%.1f", slv_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", slv_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", slv_rec$annual_rp)`
+- Impact F1 = `r sprintf("%.3f", slv_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", slv_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", slv_rec$avg_f1)` | CV = `r sprintf("%.3f", slv_rec$mean_cv)`
+
+El Salvador has fewer EM-DAT impact years, making impact F1 a more informative discriminator. The max avg F1 option provides the best balance between capturing impact events and predicting rainfall anomalies. Prioritizing ERA5 skill alone would sacrifice impact detection without sufficient gain in rainfall accuracy to justify the tradeoff.
 
 
 ## Appendix: ROC Analysis {.appendix}
