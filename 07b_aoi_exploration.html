@@ -290,7 +290,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Chapter 07 established SEAS5 skill using the original framework AOI:</p>
 <ul>
 <li><strong>Guatemala</strong>: Chiquimula (GT20)</li>
-<li><strong>Honduras</strong>: El Paraíso + Francisco Morazán (HN07/HN08)</li>
+<li><strong>Honduras</strong>: El Paraíso + Francisco Morazán (HN07/HN08).</li>
 <li><strong>El Salvador</strong>: Ahuachapán + Santa Ana (SV01/SV12)</li>
 </ul>
 <p>This chapter explores two dimensions of geographic sensitivity:</p>
@@ -312,43 +312,45 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># All candidate admin-1 pcodes</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>CANDIDATE_PCODES <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GT20"</span>, <span class="st">"GT16"</span>,          <span class="co"># Guatemala: Chiquimula, Alta Verapaz</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GT19"</span>, <span class="st">"GT02"</span>, <span class="st">"GT15"</span>,  <span class="co"># Guatemala: Zacapa, El Progreso, Baja Verapaz</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">"HN07"</span>, <span class="st">"HN08"</span>,          <span class="co"># Honduras: El Paraíso, Francisco Morazán</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SV01"</span>, <span class="st">"SV12"</span>,          <span class="co"># El Salvador confirmed: Ahuachapán, Santa Ana</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SV13"</span>, <span class="st">"SV05"</span>           <span class="co"># El Salvador candidates: Morazán, La Libertad</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">pg_con</span>()</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GT19"</span>, <span class="st">"GT02"</span>,           <span class="co"># Guatemala: Zacapa, El Progreso</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GT21"</span>,                  <span class="co"># Guatemala: Jalapa</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GT14"</span>, <span class="st">"GT15"</span>,          <span class="co"># Guatemala: Quiché, Baja Verapaz</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">"HN07"</span>, <span class="st">"HN08"</span>,          <span class="co"># Honduras: El Paraíso, Francisco Morazán</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SV01"</span>, <span class="st">"SV12"</span>,          <span class="co"># El Salvador confirmed: Ahuachapán, Santa Ana</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SV13"</span>, <span class="st">"SV05"</span>           <span class="co"># El Salvador candidates: Morazán, La Libertad</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>df_weights <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"polygon"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">1</span>, pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pcode, iso3, name, seas5_n_upsampled_pixels) <span class="sc">|&gt;</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Admin-1 level data</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>df_seas5_raw <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"seas5"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">1</span>, pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>df_era5_raw <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"era5"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co"># Country-level (adm0) data</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>df_seas5_country <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"seas5"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">0</span>, iso3 <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"GTM"</span>, <span class="st">"HND"</span>, <span class="st">"SLV"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>df_era5_country <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"era5"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">0</span>, iso3 <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"GTM"</span>, <span class="st">"HND"</span>, <span class="st">"SLV"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">pg_con</span>()</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>df_weights <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"polygon"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">1</span>, pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pcode, iso3, name, seas5_n_upsampled_pixels) <span class="sc">|&gt;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Admin-1 level data</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>df_seas5_raw <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"seas5"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">1</span>, pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>df_era5_raw <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"era5"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co"># Country-level (adm0) data</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>df_seas5_country <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"seas5"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">0</span>, iso3 <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"GTM"</span>, <span class="st">"HND"</span>, <span class="st">"SLV"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>df_era5_country <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"era5"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">0</span>, iso3 <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"GTM"</span>, <span class="st">"HND"</span>, <span class="st">"SLV"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="cell">
@@ -554,45 +556,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Join correlation to spatial data</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Match on pcode - fieldmaps may use different column name</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>pcode_col <span class="ot">&lt;-</span> <span class="fu">intersect</span>(<span class="fu">c</span>(<span class="st">"ADM1_PCODE"</span>, <span class="st">"adm1_pcode"</span>, <span class="st">"pcode"</span>), <span class="fu">names</span>(gdf_gtm))[<span class="dv">1</span>]</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>gdf_gtm_cor <span class="ot">&lt;-</span> gdf_gtm <span class="sc">|&gt;</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col) <span class="sc">|&gt;</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(df_cor_gt20, <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>gdf_gtm_cor <span class="sc">|&gt;</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> spearman), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(</span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> gdf_gtm_cor <span class="sc">|&gt;</span> <span class="fu">filter</span>(pcode <span class="sc">==</span> <span class="st">"GT20"</span>) <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">1</span>),</span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">1.5</span></span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">round</span>(spearman, <span class="dv">2</span>)), <span class="at">size =</span> <span class="fl">2.5</span>, <span class="at">color =</span> <span class="st">"black"</span>) <span class="sc">+</span></span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(</span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">low =</span> <span class="st">"#D73027"</span>, <span class="at">mid =</span> <span class="st">"#FFFFBF"</span>, <span class="at">high =</span> <span class="st">"#1A9850"</span>,</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">midpoint =</span> <span class="fl">0.75</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>), <span class="at">name =</span> <span class="st">"Spearman r</span><span class="sc">\n</span><span class="st">vs Chiquimula"</span>,</span>
-<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">oob =</span> scales<span class="sc">::</span>squish</span>
-<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Rainfall Correlation with Chiquimula (GT20)"</span>,</span>
-<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ERA5 seasonal totals | 1981-2024 | Black border = Chiquimula"</span></span>
-<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
-<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
-<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">12</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
-<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"right"</span>,</span>
-<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>)</span>
-<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Join correlation to spatial data</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Match on pcode - fieldmaps may use different column name</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>pcode_col <span class="ot">&lt;-</span> <span class="fu">intersect</span>(<span class="fu">c</span>(<span class="st">"ADM1_PCODE"</span>, <span class="st">"adm1_pcode"</span>, <span class="st">"pcode"</span>), <span class="fu">names</span>(gdf_gtm))[<span class="dv">1</span>]</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>gdf_gtm_cor <span class="ot">&lt;-</span> gdf_gtm <span class="sc">|&gt;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col) <span class="sc">|&gt;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(df_cor_gt20, <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>gdf_gtm_cor <span class="sc">|&gt;</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> spearman), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> gdf_gtm_cor <span class="sc">|&gt;</span> <span class="fu">filter</span>(pcode <span class="sc">==</span> <span class="st">"GT20"</span>) <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">1</span>),</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">1.5</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">round</span>(spearman, <span class="dv">2</span>)), <span class="at">size =</span> <span class="fl">2.5</span>, <span class="at">color =</span> <span class="st">"black"</span>) <span class="sc">+</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">low =</span> <span class="st">"#D73027"</span>, <span class="at">mid =</span> <span class="st">"#FFFFBF"</span>, <span class="at">high =</span> <span class="st">"#1A9850"</span>,</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">midpoint =</span> <span class="fl">0.75</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>), <span class="at">name =</span> <span class="st">"Spearman r</span><span class="sc">\n</span><span class="st">vs Chiquimula"</span>,</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">oob =</span> scales<span class="sc">::</span>squish</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Rainfall Correlation with Chiquimula (GT20)"</span>,</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ERA5 seasonal totals | 1981-2024 | Black border = Chiquimula"</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">12</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"right"</span>,</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>)</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -609,74 +609,107 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Define AOI configurations to compare</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>aoi_configs <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Guatemala</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>),</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT16"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT16"</span>),</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT19"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT19"</span>),</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT02"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT02"</span>),</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT15"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT15"</span>),</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT19+GT02+GT15"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT19"</span>, <span class="st">"GT02"</span>, <span class="st">"GT15"</span>),</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Honduras</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"HND: HN07+HN08"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"HN07"</span>, <span class="st">"HN08"</span>),</span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># El Salvador</span></span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SLV: SV01+SV12"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SV01"</span>, <span class="st">"SV12"</span>),</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SLV: SV01+SV12+SV13"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SV01"</span>, <span class="st">"SV12"</span>, <span class="st">"SV13"</span>),</span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SLV: SV01+SV12+SV13+SV05"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SV01"</span>, <span class="st">"SV12"</span>, <span class="st">"SV13"</span>, <span class="st">"SV05"</span>)</span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build pcode-to-name lookup from polygon table (all admin-1, not just those with SEAS5 data)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>df_admin_names <span class="ot">&lt;-</span> <span class="fu">tbl</span>(<span class="fu">pg_con</span>(), <span class="st">"polygon"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">1</span>, pcode <span class="sc">%in%</span> CANDIDATE_PCODES) <span class="sc">|&gt;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pcode, name) <span class="sc">|&gt;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>pcode_to_name <span class="ot">&lt;-</span> <span class="fu">setNames</span>(df_admin_names<span class="sc">$</span>name, df_admin_names<span class="sc">$</span>pcode)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>relabel_config <span class="ot">&lt;-</span> <span class="cf">function</span>(config_name) {</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># "GTM: GT20+GT16" → "GTM: Chiquimula + Alta Verapaz"</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  parts <span class="ot">&lt;-</span> <span class="fu">str_split</span>(config_name, <span class="st">": "</span>, <span class="at">n =</span> <span class="dv">2</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  prefix <span class="ot">&lt;-</span> parts[<span class="dv">1</span>]</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  pcodes <span class="ot">&lt;-</span> <span class="fu">str_split</span>(parts[<span class="dv">2</span>], <span class="st">"</span><span class="sc">\\</span><span class="st">+"</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  names <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(pcodes <span class="sc">%in%</span> <span class="fu">names</span>(pcode_to_name), pcode_to_name[pcodes], pcodes)</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste0</span>(prefix, <span class="st">": "</span>, <span class="fu">paste</span>(names, <span class="at">collapse =</span> <span class="st">" + "</span>))</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Build weighted-mean aggregated datasets for each config</span></span>
-<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>aggregate_config <span class="ot">&lt;-</span> <span class="cf">function</span>(pcodes, config_name) {</span>
-<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>  df_fcst <span class="ot">&lt;-</span> df_seas5_seasonal <span class="sc">|&gt;</span></span>
-<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(pcode <span class="sc">%in%</span> pcodes) <span class="sc">|&gt;</span></span>
-<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_weights <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, seas5_n_upsampled_pixels), <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  df_obs <span class="ot">&lt;-</span> df_era5_seasonal <span class="sc">|&gt;</span></span>
-<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(pcode <span class="sc">%in%</span> pcodes) <span class="sc">|&gt;</span></span>
-<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_weights <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, seas5_n_upsampled_pixels), <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
-<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>  df_joined <span class="ot">&lt;-</span> df_fcst <span class="sc">|&gt;</span></span>
-<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
-<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>      df_obs <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, year, window, obs_mm),</span>
-<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>      <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"year"</span>, <span class="st">"window"</span>)</span>
-<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(obs_mm)) <span class="sc">|&gt;</span></span>
-<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(year, window, leadtime, issued_date) <span class="sc">|&gt;</span></span>
-<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
-<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>      <span class="at">fcst_mm =</span> <span class="fu">weighted.mean</span>(fcst_mm, <span class="at">w =</span> seas5_n_upsampled_pixels),</span>
-<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>      <span class="at">obs_mm =</span> <span class="fu">weighted.mean</span>(obs_mm, <span class="at">w =</span> seas5_n_upsampled_pixels),</span>
-<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>      <span class="at">.groups =</span> <span class="st">"drop"</span></span>
-<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
-<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">aoi_config =</span> config_name)</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Define AOI configurations to compare</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>aoi_configs <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Guatemala</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>),</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT16"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT16"</span>),</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT19"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT19"</span>),</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT02"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT02"</span>),</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT21+GT02+GT19"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT21"</span>, <span class="st">"GT02"</span>, <span class="st">"GT19"</span>),</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT20+GT21+GT02"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT20"</span>, <span class="st">"GT21"</span>, <span class="st">"GT02"</span>),</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT16"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT16"</span>),</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT15"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT15"</span>),</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT14"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT14"</span>),</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GTM: GT14+GT15"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"GT14"</span>, <span class="st">"GT15"</span>),</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Honduras</span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>  <span class="st">"HND: HN07+HN08"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"HN07"</span>, <span class="st">"HN08"</span>),</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>  <span class="co"># El Salvador</span></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SLV: SV01+SV12"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SV01"</span>, <span class="st">"SV12"</span>),</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SLV: SV01+SV12+SV13"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SV01"</span>, <span class="st">"SV12"</span>, <span class="st">"SV13"</span>),</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SLV: SV01+SV12+SV13+SV05"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SV01"</span>, <span class="st">"SV12"</span>, <span class="st">"SV13"</span>, <span class="st">"SV05"</span>)</span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a><span class="co"># Relabel config names to use admin names</span></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(aoi_configs) <span class="ot">&lt;-</span> <span class="fu">map_chr</span>(<span class="fu">names</span>(aoi_configs), relabel_config)</span>
 <span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>  df_joined</span>
-<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>df_all_configs <span class="ot">&lt;-</span> <span class="fu">imap_dfr</span>(aoi_configs, <span class="sc">~</span><span class="fu">aggregate_config</span>(.x, .y))</span>
-<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a><span class="co"># Add country-level configs</span></span>
-<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>df_country_joined <span class="ot">&lt;-</span> df_seas5_country_seasonal <span class="sc">|&gt;</span></span>
-<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
-<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>    df_era5_country_seasonal <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, year, window, obs_mm),</span>
-<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"year"</span>, <span class="st">"window"</span>)</span>
-<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(obs_mm)) <span class="sc">|&gt;</span></span>
-<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">case_when</span>(</span>
-<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a>      iso3 <span class="sc">==</span> <span class="st">"GTM"</span> <span class="sc">~</span> <span class="st">"GTM: Country"</span>,</span>
-<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>      iso3 <span class="sc">==</span> <span class="st">"HND"</span> <span class="sc">~</span> <span class="st">"HND: Country"</span>,</span>
-<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>      iso3 <span class="sc">==</span> <span class="st">"SLV"</span> <span class="sc">~</span> <span class="st">"SLV: Country"</span></span>
-<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-62"><a href="#cb8-62" aria-hidden="true" tabindex="-1"></a>df_all_configs <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(df_all_configs, df_country_joined)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Build weighted-mean aggregated datasets for each config</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>aggregate_config <span class="ot">&lt;-</span> <span class="cf">function</span>(pcodes, config_name) {</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>  df_fcst <span class="ot">&lt;-</span> df_seas5_seasonal <span class="sc">|&gt;</span></span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(pcode <span class="sc">%in%</span> pcodes) <span class="sc">|&gt;</span></span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_weights <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, seas5_n_upsampled_pixels), <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>  df_obs <span class="ot">&lt;-</span> df_era5_seasonal <span class="sc">|&gt;</span></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(pcode <span class="sc">%in%</span> pcodes) <span class="sc">|&gt;</span></span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_weights <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, seas5_n_upsampled_pixels), <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>  df_joined <span class="ot">&lt;-</span> df_fcst <span class="sc">|&gt;</span></span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>      df_obs <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, year, window, obs_mm),</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>      <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"year"</span>, <span class="st">"window"</span>)</span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(obs_mm)) <span class="sc">|&gt;</span></span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(year, window, leadtime, issued_date) <span class="sc">|&gt;</span></span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a>      <span class="at">fcst_mm =</span> <span class="fu">weighted.mean</span>(fcst_mm, <span class="at">w =</span> seas5_n_upsampled_pixels),</span>
+<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a>      <span class="at">obs_mm =</span> <span class="fu">weighted.mean</span>(obs_mm, <span class="at">w =</span> seas5_n_upsampled_pixels),</span>
+<span id="cb8-62"><a href="#cb8-62" aria-hidden="true" tabindex="-1"></a>      <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb8-63"><a href="#cb8-63" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb8-64"><a href="#cb8-64" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">aoi_config =</span> config_name)</span>
+<span id="cb8-65"><a href="#cb8-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-66"><a href="#cb8-66" aria-hidden="true" tabindex="-1"></a>  df_joined</span>
+<span id="cb8-67"><a href="#cb8-67" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-68"><a href="#cb8-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-69"><a href="#cb8-69" aria-hidden="true" tabindex="-1"></a>df_all_configs <span class="ot">&lt;-</span> <span class="fu">imap_dfr</span>(aoi_configs, <span class="sc">~</span><span class="fu">aggregate_config</span>(.x, .y))</span>
+<span id="cb8-70"><a href="#cb8-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-71"><a href="#cb8-71" aria-hidden="true" tabindex="-1"></a><span class="co"># Add country-level configs</span></span>
+<span id="cb8-72"><a href="#cb8-72" aria-hidden="true" tabindex="-1"></a>df_country_joined <span class="ot">&lt;-</span> df_seas5_country_seasonal <span class="sc">|&gt;</span></span>
+<span id="cb8-73"><a href="#cb8-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb8-74"><a href="#cb8-74" aria-hidden="true" tabindex="-1"></a>    df_era5_country_seasonal <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, year, window, obs_mm),</span>
+<span id="cb8-75"><a href="#cb8-75" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"year"</span>, <span class="st">"window"</span>)</span>
+<span id="cb8-76"><a href="#cb8-76" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb8-77"><a href="#cb8-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(obs_mm)) <span class="sc">|&gt;</span></span>
+<span id="cb8-78"><a href="#cb8-78" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb8-79"><a href="#cb8-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">case_when</span>(</span>
+<span id="cb8-80"><a href="#cb8-80" aria-hidden="true" tabindex="-1"></a>      iso3 <span class="sc">==</span> <span class="st">"GTM"</span> <span class="sc">~</span> <span class="st">"GTM: Country"</span>,</span>
+<span id="cb8-81"><a href="#cb8-81" aria-hidden="true" tabindex="-1"></a>      iso3 <span class="sc">==</span> <span class="st">"HND"</span> <span class="sc">~</span> <span class="st">"HND: Country"</span>,</span>
+<span id="cb8-82"><a href="#cb8-82" aria-hidden="true" tabindex="-1"></a>      iso3 <span class="sc">==</span> <span class="st">"SLV"</span> <span class="sc">~</span> <span class="st">"SLV: Country"</span></span>
+<span id="cb8-83"><a href="#cb8-83" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-84"><a href="#cb8-84" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb8-85"><a href="#cb8-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-86"><a href="#cb8-86" aria-hidden="true" tabindex="-1"></a>df_all_configs <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(df_all_configs, df_country_joined)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>df_skill_admin <span class="ot">&lt;-</span> <span class="fu">calc_skill_metrics</span>(df_all_configs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>df_skill_admin <span class="ot">&lt;-</span> <span class="fu">calc_skill_metrics</span>(df_all_configs)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Shared theme for faceted horizontal bar charts</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>theme_facet_bars <span class="ot">&lt;-</span> <span class="fu">theme</span>(</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">legend.position =</span> <span class="st">"none"</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">panel.spacing =</span> <span class="fu">unit</span>(<span class="fl">0.8</span>, <span class="st">"lines"</span>),</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">strip.background =</span> <span class="fu">element_rect</span>(<span class="at">fill =</span> <span class="st">"grey90"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>),</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">face =</span> <span class="st">"bold"</span>, <span class="at">size =</span> <span class="dv">11</span>),</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">panel.border =</span> <span class="fu">element_rect</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">linewidth =</span> <span class="fl">0.4</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <section id="roc-auc-comparison" class="level3" data-number="8.4.1">
@@ -688,42 +721,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>gtm_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"GTM: GT20"</span>, <span class="st">"GTM: GT20+GT19"</span>, <span class="st">"GTM: GT20+GT02"</span>,</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"GTM: GT20+GT15"</span>, <span class="st">"GTM: GT20+GT16"</span>,</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"GTM: GT20+GT19+GT02+GT15"</span>, <span class="st">"GTM: Country"</span>)</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>df_skill_admin <span class="sc">|&gt;</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">str_starts</span>(aoi_config, <span class="st">"GTM"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">factor</span>(aoi_config, <span class="at">levels =</span> gtm_levels)</span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(leadtime), <span class="at">y =</span> roc_auc, <span class="at">fill =</span> aoi_config)) <span class="sc">+</span></span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>) <span class="sc">+</span></span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(</span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20"</span> <span class="ot">=</span> <span class="st">"#1b9e77"</span>,</span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT19"</span> <span class="ot">=</span> <span class="st">"#d95f02"</span>,</span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT02"</span> <span class="ot">=</span> <span class="st">"#e6ab02"</span>,</span>
-<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT15"</span> <span class="ot">=</span> <span class="st">"#66a61e"</span>,</span>
-<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT16"</span> <span class="ot">=</span> <span class="st">"#e7298a"</span>,</span>
-<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT19+GT02+GT15"</span> <span class="ot">=</span> <span class="st">"#a6761d"</span>,</span>
-<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: Country"</span> <span class="ot">=</span> <span class="st">"#7570b3"</span></span>
-<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
-<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
-<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Guatemala: AOI Sensitivity"</span>,</span>
-<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ROC-AUC for RP4 drought | 1981-2024 baseline"</span>,</span>
-<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Leadtime (months)"</span>, <span class="at">y =</span> <span class="st">"ROC-AUC"</span>, <span class="at">fill =</span> <span class="st">"AOI"</span></span>
-<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
-<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="fu">guide_legend</span>(<span class="at">nrow =</span> <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>df_skill_admin <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">str_starts</span>(aoi_config, <span class="st">"GTM"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_label =</span> <span class="fu">str_remove</span>(aoi_config, <span class="st">"^GTM: "</span>)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> roc_auc, <span class="at">y =</span> <span class="fu">reorder</span>(aoi_label, roc_auc), <span class="at">fill =</span> aoi_label)) <span class="sc">+</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Guatemala: AOI Sensitivity"</span>,</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ROC-AUC for RP4 drought | 1981-2024 baseline"</span>,</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"ROC-AUC"</span>, <span class="at">y =</span> <span class="cn">NULL</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>  theme_facet_bars</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -745,22 +765,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
 <span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
 <span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">factor</span>(aoi_config, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"HND: HN07+HN08"</span>, <span class="st">"HND: Country"</span>))</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(leadtime), <span class="at">y =</span> roc_auc, <span class="at">fill =</span> aoi_config)) <span class="sc">+</span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.8</span>), <span class="at">width =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>) <span class="sc">+</span></span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"HND: HN07+HN08"</span> <span class="ot">=</span> <span class="st">"#d95f02"</span>, <span class="st">"HND: Country"</span> <span class="ot">=</span> <span class="st">"#7570b3"</span>)) <span class="sc">+</span></span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_label =</span> <span class="fu">str_remove</span>(aoi_config, <span class="st">"^HND: "</span>)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> roc_auc, <span class="at">y =</span> <span class="fu">reorder</span>(aoi_label, roc_auc), <span class="at">fill =</span> aoi_label)) <span class="sc">+</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
 <span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Honduras: Admin-Level vs Country-Level"</span>,</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Honduras: AOI Sensitivity"</span>,</span>
 <span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ROC-AUC for RP4 drought | 1981-2024 baseline"</span>,</span>
-<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Leadtime (months)"</span>, <span class="at">y =</span> <span class="st">"ROC-AUC"</span>, <span class="at">fill =</span> <span class="st">"AOI"</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"ROC-AUC"</span>, <span class="at">y =</span> <span class="cn">NULL</span></span>
 <span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  theme_facet_bars</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -782,29 +802,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">factor</span>(aoi_config, <span class="at">levels =</span> <span class="fu">c</span>(</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>      <span class="st">"SLV: SV01+SV12"</span>, <span class="st">"SLV: SV01+SV12+SV13"</span>, <span class="st">"SLV: SV01+SV12+SV13+SV05"</span>, <span class="st">"SLV: Country"</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    ))</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(leadtime), <span class="at">y =</span> roc_auc, <span class="at">fill =</span> aoi_config)) <span class="sc">+</span></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.8</span>), <span class="at">width =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>) <span class="sc">+</span></span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(</span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: SV01+SV12"</span> <span class="ot">=</span> <span class="st">"#1b9e77"</span>,</span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: SV01+SV12+SV13"</span> <span class="ot">=</span> <span class="st">"#d95f02"</span>,</span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: SV01+SV12+SV13+SV05"</span> <span class="ot">=</span> <span class="st">"#7570b3"</span>,</span>
-<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: Country"</span> <span class="ot">=</span> <span class="st">"#e7298a"</span></span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
-<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
-<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"El Salvador: Admin Expansion vs Country-Level"</span>,</span>
-<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ROC-AUC for RP4 drought | 1981-2024 baseline"</span>,</span>
-<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Leadtime (months)"</span>, <span class="at">y =</span> <span class="st">"ROC-AUC"</span>, <span class="at">fill =</span> <span class="st">"AOI"</span></span>
-<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_label =</span> <span class="fu">str_remove</span>(aoi_config, <span class="st">"^SLV: "</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> roc_auc, <span class="at">y =</span> <span class="fu">reorder</span>(aoi_label, roc_auc), <span class="at">fill =</span> aoi_label)) <span class="sc">+</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"El Salvador: AOI Sensitivity"</span>,</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ROC-AUC for RP4 drought | 1981-2024 baseline"</span>,</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"ROC-AUC"</span>, <span class="at">y =</span> <span class="cn">NULL</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>  theme_facet_bars</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -853,7 +866,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="07b_aoi_exploration_files/figure-html/admin-f1-heatmap-1.png" class="img-fluid figure-img" width="1800"></p>
+<p><img src="07b_aoi_exploration_files/figure-html/admin-f1-heatmap-1.png" class="img-fluid figure-img" width="2100"></p>
 </figure>
 </div>
 </div>
@@ -894,7 +907,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="07b_aoi_exploration_files/figure-html/admin-spearman-heatmap-1.png" class="img-fluid figure-img" width="1800"></p>
+<p><img src="07b_aoi_exploration_files/figure-html/admin-spearman-heatmap-1.png" class="img-fluid figure-img" width="2100"></p>
 </figure>
 </div>
 </div>
@@ -1386,45 +1399,69 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th colspan="4" id="postrera" class="gt_group_heading" data-quarto-table-cell-role="th" scope="colgroup">postrera</th>
 </tr>
 <tr class="gt_row_group_first even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Alta Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.75 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.66 (0.36)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Baja Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.73 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.68 (0.27)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.80 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.72 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Alta Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.75 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.36)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + El Progreso</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.73 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.81 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.81 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso + Zacapa</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.81 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.80 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Zacapa</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.69 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
 <td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Country</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.79 (0.55)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.70 (0.36)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.80 (0.64)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.72 (0.55)</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Quiché</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.84 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.79 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT02</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.64)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.73 (0.45)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT15</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.77 (0.64)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.36)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT16</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.75 (0.55)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.36)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT19</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.69 (0.55)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.45)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT19+GT02+GT15</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.70 (0.55)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.36)</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Quiché + Baja Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.84 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.79 (0.36)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="odd">
@@ -1434,79 +1471,103 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">HND: HN07+HN08</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">HND: El Paraiso + Francisco Morazan</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.87 (0.64)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.79 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Country</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.82 (0.45)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.75 (0.36)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: SV01+SV12</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Ahuachapán + Santa Ana</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.27)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: SV01+SV12+SV13</td>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.18)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: SV01+SV12+SV13+SV05</td>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate + La Libertad</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.68 (0.18)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Country</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.82 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.75 (0.36)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="gt_group_heading_row odd">
 <th colspan="4" id="primera" class="gt_group_heading" data-quarto-table-cell-role="th" scope="colgroup">primera</th>
 </tr>
 <tr class="gt_row_group_first even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Alta Verapaz</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.70 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.64 (0.45)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Baja Verapaz</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.71 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.73 (0.64)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.81 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.85 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.79 (0.64)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Alta Verapaz</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.75 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.63 (0.36)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.58 (0.36)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + El Progreso</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.78 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.83 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.73 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.75 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.71 (0.55)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso + Zacapa</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.79 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.80 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.75 (0.55)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Zacapa</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.72 (0.36)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.75 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.72 (0.64)</td>
+</tr>
+<tr class="even">
 <td class="gt_row gt_left" headers="primera  aoi_config">GTM: Country</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.80 (0.64)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.76 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.70 (0.55)</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20</td>
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Quiché</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.73 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.64 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.63 (0.55)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Quiché + Baja Verapaz</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.81 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.85 (0.64)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.79 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT02</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.78 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.83 (0.64)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT15</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.79 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.81 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.75 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT16</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.75 (0.45)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.63 (0.36)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.58 (0.36)</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT19</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.72 (0.36)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.75 (0.45)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.72 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT19+GT02+GT15</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.78 (0.45)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.80 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.75 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.70 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.67 (0.55)</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="primera  aoi_config">HND: Country</td>
@@ -1515,34 +1576,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td class="gt_row gt_right" headers="primera  LT2">0.78 (0.64)</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">HND: HN07+HN08</td>
+<td class="gt_row gt_left" headers="primera  aoi_config">HND: El Paraiso + Francisco Morazan</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.75 (0.45)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.75 (0.45)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.71 (0.55)</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Country</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.81 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: SV01+SV12</td>
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Ahuachapán + Santa Ana</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.88 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.82 (0.64)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.71 (0.55)</td>
 </tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: SV01+SV12+SV13</td>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.89 (0.64)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.80 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.72 (0.55)</td>
 </tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: SV01+SV12+SV13+SV05</td>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate + La Libertad</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.86 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.79 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.68 (0.45)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Country</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.81 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
 </tr>
 </tbody>
 </table>
@@ -2037,45 +2098,69 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th colspan="4" id="postrera" class="gt_group_heading" data-quarto-table-cell-role="th" scope="colgroup">postrera</th>
 </tr>
 <tr class="gt_row_group_first even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Alta Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.75 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.66 (0.36)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Baja Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.73 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.68 (0.27)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.80 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.72 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Alta Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.75 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.36)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + El Progreso</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.73 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.81 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.81 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso + Zacapa</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.81 (0.64)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.80 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Chiquimula + Zacapa</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.69 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
 <td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Country</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.79 (0.55)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.70 (0.36)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.80 (0.64)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.72 (0.55)</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Quiché</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.84 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.79 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT02</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.64)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.73 (0.45)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT15</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.77 (0.64)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.36)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT16</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.75 (0.55)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.36)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT19</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.69 (0.55)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.45)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: GT20+GT19+GT02+GT15</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.70 (0.55)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.71 (0.36)</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">GTM: Quiché + Baja Verapaz</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.84 (0.55)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.79 (0.36)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="odd">
@@ -2085,79 +2170,103 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">HND: HN07+HN08</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">HND: El Paraiso + Francisco Morazan</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.87 (0.64)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.79 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Country</td>
-<td class="gt_row gt_right" headers="postrera  LT0">0.82 (0.45)</td>
-<td class="gt_row gt_right" headers="postrera  LT1">0.75 (0.36)</td>
-<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: SV01+SV12</td>
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Ahuachapán + Santa Ana</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.27)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: SV01+SV12+SV13</td>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.67 (0.18)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: SV01+SV12+SV13+SV05</td>
+<tr class="odd">
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate + La Libertad</td>
 <td class="gt_row gt_right" headers="postrera  LT0">0.76 (0.45)</td>
 <td class="gt_row gt_right" headers="postrera  LT1">0.68 (0.18)</td>
+<td class="gt_row gt_right" headers="postrera  LT2">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="postrera  aoi_config">SLV: Country</td>
+<td class="gt_row gt_right" headers="postrera  LT0">0.82 (0.45)</td>
+<td class="gt_row gt_right" headers="postrera  LT1">0.75 (0.36)</td>
 <td class="gt_row gt_right" headers="postrera  LT2">NA</td>
 </tr>
 <tr class="gt_group_heading_row odd">
 <th colspan="4" id="primera" class="gt_group_heading" data-quarto-table-cell-role="th" scope="colgroup">primera</th>
 </tr>
 <tr class="gt_row_group_first even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Alta Verapaz</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.70 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.64 (0.45)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Baja Verapaz</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.71 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.73 (0.64)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.81 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.85 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.79 (0.64)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Alta Verapaz</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.75 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.63 (0.36)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.58 (0.36)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + El Progreso</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.78 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.83 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.73 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.75 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.71 (0.55)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Jalapa + El Progreso + Zacapa</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.79 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.80 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.75 (0.55)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Chiquimula + Zacapa</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.72 (0.36)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.75 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.72 (0.64)</td>
+</tr>
+<tr class="even">
 <td class="gt_row gt_left" headers="primera  aoi_config">GTM: Country</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.80 (0.64)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.76 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.70 (0.55)</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20</td>
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Quiché</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.73 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.64 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.63 (0.55)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">GTM: Quiché + Baja Verapaz</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.81 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.85 (0.64)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.79 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT02</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.78 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.83 (0.64)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT15</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.79 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.81 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.75 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT16</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.75 (0.45)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.63 (0.36)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.58 (0.36)</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT19</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.72 (0.36)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.75 (0.45)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.72 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">GTM: GT20+GT19+GT02+GT15</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.78 (0.45)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.80 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.75 (0.64)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.70 (0.45)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.67 (0.55)</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="primera  aoi_config">HND: Country</td>
@@ -2166,34 +2275,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td class="gt_row gt_right" headers="primera  LT2">0.78 (0.64)</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">HND: HN07+HN08</td>
+<td class="gt_row gt_left" headers="primera  aoi_config">HND: El Paraiso + Francisco Morazan</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.75 (0.45)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.75 (0.45)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.71 (0.55)</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Country</td>
-<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT1">0.81 (0.55)</td>
-<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: SV01+SV12</td>
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Ahuachapán + Santa Ana</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.88 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.82 (0.64)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.71 (0.55)</td>
 </tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: SV01+SV12+SV13</td>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.89 (0.64)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.80 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.72 (0.55)</td>
 </tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="primera  aoi_config">SLV: SV01+SV12+SV13+SV05</td>
+<tr class="odd">
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Ahuachapán + Santa Ana + Sonsonate + La Libertad</td>
 <td class="gt_row gt_right" headers="primera  LT0">0.86 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT1">0.79 (0.55)</td>
 <td class="gt_row gt_right" headers="primera  LT2">0.68 (0.45)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="primera  aoi_config">SLV: Country</td>
+<td class="gt_row gt_right" headers="primera  LT0">0.82 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT1">0.81 (0.55)</td>
+<td class="gt_row gt_right" headers="primera  LT2">0.76 (0.64)</td>
 </tr>
 </tbody>
 </table>
@@ -2221,45 +2330,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>gtm_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"GTM: GT20"</span>, <span class="st">"GTM: GT20+GT19"</span>, <span class="st">"GTM: GT20+GT02"</span>,</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"GTM: GT20+GT15"</span>, <span class="st">"GTM: GT20+GT16"</span>,</span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"GTM: GT20+GT19+GT02+GT15"</span>, <span class="st">"GTM: Country"</span>)</span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>df_skill_rp_comparison <span class="sc">|&gt;</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">str_starts</span>(aoi_config, <span class="st">"GTM"</span>),</span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>         (window <span class="sc">==</span> <span class="st">"primera"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">2</span>) <span class="sc">|</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>         (window <span class="sc">==</span> <span class="st">"postrera"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">factor</span>(aoi_config, <span class="at">levels =</span> gtm_levels)</span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(leadtime), <span class="at">y =</span> roc_auc, <span class="at">fill =</span> aoi_config, <span class="at">alpha =</span> rp)) <span class="sc">+</span></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>) <span class="sc">+</span></span>
-<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(</span>
-<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20"</span> <span class="ot">=</span> <span class="st">"#1b9e77"</span>,</span>
-<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT19"</span> <span class="ot">=</span> <span class="st">"#d95f02"</span>,</span>
-<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT02"</span> <span class="ot">=</span> <span class="st">"#e6ab02"</span>,</span>
-<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT15"</span> <span class="ot">=</span> <span class="st">"#66a61e"</span>,</span>
-<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT16"</span> <span class="ot">=</span> <span class="st">"#e7298a"</span>,</span>
-<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: GT20+GT19+GT02+GT15"</span> <span class="ot">=</span> <span class="st">"#a6761d"</span>,</span>
-<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>    <span class="st">"GTM: Country"</span> <span class="ot">=</span> <span class="st">"#7570b3"</span></span>
-<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
-<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_alpha_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"RP3"</span> <span class="ot">=</span> <span class="fl">0.5</span>, <span class="st">"RP4"</span> <span class="ot">=</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
-<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Guatemala: RP3 vs RP4 Drought Definition"</span>,</span>
-<span id="cb18-35"><a href="#cb18-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Solid = RP4, transparent = RP3 | 1981-2024 baseline"</span>,</span>
-<span id="cb18-36"><a href="#cb18-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Leadtime (months)"</span>, <span class="at">y =</span> <span class="st">"ROC-AUC"</span>, <span class="at">fill =</span> <span class="st">"AOI"</span>, <span class="at">alpha =</span> <span class="st">"Threshold"</span></span>
-<span id="cb18-37"><a href="#cb18-37" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb18-38"><a href="#cb18-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
-<span id="cb18-39"><a href="#cb18-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="fu">guide_legend</span>(<span class="at">nrow =</span> <span class="dv">3</span>), <span class="at">alpha =</span> <span class="fu">guide_legend</span>(<span class="at">nrow =</span> <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>df_skill_rp_comparison <span class="sc">|&gt;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">str_starts</span>(aoi_config, <span class="st">"GTM"</span>),</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>         (window <span class="sc">==</span> <span class="st">"primera"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">2</span>) <span class="sc">|</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>         (window <span class="sc">==</span> <span class="st">"postrera"</span> <span class="sc">&amp;</span> leadtime <span class="sc">%in%</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_label =</span> <span class="fu">str_remove</span>(aoi_config, <span class="st">"^GTM: "</span>)</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> roc_auc, <span class="at">y =</span> <span class="fu">reorder</span>(aoi_label, roc_auc), <span class="at">fill =</span> aoi_label, <span class="at">alpha =</span> rp)) <span class="sc">+</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_alpha_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"RP3"</span> <span class="ot">=</span> <span class="fl">0.5</span>, <span class="st">"RP4"</span> <span class="ot">=</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Guatemala: RP3 vs RP4 Drought Definition"</span>,</span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Solid = RP4, transparent = RP3 | 1981-2024 baseline"</span>,</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"ROC-AUC"</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">alpha =</span> <span class="st">"Threshold"</span></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>  theme_facet_bars <span class="sc">+</span></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="st">"none"</span>, <span class="at">alpha =</span> <span class="fu">guide_legend</span>(<span class="at">nrow =</span> <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -2283,23 +2381,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
 <span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
 <span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">factor</span>(aoi_config, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"HND: HN07+HN08"</span>, <span class="st">"HND: Country"</span>))</span>
-<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(leadtime), <span class="at">y =</span> roc_auc, <span class="at">fill =</span> aoi_config, <span class="at">alpha =</span> rp)) <span class="sc">+</span></span>
-<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>) <span class="sc">+</span></span>
-<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"HND: HN07+HN08"</span> <span class="ot">=</span> <span class="st">"#d95f02"</span>, <span class="st">"HND: Country"</span> <span class="ot">=</span> <span class="st">"#7570b3"</span>)) <span class="sc">+</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_label =</span> <span class="fu">str_remove</span>(aoi_config, <span class="st">"^HND: "</span>)</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> roc_auc, <span class="at">y =</span> <span class="fu">reorder</span>(aoi_label, roc_auc), <span class="at">fill =</span> aoi_label, <span class="at">alpha =</span> rp)) <span class="sc">+</span></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
 <span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_alpha_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"RP3"</span> <span class="ot">=</span> <span class="fl">0.5</span>, <span class="st">"RP4"</span> <span class="ot">=</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
-<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
 <span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
 <span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Honduras: RP3 vs RP4 Drought Definition"</span>,</span>
 <span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Solid = RP4, transparent = RP3 | 1981-2024 baseline"</span>,</span>
-<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Leadtime (months)"</span>, <span class="at">y =</span> <span class="st">"ROC-AUC"</span>, <span class="at">fill =</span> <span class="st">"AOI"</span>, <span class="at">alpha =</span> <span class="st">"Threshold"</span></span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"ROC-AUC"</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">alpha =</span> <span class="st">"Threshold"</span></span>
 <span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a>  theme_facet_bars <span class="sc">+</span></span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="st">"none"</span>, <span class="at">alpha =</span> <span class="fu">guide_legend</span>(<span class="at">nrow =</span> <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -2323,30 +2423,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
 <span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
 <span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_config =</span> <span class="fu">factor</span>(aoi_config, <span class="at">levels =</span> <span class="fu">c</span>(</span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>      <span class="st">"SLV: SV01+SV12"</span>, <span class="st">"SLV: SV01+SV12+SV13"</span>, <span class="st">"SLV: SV01+SV12+SV13+SV05"</span>, <span class="st">"SLV: Country"</span></span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    ))</span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(leadtime), <span class="at">y =</span> roc_auc, <span class="at">fill =</span> aoi_config, <span class="at">alpha =</span> rp)) <span class="sc">+</span></span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">color =</span> <span class="st">"grey60"</span>) <span class="sc">+</span></span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>window_label) <span class="sc">+</span></span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(</span>
-<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: SV01+SV12"</span> <span class="ot">=</span> <span class="st">"#1b9e77"</span>,</span>
-<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: SV01+SV12+SV13"</span> <span class="ot">=</span> <span class="st">"#d95f02"</span>,</span>
-<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: SV01+SV12+SV13+SV05"</span> <span class="ot">=</span> <span class="st">"#7570b3"</span>,</span>
-<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SLV: Country"</span> <span class="ot">=</span> <span class="st">"#e7298a"</span></span>
-<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
-<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_alpha_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"RP3"</span> <span class="ot">=</span> <span class="fl">0.5</span>, <span class="st">"RP4"</span> <span class="ot">=</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
-<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"El Salvador: RP3 vs RP4 Drought Definition"</span>,</span>
-<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Solid = RP4, transparent = RP3 | 1981-2024 baseline"</span>,</span>
-<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Leadtime (months)"</span>, <span class="at">y =</span> <span class="st">"ROC-AUC"</span>, <span class="at">fill =</span> <span class="st">"AOI"</span>, <span class="at">alpha =</span> <span class="st">"Threshold"</span></span>
-<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">aoi_label =</span> <span class="fu">str_remove</span>(aoi_config, <span class="st">"^SLV: "</span>)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> roc_auc, <span class="at">y =</span> <span class="fu">reorder</span>(aoi_label, roc_auc), <span class="at">fill =</span> aoi_label, <span class="at">alpha =</span> rp)) <span class="sc">+</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="fu">position_dodge</span>(<span class="at">width =</span> <span class="fl">0.85</span>), <span class="at">width =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.5</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"grey40"</span>) <span class="sc">+</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.7</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_alpha_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"RP3"</span> <span class="ot">=</span> <span class="fl">0.5</span>, <span class="st">"RP4"</span> <span class="ot">=</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="fl">0.4</span>, <span class="dv">1</span>, <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"El Salvador: RP3 vs RP4 Drought Definition"</span>,</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Solid = RP4, transparent = RP3 | 1981-2024 baseline"</span>,</span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"ROC-AUC"</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">alpha =</span> <span class="st">"Threshold"</span></span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>  theme_facet_bars <span class="sc">+</span></span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="st">"none"</span>, <span class="at">alpha =</span> <span class="fu">guide_legend</span>(<span class="at">nrow =</span> <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <div>
