@@ -24,7 +24,7 @@ This chapter extends the skill assessment beyond Chiquimula (Guatemala) to exami
 
 - **Guatemala** (Chiquimula - GT20)
 - **Honduras** (El Paraíso + Francisco Morazán - HN07/HN08, area-weighted)
-- **El Salvador** (San Vicente - SV11)
+- **El Salvador** (Ahuachapán + Santa Ana - SV01/SV12, area-weighted)
 
 We evaluate how skill varies by:
 
@@ -43,7 +43,22 @@ POSTRERA_MONTHS <- 9:11
 PRIMERA_ISSUED_MONTHS <- c(3, 4, 5)
 POSTRERA_ISSUED_MONTHS <- c(6, 7, 8, 9)
 
-AOI_PCODES <- c("HN07", "HN08", "SV11", "GT20")
+# Toggle AOI sets: comment/uncomment to switch
+# 2025 framework (single admin per country)
+# SLV_PCODES <- c("SV11")
+# 2026 framework (multi-admin weighted)
+SLV_PCODES <- c("SV01", "SV12")
+
+AOI_PCODES <- c("HN07", "HN08", SLV_PCODES, "GT20")
+
+# Map pcodes to country labels
+pcode_to_country <- function(pcode) {
+  case_when(
+    pcode == "GT20" ~ "Guatemala",
+    pcode %in% c("HN07", "HN08") ~ "Honduras",
+    pcode %in% SLV_PCODES ~ "El Salvador"
+  )
+}
 
 con <- pg_con()
 
@@ -91,7 +106,7 @@ df_era5_monthly <- df_era5_raw |>
     month = month(valid_date),
     value_mm = mean * days_in_month(valid_date)
   )
-
+# aggregate temporally
 df_era5_seasonal <- bind_rows(
   df_era5_monthly |>
     filter(month %in% PRIMERA_MONTHS) |>
@@ -109,11 +124,7 @@ df_era5_seasonal <- bind_rows(
 df_obs_country <- df_era5_seasonal |>
  left_join(df_weights |> select(pcode, seas5_n_upsampled_pixels), by = "pcode") |>
   mutate(
-    country_aoi = case_when(
-      pcode == "GT20" ~ "Guatemala",
-      pcode %in% c("HN07", "HN08") ~ "Honduras",
-      pcode == "SV11" ~ "El Salvador"
-    )
+    country_aoi = pcode_to_country(pcode)
   ) |>
   group_by(country_aoi, year, window) |>
   summarise(
@@ -130,13 +141,10 @@ df_joined <- df_seas5_seasonal |>
   filter(!is.na(obs_mm)) |>
   left_join(df_weights |> select(pcode, seas5_n_upsampled_pixels), by = "pcode") |>
   mutate(
-    country_aoi = case_when(
-      pcode == "GT20" ~ "Guatemala",
-      pcode %in% c("HN07", "HN08") ~ "Honduras",
-      pcode == "SV11" ~ "El Salvador"
-    )
+    country_aoi = pcode_to_country(pcode)
   ) |>
   group_by(country_aoi, year, window, leadtime, issued_date) |>
+  # aggregate geographically via weighted mean
   summarise(
     fcst_mm = weighted.mean(fcst_mm, w = seas5_n_upsampled_pixels),
     obs_mm = weighted.mean(obs_mm, w = seas5_n_upsampled_pixels),

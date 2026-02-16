@@ -19,8 +19,8 @@ book:
     - 07_multi_aoi_comparison.qmd
     - 07b_aoi_exploration.qmd
     # - 08_enso_conditional_triggers.qmd
-    - 09_threshold_optimization.qmd
-    - 10_honduras_trigger.qmd
+    # - 09_threshold_optimization.qmd
+    # - 10_honduras_trigger.qmd
     - 11_country_trigger_optimizations.qmd
   appendices:
     - appendix_technical_notes.qmd

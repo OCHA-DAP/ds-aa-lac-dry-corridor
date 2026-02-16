@@ -1001,3 +1001,558 @@ evaluate_configs_impact <- function(combos, trigger_data,
   bind_cols(combos, results) |>
     mutate(config_id = row_number(), .before = 1)
 }
+
+
+#' Evaluate configs against impact years using OR-union of two independent AOIs
+#'
+#' Same grid search as evaluate_configs_impact(), but each config's thresholds
+#' are applied independently to two separate AOI trigger lookups. A season
+#' triggers if *either* AOI triggers (OR logic). The annual RP reflects this
+#' union. Output schema is identical to evaluate_configs_impact() so all
+#' downstream viz and filtering functions work unchanged.
+#'
+#' @param combos tibble with threshold columns (p0, p1, ..., s0, s1, ...)
+#' @param trigger_data_1 list from build_trigger_lookup() for AOI 1
+#' @param trigger_data_2 list from build_trigger_lookup() for AOI 2
+#' @param impact_years integer vector of EM-DAT drought years
+#' @param eval_start start year of evaluation window (default 1991)
+#' @param eval_end end year of evaluation window (default 2024)
+#' @return combos tibble enriched with all metric columns (same schema as
+#'   evaluate_configs_impact)
+#' @export
+evaluate_configs_impact_or <- function(combos,
+                                       trigger_data_1,
+                                       trigger_data_2,
+                                       impact_years,
+                                       eval_start = 1991,
+                                       eval_end = 2024) {
+  tl1 <- trigger_data_1$trigger_lookup
+  tl2 <- trigger_data_2$trigger_lookup
+  n_years <- eval_end - eval_start + 1
+  eval_window <- eval_start:eval_end
+
+  impact_yrs <- sort(intersect(impact_years, eval_window))
+
+  p_cols <- intersect(c("p0", "p1", "p2"), names(combos))
+  s_cols <- intersect(c("s0", "s1", "s2", "s3"), names(combos))
+
+  results <- map_dfr(seq_len(nrow(combos)), function(i) {
+    row <- combos[i, ]
+
+    # --- Look up trigger years per LT from EACH AOI, then OR-union ---
+    get_yrs <- function(tl, id, val) {
+      if (is.na(val)) return(integer(0))
+      key <- sprintf("%s_%.4f", id, val)
+      yrs <- tl[[key]] %||% integer(0)
+      intersect(yrs, eval_window)
+    }
+
+    # Per-LT trigger years: union across AOIs first, then OR across LTs
+    p_lt_yrs <- lapply(p_cols, function(col) {
+      union(
+        get_yrs(tl1, col, row[[col]]),
+        get_yrs(tl2, col, row[[col]])
+      )
+    })
+    s_lt_yrs <- lapply(s_cols, function(col) {
+      union(
+        get_yrs(tl1, col, row[[col]]),
+        get_yrs(tl2, col, row[[col]])
+      )
+    })
+
+    # Season-level trigger years (OR-union across LTs)
+    p_trigger_yrs <- Reduce(union, p_lt_yrs, accumulate = FALSE)
+    s_trigger_yrs <- Reduce(union, s_lt_yrs, accumulate = FALSE)
+
+    n_p <- length(p_trigger_yrs)
+    n_s <- length(s_trigger_yrs)
+
+    # Seasonal and annual RPs
+    p_rp <- if (n_p > 0) (n_years + 1) / n_p else Inf
+    s_rp <- if (n_s > 0) (n_years + 1) / n_s else Inf
+    annual_triggers <- intersect(union(p_trigger_yrs, s_trigger_yrs), eval_window)
+    annual_rp <- if (length(annual_triggers) > 0) (n_years + 1) / length(annual_triggers) else Inf
+
+    # --- Standard F1 against fixed impact years ---
+    p_tp <- length(intersect(p_trigger_yrs, impact_yrs))
+    p_fp <- length(setdiff(p_trigger_yrs, impact_yrs))
+    p_fn <- length(setdiff(impact_yrs, p_trigger_yrs))
+    s_tp <- length(intersect(s_trigger_yrs, impact_yrs))
+    s_fp <- length(setdiff(s_trigger_yrs, impact_yrs))
+    s_fn <- length(setdiff(impact_yrs, s_trigger_yrs))
+
+    p_prec <- if (p_tp + p_fp > 0) p_tp / (p_tp + p_fp) else 0
+    p_rec <- if (p_tp + p_fn > 0) p_tp / (p_tp + p_fn) else 0
+    p_f1 <- if (p_prec + p_rec > 0) 2 * p_prec * p_rec / (p_prec + p_rec) else 0
+
+    s_prec <- if (s_tp + s_fp > 0) s_tp / (s_tp + s_fp) else 0
+    s_rec <- if (s_tp + s_fn > 0) s_tp / (s_tp + s_fn) else 0
+    s_f1 <- if (s_prec + s_rec > 0) 2 * s_prec * s_rec / (s_prec + s_rec) else 0
+
+    # --- Early warning: TPs first caught at earlier LTs ---
+    p_yrs_list <- rev(p_lt_yrs)
+    p_cumulative <- integer(0)
+    p_tp_earliest <- integer(length(p_lt_yrs))
+    p_fp_marginal <- integer(length(p_lt_yrs))
+    for (j in seq_along(p_yrs_list)) {
+      these_yrs <- p_yrs_list[[j]]
+      new_tp <- length(setdiff(intersect(these_yrs, impact_yrs), p_cumulative))
+      new_fp <- length(setdiff(setdiff(these_yrs, impact_yrs), p_cumulative))
+      p_tp_earliest[j] <- new_tp
+      p_fp_marginal[j] <- new_fp
+      p_cumulative <- union(p_cumulative, these_yrs)
+    }
+
+    s_yrs_list <- rev(s_lt_yrs)
+    s_cumulative <- integer(0)
+    s_tp_earliest <- integer(length(s_lt_yrs))
+    s_fp_marginal <- integer(length(s_lt_yrs))
+    for (j in seq_along(s_yrs_list)) {
+      these_yrs <- s_yrs_list[[j]]
+      new_tp <- length(setdiff(intersect(these_yrs, impact_yrs), s_cumulative))
+      new_fp <- length(setdiff(setdiff(these_yrs, impact_yrs), s_cumulative))
+      s_tp_earliest[j] <- new_tp
+      s_fp_marginal[j] <- new_fp
+      s_cumulative <- union(s_cumulative, these_yrs)
+    }
+
+    # --- Threshold CV per season ---
+    p_vals <- unlist(row[p_cols]) |> na.omit()
+    s_vals <- unlist(row[s_cols]) |> na.omit()
+    p_cv <- if (length(p_vals) >= 2) sd(p_vals) / mean(p_vals) else 0
+    s_cv <- if (length(s_vals) >= 2) sd(s_vals) / mean(s_vals) else 0
+
+    # Build early warning column names dynamically
+    p_ew_names <- paste0("p_tp_earliest_lt", rev(seq_along(p_lt_yrs)) - 1)
+    p_fp_names <- paste0("p_fp_marginal_lt", rev(seq_along(p_lt_yrs)) - 1)
+    s_ew_names <- paste0("s_tp_earliest_lt", rev(seq_along(s_lt_yrs)) - 1)
+    s_fp_names <- paste0("s_fp_marginal_lt", rev(seq_along(s_lt_yrs)) - 1)
+
+    ew_vals <- c(
+      setNames(as.list(p_tp_earliest), p_ew_names),
+      setNames(as.list(p_fp_marginal), p_fp_names),
+      setNames(as.list(s_tp_earliest), s_ew_names),
+      setNames(as.list(s_fp_marginal), s_fp_names)
+    )
+
+    tibble(
+      n_p_triggers = n_p,
+      n_s_triggers = n_s,
+      p_seasonal_rp = p_rp,
+      s_seasonal_rp = s_rp,
+      annual_rp = annual_rp,
+      primera_tp = p_tp, primera_fp = p_fp, primera_fn = p_fn, primera_f1 = p_f1,
+      postrera_tp = s_tp, postrera_fp = s_fp, postrera_fn = s_fn, postrera_f1 = s_f1,
+      primera_tol_f1 = p_f1, postrera_tol_f1 = s_f1,
+      mean_tol_f1 = (p_f1 + s_f1) / 2,
+      !!!ew_vals,
+      mean_f1 = (p_f1 + s_f1) / 2,
+      f1_diff = abs(p_f1 - s_f1),
+      rp_diff = s_rp - p_rp,
+      p_cv = p_cv,
+      s_cv = s_cv,
+      mean_cv = (p_cv + s_cv) / 2
+    )
+  })
+
+  # Compute early:MFP ratio (OR variant)
+  p_ew_cols <- grep("^p_tp_earliest_lt[^0]", names(results), value = TRUE)
+  s_ew_cols <- grep("^s_tp_earliest_lt[^0]", names(results), value = TRUE)
+  p_fp_cols <- grep("^p_fp_marginal_lt[^0]", names(results), value = TRUE)
+  s_fp_cols <- grep("^s_fp_marginal_lt[^0]", names(results), value = TRUE)
+
+  results <- results |>
+    mutate(
+      p_early_tp = rowSums(across(any_of(p_ew_cols)), na.rm = TRUE),
+      s_early_tp = rowSums(across(any_of(s_ew_cols)), na.rm = TRUE),
+      total_early_tp = p_early_tp + s_early_tp,
+      p_marginal_fp = rowSums(across(any_of(p_fp_cols)), na.rm = TRUE),
+      s_marginal_fp = rowSums(across(any_of(s_fp_cols)), na.rm = TRUE),
+      total_marginal_fp = p_marginal_fp + s_marginal_fp
+    )
+
+  max_ratio_fp <- results |>
+    filter(total_marginal_fp > 0) |>
+    summarise(mr = max(total_early_tp / total_marginal_fp, na.rm = TRUE)) |>
+    pull(mr)
+
+  if (length(max_ratio_fp) == 0 || is.na(max_ratio_fp)) max_ratio_fp <- 0
+
+  results <- results |>
+    mutate(
+      early_mfp_ratio = if_else(
+        total_marginal_fp > 0,
+        total_early_tp / total_marginal_fp,
+        max_ratio_fp + total_early_tp
+      )
+    )
+
+  bind_cols(combos, results) |>
+    mutate(config_id = row_number(), .before = 1)
+}
+
+
+#' Merge two trigger lookups with OR logic
+#'
+#' Takes two trigger_data lists (from build_trigger_lookup()) and returns a
+#' new one where each key's trigger years are the union. This makes the merged
+#' lookup compatible with all existing downstream functions that expect a single
+#' trigger_data (build_trigger_activation_gt, get_seasonal_activation,
+#' add_hit_scores, evaluate_configs, etc.).
+#'
+#' primera_ranked / postrera_ranked are taken from trigger_data_1 by default
+#' (used for ERA5 drought year labeling — no single "correct" ranking when
+#' AOIs are independent, but needed to keep the struct valid).
+#'
+#' @param trigger_data_1 list from build_trigger_lookup() for AOI 1
+#' @param trigger_data_2 list from build_trigger_lookup() for AOI 2
+#' @return merged trigger_data list with same structure
+#' @export
+merge_trigger_lookups_or <- function(trigger_data_1, trigger_data_2) {
+  tl1 <- trigger_data_1$trigger_lookup
+  tl2 <- trigger_data_2$trigger_lookup
+
+  all_keys <- union(names(tl1), names(tl2))
+
+  merged_tl <- setNames(
+    lapply(all_keys, function(k) {
+      union(tl1[[k]] %||% integer(0), tl2[[k]] %||% integer(0))
+    }),
+    all_keys
+  )
+
+  # Merge rp_options: union of RP values per LT id
+  rp1 <- trigger_data_1$rp_options
+  rp2 <- trigger_data_2$rp_options
+  all_lt_ids <- union(names(rp1), names(rp2))
+  merged_rp <- setNames(
+    lapply(all_lt_ids, function(id) {
+      sort(union(rp1[[id]] %||% numeric(0), rp2[[id]] %||% numeric(0)))
+    }),
+    all_lt_ids
+  )
+
+  list(
+    trigger_lookup = merged_tl,
+    primera_ranked = trigger_data_1$primera_ranked,
+    postrera_ranked = trigger_data_1$postrera_ranked,
+    n_years = trigger_data_1$n_years,
+    rp_options = merged_rp
+  )
+}
+
+
+#' Get per-AOI seasonal activation for an OR trigger config
+#'
+#' Calls the trigger lookup for each AOI separately, returning which years
+#' each AOI triggers (primera/postrera) alongside the OR union. Useful for
+#' activation summary tables that need to show which AOI(s) fired.
+#'
+#' @param config_row single-row tibble/data.frame with threshold columns
+#' @param trigger_data_1 list from build_trigger_lookup() for AOI 1
+#' @param trigger_data_2 list from build_trigger_lookup() for AOI 2
+#' @param eval_start start year of evaluation window
+#' @param eval_end end year of evaluation window
+#' @param aoi1_label character label for AOI 1 (default "AOI1")
+#' @param aoi2_label character label for AOI 2 (default "AOI2")
+#' @return list with: aoi1_primera, aoi1_postrera, aoi2_primera, aoi2_postrera,
+#'   primera (union), postrera (union)
+#' @export
+get_seasonal_activation_or <- function(config_row,
+                                        trigger_data_1,
+                                        trigger_data_2,
+                                        eval_start, eval_end,
+                                        aoi1_label = "AOI1",
+                                        aoi2_label = "AOI2") {
+  all_lts <- c("p0", "p1", "p2", "s0", "s1", "s2", "s3")
+  active_lts <- all_lts[all_lts %in% names(config_row) &
+                           !is.na(unlist(config_row[all_lts[all_lts %in% names(config_row)]]))]
+
+  p_lts <- active_lts[startsWith(active_lts, "p")]
+  s_lts <- active_lts[startsWith(active_lts, "s")]
+
+  get_trigger_yrs <- function(tl, lts) {
+    yrs <- integer(0)
+    for (col in lts) {
+      key <- sprintf("%s_%.4f", col, config_row[[col]])
+      y <- tl[[key]]
+      if (!is.null(y)) yrs <- union(yrs, y)
+    }
+    yrs[yrs >= eval_start & yrs <= eval_end]
+  }
+
+  tl1 <- trigger_data_1$trigger_lookup
+  tl2 <- trigger_data_2$trigger_lookup
+
+  result <- list()
+  result[[paste0(aoi1_label, "_primera")]]  <- get_trigger_yrs(tl1, p_lts)
+  result[[paste0(aoi1_label, "_postrera")]] <- get_trigger_yrs(tl1, s_lts)
+  result[[paste0(aoi2_label, "_primera")]]  <- get_trigger_yrs(tl2, p_lts)
+  result[[paste0(aoi2_label, "_postrera")]] <- get_trigger_yrs(tl2, s_lts)
+  result$primera  <- union(result[[paste0(aoi1_label, "_primera")]],
+                            result[[paste0(aoi2_label, "_primera")]])
+  result$postrera <- union(result[[paste0(aoi1_label, "_postrera")]],
+                            result[[paste0(aoi2_label, "_postrera")]])
+
+  result
+}
+
+
+#' Get per-AOI seasonal activation for a paired OR config (different thresholds per AOI)
+#'
+#' Like get_seasonal_activation_or() but each AOI uses its own config row.
+#' Needed when paired configs have different thresholds across AOIs.
+#'
+#' @param config_row_1 single-row tibble with threshold columns for AOI 1
+#' @param config_row_2 single-row tibble with threshold columns for AOI 2
+#' @param trigger_data_1 list from build_trigger_lookup() for AOI 1
+#' @param trigger_data_2 list from build_trigger_lookup() for AOI 2
+#' @param eval_start start year of evaluation window
+#' @param eval_end end year of evaluation window
+#' @param aoi1_label character label for AOI 1 (default "AOI1")
+#' @param aoi2_label character label for AOI 2 (default "AOI2")
+#' @return list with per-AOI primera/postrera trigger years and OR unions
+#' @export
+get_seasonal_activation_or_paired <- function(config_row_1,
+                                               config_row_2,
+                                               trigger_data_1,
+                                               trigger_data_2,
+                                               eval_start, eval_end,
+                                               aoi1_label = "AOI1",
+                                               aoi2_label = "AOI2") {
+  get_trigger_yrs <- function(config_row, tl, lts) {
+    yrs <- integer(0)
+    for (col in lts) {
+      val <- config_row[[col]]
+      if (is.na(val)) next
+      key <- sprintf("%s_%.4f", col, val)
+      y <- tl[[key]]
+      if (!is.null(y)) yrs <- union(yrs, y)
+    }
+    yrs[yrs >= eval_start & yrs <= eval_end]
+  }
+
+  all_lts <- c("p0", "p1", "p2", "s0", "s1", "s2", "s3")
+
+  # AOI 1 active LTs (from config_row_1)
+  active_1 <- all_lts[all_lts %in% names(config_row_1) &
+                         !is.na(unlist(config_row_1[all_lts[all_lts %in% names(config_row_1)]]))]
+  p_lts_1 <- active_1[startsWith(active_1, "p")]
+  s_lts_1 <- active_1[startsWith(active_1, "s")]
+
+  # AOI 2 active LTs (from config_row_2)
+  active_2 <- all_lts[all_lts %in% names(config_row_2) &
+                         !is.na(unlist(config_row_2[all_lts[all_lts %in% names(config_row_2)]]))]
+  p_lts_2 <- active_2[startsWith(active_2, "p")]
+  s_lts_2 <- active_2[startsWith(active_2, "s")]
+
+  tl1 <- trigger_data_1$trigger_lookup
+  tl2 <- trigger_data_2$trigger_lookup
+
+  result <- list()
+  result[[paste0(aoi1_label, "_primera")]]  <- get_trigger_yrs(config_row_1, tl1, p_lts_1)
+  result[[paste0(aoi1_label, "_postrera")]] <- get_trigger_yrs(config_row_1, tl1, s_lts_1)
+  result[[paste0(aoi2_label, "_primera")]]  <- get_trigger_yrs(config_row_2, tl2, p_lts_2)
+  result[[paste0(aoi2_label, "_postrera")]] <- get_trigger_yrs(config_row_2, tl2, s_lts_2)
+  result$primera  <- union(result[[paste0(aoi1_label, "_primera")]],
+                            result[[paste0(aoi2_label, "_primera")]])
+  result$postrera <- union(result[[paste0(aoi1_label, "_postrera")]],
+                            result[[paste0(aoi2_label, "_postrera")]])
+
+  result
+}
+
+
+#' Pair configs from two independent AOI evaluations via OR logic
+#'
+#' Each AOI has its own pool of evaluated configs (from evaluate_configs_impact).
+#' This function finds all valid pairs where the OR-union of trigger years
+#' meets must-hit constraints and falls within a target RP range.
+#'
+#' Strategy for efficiency:
+#'   1. Pre-filter each pool to desired LT counts
+#'   2. Precompute trigger years for each candidate from trigger_lookup
+#'   3. Use must-hit bitmask compatibility to avoid invalid pairs
+#'   4. Apply early RP filter before computing F1
+#'
+#' @param results_1 tibble from evaluate_configs_impact() for AOI 1
+#' @param trigger_data_1 trigger_data list for AOI 1
+#' @param results_2 tibble from evaluate_configs_impact() for AOI 2
+#' @param trigger_data_2 trigger_data list for AOI 2
+#' @param impact_years integer vector of EM-DAT drought years
+#' @param must_hit_years integer vector of priority 1 years (OR union must cover all)
+#' @param should_hit_years integer vector of priority 2 years
+#' @param eval_start start year of evaluation window (default 1991)
+#' @param eval_end end year of evaluation window (default 2024)
+#' @param target_rp_range length-2 numeric: min and max acceptable OR-union annual RP
+#' @return tibble with one row per valid pair, including OR-union metrics,
+#'   per-AOI config IDs and thresholds, and a same_config flag
+#' @export
+pair_or_configs <- function(results_1, trigger_data_1,
+                            results_2, trigger_data_2,
+                            impact_years,
+                            must_hit_years = integer(0),
+                            should_hit_years = integer(0),
+                            eval_start = 1991, eval_end = 2024,
+                            target_rp_range = c(3, 5)) {
+  eval_window <- eval_start:eval_end
+  n_years <- length(eval_window)
+  impact_yrs <- sort(intersect(impact_years, eval_window))
+  must_hit <- intersect(must_hit_years, eval_window)
+  should_hit <- intersect(should_hit_years, eval_window)
+
+  threshold_cols <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
+                              names(results_1))
+  p_cols <- threshold_cols[startsWith(threshold_cols, "p")]
+  s_cols <- threshold_cols[startsWith(threshold_cols, "s")]
+
+  # ── Helper: extract trigger years from a config row + trigger_lookup ──────
+  extract_trigger_yrs <- function(row, tl) {
+    p_yrs <- integer(0)
+    s_yrs <- integer(0)
+    for (col in p_cols) {
+      val <- row[[col]]
+      if (is.na(val)) next
+      key <- sprintf("%s_%.4f", col, val)
+      yrs <- tl[[key]] %||% integer(0)
+      p_yrs <- union(p_yrs, intersect(yrs, eval_window))
+    }
+    for (col in s_cols) {
+      val <- row[[col]]
+      if (is.na(val)) next
+      key <- sprintf("%s_%.4f", col, val)
+      yrs <- tl[[key]] %||% integer(0)
+      s_yrs <- union(s_yrs, intersect(yrs, eval_window))
+    }
+    list(primera = p_yrs, postrera = s_yrs, all = union(p_yrs, s_yrs))
+  }
+
+  # ── Precompute trigger years for all candidates ───────────────────────────
+  tl1 <- trigger_data_1$trigger_lookup
+  tl2 <- trigger_data_2$trigger_lookup
+
+  cat("Precomputing trigger years for AOI 1 (", nrow(results_1), " configs)...\n")
+  triggers_1 <- lapply(seq_len(nrow(results_1)), function(i)
+    extract_trigger_yrs(results_1[i, ], tl1))
+
+  cat("Precomputing trigger years for AOI 2 (", nrow(results_2), " configs)...\n")
+  triggers_2 <- lapply(seq_len(nrow(results_2)), function(i)
+    extract_trigger_yrs(results_2[i, ], tl2))
+
+  # ── Cross-join all pairs with RP filter only ────────────────────────────────
+  # must_hit_score and should_hit_score are computed as columns (soft constraints)
+  rp_lo <- target_rp_range[1]
+  rp_hi <- target_rp_range[2]
+
+  n1 <- nrow(results_1)
+  n2 <- nrow(results_2)
+  cat(sprintf("Pairing %s x %s = %s candidates (RP filter %.1f-%.1f)...\n",
+              format(n1, big.mark = ","), format(n2, big.mark = ","),
+              format(n1 * n2, big.mark = ","), rp_lo, rp_hi))
+
+  rows <- vector("list", n1 * n2)
+  row_count <- 0L
+  total_pairs_checked <- 0L
+
+  for (i1 in seq_len(n1)) {
+    t1 <- triggers_1[[i1]]
+    for (i2 in seq_len(n2)) {
+      total_pairs_checked <- total_pairs_checked + 1L
+      t2 <- triggers_2[[i2]]
+
+      # OR-union trigger years
+      or_p <- union(t1$primera, t2$primera)
+      or_s <- union(t1$postrera, t2$postrera)
+      or_all <- union(or_p, or_s)
+      n_or <- length(or_all)
+
+      # Early RP filter (only hard constraint)
+      or_rp <- if (n_or > 0) (n_years + 1) / n_or else Inf
+      if (or_rp < rp_lo || or_rp > rp_hi) next
+
+      n_or_p <- length(or_p)
+      n_or_s <- length(or_s)
+      or_p_rp <- if (n_or_p > 0) (n_years + 1) / n_or_p else Inf
+      or_s_rp <- if (n_or_s > 0) (n_years + 1) / n_or_s else Inf
+
+      # Impact F1 on OR union
+      p_tp <- length(intersect(or_p, impact_yrs))
+      p_fp <- length(setdiff(or_p, impact_yrs))
+      p_fn <- length(setdiff(impact_yrs, or_p))
+      s_tp <- length(intersect(or_s, impact_yrs))
+      s_fp <- length(setdiff(or_s, impact_yrs))
+      s_fn <- length(setdiff(impact_yrs, or_s))
+
+      p_prec <- if (p_tp + p_fp > 0) p_tp / (p_tp + p_fp) else 0
+      p_rec  <- if (p_tp + p_fn > 0) p_tp / (p_tp + p_fn) else 0
+      p_f1   <- if (p_prec + p_rec > 0) 2 * p_prec * p_rec / (p_prec + p_rec) else 0
+
+      s_prec <- if (s_tp + s_fp > 0) s_tp / (s_tp + s_fp) else 0
+      s_rec  <- if (s_tp + s_fn > 0) s_tp / (s_tp + s_fn) else 0
+      s_f1   <- if (s_prec + s_rec > 0) 2 * s_prec * s_rec / (s_prec + s_rec) else 0
+
+      # Must-hit and should-hit scores on OR union (soft — just columns)
+      mh_score <- if (length(must_hit) > 0) {
+        sum(must_hit %in% or_all) / length(must_hit)
+      } else 1
+
+      sh_score <- if (length(should_hit) > 0) {
+        sum(should_hit %in% or_all) / length(should_hit)
+      } else 1
+
+      # Same-config flag
+      same_cfg <- all(vapply(threshold_cols, function(col) {
+        v1 <- results_1[[col]][i1]
+        v2 <- results_2[[col]][i2]
+        (is.na(v1) && is.na(v2)) || (!is.na(v1) && !is.na(v2) && v1 == v2)
+      }, logical(1)))
+
+      row_count <- row_count + 1L
+      rows[[row_count]] <- list(
+        aoi1_config_id  = results_1$config_id[i1],
+        aoi2_config_id  = results_2$config_id[i2],
+        or_annual_rp    = or_rp,
+        or_p_seasonal_rp = or_p_rp,
+        or_s_seasonal_rp = or_s_rp,
+        or_primera_f1   = p_f1,
+        or_postrera_f1  = s_f1,
+        or_mean_f1      = (p_f1 + s_f1) / 2,
+        must_hit_score  = mh_score,
+        should_hit_score = sh_score,
+        same_config     = same_cfg,
+        aoi1_annual_rp  = results_1$annual_rp[i1],
+        aoi2_annual_rp  = results_2$annual_rp[i2],
+        aoi1_mean_f1    = results_1$mean_f1[i1],
+        aoi2_mean_f1    = results_2$mean_f1[i2]
+      )
+    }
+  }
+
+  cat(sprintf("Checked %s pairs, kept %s (RP %.1f-%.1f)\n",
+              format(total_pairs_checked, big.mark = ","),
+              format(row_count, big.mark = ","),
+              rp_lo, rp_hi))
+
+  result <- dplyr::bind_rows(rows[seq_len(row_count)])
+
+  if (nrow(result) == 0) {
+    warning("No valid pairs found. Try widening target_rp_range or relaxing must-hit.")
+    return(result)
+  }
+
+  # ── Attach per-AOI threshold columns ────────────────────────────────────
+  aoi1_thresholds <- results_1 |>
+    dplyr::select(aoi1_config_id = config_id, all_of(threshold_cols)) |>
+    dplyr::rename_with(~ paste0("aoi1_", .), all_of(threshold_cols))
+
+  aoi2_thresholds <- results_2 |>
+    dplyr::select(aoi2_config_id = config_id, all_of(threshold_cols)) |>
+    dplyr::rename_with(~ paste0("aoi2_", .), all_of(threshold_cols))
+
+  result <- result |>
+    dplyr::left_join(aoi1_thresholds, by = "aoi1_config_id") |>
+    dplyr::left_join(aoi2_thresholds, by = "aoi2_config_id")
+
+  result
+}

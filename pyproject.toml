@@ -71,6 +71,10 @@ dependencies = [
     "urllib3>=2.1.0",
     "xarray>=2023.12.0",
     "zipp>=3.17.0",
+    "azure-storage-blob>=12.28.0",
+    "adlfs>=2025.8.0",
+    "exactextract>=0.3.0",
+    "seaborn>=0.13.2",
 ]
 
 [dependency-groups]

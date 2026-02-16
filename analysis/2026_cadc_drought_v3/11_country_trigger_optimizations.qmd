@@ -31,7 +31,7 @@ knitr::opts_chunk$set(
 
 The key insight motivating this approach is that seasonal rainfall forecasts are an imperfect proxy for drought impact. EM-DAT records and CERF allocations provide direct evidence of when humanitarian consequences occurred. Rather than optimizing solely against observed rainfall, we first ensure our trigger catches the most consequential events, then optimize for rainfall prediction accuracy among configurations that meet that constraint.
 
-This chapter covers Honduras and El Salvador. Guatemala requires additional considerations and is addressed in a separate chapter.
+This chapter covers Honduras, El Salvador, and Guatemala. For Guatemala, we evaluate two separate areas of interest: the standard OCHA AOI (Chiquimula and Alta Verapaz) and the StartNetwork AOI (Quiché and Baja Verapaz).
 
 
 ```{r}
@@ -300,6 +300,13 @@ countries <- list(
     postrera_months = 9:11,
     primera_issued_months = c(3, 4, 5),
     postrera_issued_months = c(6, 7, 8, 9)
+  ),
+  GTM_SN = list(
+    aoi_pcodes = c("GT14", "GT15"),
+    primera_months = 5:8,
+    postrera_months = 9:11,
+    primera_issued_months = c(3, 4, 5),
+    postrera_issued_months = c(6, 7, 8, 9)
   )
 )
 
@@ -423,6 +430,7 @@ load_country_data <- function(cfg) {
 df_hnd <- load_country_data(countries$HND)
 df_gtm <- load_country_data(countries$GTM)
 df_slv <- load_country_data(countries$SLV)
+df_gtm_sn <- load_country_data(countries$GTM_SN)
 ```
 
 The validation tables below cross-reference each year's primera and postrera rainfall dry rank with CERF allocations, EM-DAT records, and total affected population. Years are sorted by maximum seasonal dryness rank so the most extreme rainfall years appear first. A mismatch between dry rank and impact columns indicates that rainfall alone is not a reliable predictor of humanitarian consequences.
@@ -456,6 +464,17 @@ build_impact_validation_gt(df_slv, df_cerf_drought, df_emdat_drought, "SLV",
 ```{r}
 #| label: tbl-validation-gtm
 build_impact_validation_gt(df_gtm, df_cerf_drought, df_emdat_drought, "GTM",
+                           eval_start = EVAL_START, eval_end = EVAL_END,
+                           df_emdat_interp = df_emdat_drought_interp,
+                           cerf_hypothesis_years = cerf_hyp_years,
+                           sort_by = "max_rp")
+```
+
+### Guatemala (StartNetwork)
+
+```{r}
+#| label: tbl-validation-gtmsn
+build_impact_validation_gt(df_gtm_sn, df_cerf_drought, df_emdat_drought, "GTM",
                            eval_start = EVAL_START, eval_end = EVAL_END,
                            df_emdat_interp = df_emdat_drought_interp,
                            cerf_hypothesis_years = cerf_hyp_years,
@@ -626,6 +645,8 @@ hnd_activation_tables <- lapply(seq_len(nrow(hnd_final)), function(i) {
 # Default selection: closest to RP 2.9
 hnd_default_idx <- which.min(abs(hnd_final$annual_rp - 2.9))
 ```
+
+The plot below shows each candidate configuration positioned by its ERA5 tolerant F1 (x-axis) and impact F1 (y-axis). Configurations near the top-right corner perform well on both metrics. Yellow circles highlight configurations where a single RP threshold is used uniformly across all leadtimes and seasons --- an operationally favourable property that simplifies trigger communication and implementation. Hover over any point for details; click circled points to view the full per-leadtime activation table.
 
 ```{r}
 #| label: fig-hnd-tradeoff-static
@@ -1341,6 +1362,766 @@ tbl_slv |>
   tab_options(table.font.size = px(11), data_row.padding = px(2))
 ```
 
+
+### Guatemala
+
+```{r}
+#| label: gtm-setup
+
+cfg_gtm <- countries$GTM
+primera_lts_gtm <- 3
+postrera_lts_gtm <- 2
+
+impact_yrs_gtm <- impact_by_country$GTM$year
+target_rp_gtm <- (EVAL_END - EVAL_START + 1 + 1) / length(impact_yrs_gtm)
+```
+
+Guatemala uses departments Chiquimula (GT20) and Alta Verapaz (GT16) as the area of interest, with `r primera_lts_gtm` primera leadtimes and `r postrera_lts_gtm` postrera leadtimes. EM-DAT records `r length(impact_yrs_gtm)` impact years in `r EVAL_START`--`r EVAL_END`, giving an empirical impact RP of `r sprintf("%.1f", target_rp_gtm)` years.
+
+**Impact Evaluation & Priority Filtering**
+
+```{r}
+#| label: gtm-impact-eval
+#| cache: true
+
+combos_gtm <- generate_combos(length(unique(df_gtm$year)),
+                               primera_lts = primera_lts_gtm,
+                               postrera_lts = postrera_lts_gtm) |>
+  grid_constrain_season_monotonic() |>
+  grid_constrain_inter_season_monotonic() |>
+  grid_constrain_lt_rp_range(min_rp = 4, max_rp = 15)
+
+trigger_data_gtm <- build_trigger_lookup(df_gtm, min_rp = 2.8, max_rp = 15,
+                                          primera_lts = primera_lts_gtm,
+                                          postrera_lts = postrera_lts_gtm)
+
+all_results_gtm <- evaluate_configs_impact(
+  combos_gtm, trigger_data_gtm,
+  impact_years = impact_yrs_gtm,
+  eval_start = EVAL_START, eval_end = EVAL_END
+)
+
+all_results_gtm <- all_results_gtm |>
+  add_hit_scores(trigger_data_gtm, must_hit_years, should_hit_years,
+                 eval_start = EVAL_START, eval_end = EVAL_END) |>
+  add_lt_set()
+
+gtm_candidates <- all_results_gtm |>
+  filter(p_lt_count == primera_lts_gtm, s_lt_count == postrera_lts_gtm) |>
+  filter(must_hit_score == max(must_hit_score)) |>
+  filter(should_hit_score == max(should_hit_score))
+```
+
+After generating `r format(nrow(combos_gtm), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(gtm_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(gtm_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(gtm_candidates$should_hit_score) * 100)` of Priority 2 years.
+
+
+**ERA5 Evaluation & Combined Scoring**
+
+```{r}
+#| label: gtm-era5-join
+#| cache: true
+
+gtm_candidate_combos <- gtm_candidates |>
+  select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")))
+
+gtm_era5 <- evaluate_configs(gtm_candidate_combos, trigger_data_gtm, rp_buffer = 1)
+
+threshold_cols_gtm <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
+                                names(gtm_candidates))
+
+gtm_combined <- gtm_candidates |>
+  select(config_id, all_of(threshold_cols_gtm),
+         impact_f1 = mean_f1,
+         impact_primera_f1 = primera_f1,
+         impact_postrera_f1 = postrera_f1,
+         must_hit_score, should_hit_score,
+         annual_rp, p_seasonal_rp, s_seasonal_rp) |>
+  left_join(
+    gtm_era5 |>
+      select(all_of(threshold_cols_gtm),
+             era5_matched_f1 = mean_f1,
+             era5_tol_f1 = mean_tol_f1,
+             era5_primera_tol_f1 = primera_tol_f1,
+             era5_postrera_tol_f1 = postrera_tol_f1,
+             mean_cv, total_early_tp, total_marginal_fp),
+    by = threshold_cols_gtm
+  )
+```
+
+
+```{r}
+#| label: gtm-tradeoff-data
+
+gtm_tradeoff <- plot_f1_tradeoff(gtm_combined, target_rp = target_rp_gtm, n_nearest = 2)
+
+gtm_all_hl <- gtm_tradeoff$data |> filter(rp_group != "other")
+
+# Option A per RP: best avg_f1, tiebroken by lowest CV
+gtm_opt_a <- gtm_tradeoff$best_per_rp |>
+  group_by(annual_rp) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "A", selection = "max avg F1")
+
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+gtm_opt_b <- gtm_all_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "B", selection = "max ERA5 tol F1")
+
+gtm_final <- bind_rows(gtm_opt_a, gtm_opt_b) |>
+  group_by(annual_rp, across(all_of(threshold_cols_gtm))) |>
+  mutate(selection = if (n() > 1) "both" else selection) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  arrange(annual_rp, selection) |>
+  group_by(annual_rp) |>
+  mutate(option = LETTERS[row_number()]) |>
+  ungroup() |>
+  mutate(
+    config_label = sprintf("RP %.1f %s", annual_rp, option),
+    row_idx = row_number()
+  )
+
+# Pre-render GT activation tables for each final config
+gtm_activation_tables <- lapply(seq_len(nrow(gtm_final)), function(i) {
+  tbl <- build_trigger_activation_gt(
+    gtm_final[i, ], trigger_data_gtm, df_gtm,
+    df_cerf_drought, df_emdat_drought, "GTM",
+    eval_start = EVAL_START, eval_end = EVAL_END,
+    df_emdat_interp = df_emdat_drought_interp,
+    must_hit_years = must_hit_years,
+    should_hit_years = should_hit_years,
+    sort_by = "activation"
+  )
+  as.character(gt::as_raw_html(tbl))
+})
+
+gtm_default_idx <- which.min(abs(gtm_final$annual_rp - target_rp_gtm))
+```
+
+```{r}
+#| label: fig-gtm-tradeoff-interactive
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala. Click a circled point to see its trigger activation detail below."
+
+gtm_df <- gtm_tradeoff$data
+gtm_bg <- gtm_df |> filter(rp_group == "other")
+gtm_hl <- gtm_df |> filter(rp_group != "other")
+
+# Flag configs with all equal thresholds
+gtm_uniform <- gtm_df |>
+  filter(apply(gtm_df[, threshold_cols_gtm], 1, function(x) length(unique(x)) == 1))
+
+gtm_rp_levels <- levels(gtm_df$rp_group)
+gtm_hl_levels <- setdiff(gtm_rp_levels, "other")
+gtm_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                    "#ff7f00", "#a65628")[seq_along(gtm_hl_levels)]
+gtm_colors <- c(setNames(gtm_hl_colors, gtm_hl_levels), "other" = "grey80")
+
+# Deduplicate labels
+gtm_labels <- gtm_final |>
+  group_by(era5_tol_f1, impact_f1, rp_group) |>
+  summarise(
+    label = paste(config_label, collapse = " / "),
+    avg_f1 = max(avg_f1),
+    .groups = "drop"
+  ) |>
+  mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
+
+p_gtm <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point_interactive(
+    data = gtm_bg,
+    aes(tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    color = "grey80", size = 1.5, alpha = 0.4
+  ) +
+  geom_point_interactive(
+    data = gtm_hl,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    size = 2.5, alpha = 0.8
+  ) +
+  {if (nrow(gtm_uniform) > 0) geom_point(
+    data = gtm_uniform, color = "#ffd700", size = 9,
+    shape = 16, alpha = 0.5, show.legend = FALSE
+  )} +
+  geom_point_interactive(
+    data = gtm_final,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f %s | avg F1 = %.3f | CV = %.3f\nClick to view activation table",
+                          annual_rp, option, avg_f1, mean_cv),
+        data_id = as.character(row_idx),
+        onclick = sapply(row_idx, make_onclick_js, prefix = "gtm")),
+    size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE
+  ) +
+  geom_label_repel(
+    data = gtm_labels,
+    aes(label = label, color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtm_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala",
+       subtitle = "Click circled points for detail | Yellow = uniform thresholds across all LTs") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+
+girafe(ggobj = p_gtm,
+       options = list(
+         opts_hover(css = "cursor:pointer;stroke-width:3;"),
+         opts_selection(type = "single", css = "stroke-width:3;"),
+         opts_sizing(rescale = TRUE, width = 1)
+       ))
+```
+
+```{r}
+#| label: tbl-gtm-final
+#| tbl-cap: "Guatemala recommended configurations: best average F1 per return period, tiebroken by lowest threshold CV."
+
+gtm_final |>
+  select(
+    config_label, selection,
+    any_of(c("p0", "p1", "p2", "s0", "s1")),
+    annual_rp, p_seasonal_rp, s_seasonal_rp,
+    impact_f1, era5_tol_f1, avg_f1, mean_cv
+  ) |>
+  mutate(
+    across(c(impact_f1, era5_tol_f1, avg_f1, mean_cv), \(x) round(x, 3)),
+    across(c(annual_rp, p_seasonal_rp, s_seasonal_rp), \(x) round(x, 2))
+  ) |>
+  gt() |>
+  cols_align(align = "center") |>
+  cols_label(selection = "Criterion") |>
+  tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
+  tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
+  tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
+  tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv)) |>
+  tab_header(
+    title = "Guatemala: Recommended Configurations",
+    subtitle = "A = max avg F1 | B = max ERA5 tolerant F1 | per RP, lowest CV tiebreak"
+  )
+```
+
+**Trigger Activation Detail (per leadtime)**
+
+Click a circled point on the tradeoff plot above to swap the detailed per-leadtime activation table below.
+
+```{r}
+#| label: tbl-gtm-activation-interactive
+
+gtm_divs <- lapply(seq_along(gtm_activation_tables), function(i) {
+  display <- if (i == gtm_default_idx) "block" else "none"
+  htmltools::div(
+    id = sprintf("gtm-tbl-%d", i),
+    class = "gtm-activation-tbl",
+    style = sprintf("display:%s;", display),
+    htmltools::HTML(gtm_activation_tables[[i]])
+  )
+})
+htmltools::browsable(htmltools::tagList(gtm_divs))
+```
+
+**Activation Summary**
+
+```{r}
+#| label: tbl-gtm-activation-summary
+
+obs_by_year_gtm <- df_gtm |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year, window, obs_mm)
+
+gtm_obs_rps <- bind_rows(
+  obs_by_year_gtm |> filter(window == "primera") |>
+    mutate(obs_rp_pri = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_pri),
+  obs_by_year_gtm |> filter(window == "postrera") |>
+    mutate(obs_rp_post = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_post)
+) |> group_by(year) |> summarise(across(everything(), ~ max(.x, na.rm = TRUE)), .groups = "drop")
+
+cerf_gtm <- df_cerf_drought |>
+  filter(iso3 == "GTM", year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year) |> mutate(cerf = TRUE)
+
+emdat_interp_gtm <- df_emdat_drought_interp |>
+  filter(iso3 == "GTM", year >= EVAL_START, year <= EVAL_END) |>
+  select(year, total_affected_interp)
+
+gtm_summary <- tibble(year = years) |>
+  mutate(
+    priority = case_when(
+      year %in% must_hit_years ~ "P1",
+      year %in% should_hit_years ~ "P2",
+      TRUE ~ ""
+    )
+  ) |>
+  left_join(cerf_gtm, by = "year") |>
+  mutate(cerf = replace_na(cerf, FALSE),
+         cerf_label = if_else(cerf, "\u2713", "")) |>
+  left_join(emdat_interp_gtm, by = "year") |>
+  left_join(gtm_obs_rps, by = "year")
+
+for (i in seq_len(nrow(gtm_final))) {
+  activation <- get_seasonal_activation(gtm_final[i, ], trigger_data_gtm,
+                                         EVAL_START, EVAL_END)
+  col_name <- gtm_final$config_label[i]
+  p_hit <- gtm_summary$year %in% activation$primera
+  s_hit <- gtm_summary$year %in% activation$postrera
+  gtm_summary[[col_name]] <- case_when(
+    p_hit & s_hit ~ "Pr+Pst",
+    p_hit ~ "Pr",
+    s_hit ~ "Pst",
+    TRUE ~ ""
+  )
+}
+
+gtm_config_labels <- gtm_final$config_label
+
+gtm_summary <- gtm_summary |>
+  mutate(.any_active = if_any(all_of(gtm_config_labels), ~ .x != "")) |>
+  arrange(desc(.any_active), year) |>
+  select(-.any_active)
+
+gtm_display <- gtm_summary |>
+  select(year, priority, cerf_label, total_affected_interp,
+         obs_rp_pri, obs_rp_post, all_of(gtm_config_labels))
+
+gtm_max_bar <- max(gtm_display$total_affected_interp, na.rm = TRUE)
+
+tbl_gtm <- gtm_display |>
+  gt() |>
+  cols_label(
+    year = "Year", priority = "P", cerf_label = "CERF",
+    total_affected_interp = "EM-DAT",
+    obs_rp_pri = "Pri", obs_rp_post = "Post"
+  ) |>
+  fmt_number(columns = c(obs_rp_pri, obs_rp_post), decimals = 1) |>
+  sub_missing(columns = c(obs_rp_pri, obs_rp_post), missing_text = "") |>
+  text_transform(
+    locations = cells_body(columns = total_affected_interp),
+    fn = make_bar_transform("#e6550d", gtm_max_bar)
+  ) |>
+  tab_spanner(label = "ERA5 Obs RP", columns = c(obs_rp_pri, obs_rp_post)) |>
+  tab_spanner(label = "Activation", columns = all_of(gtm_config_labels))
+
+for (col in gtm_config_labels) {
+  active_rows <- which(gtm_display[[col]] != "")
+  if (length(active_rows) > 0) {
+    tbl_gtm <- tbl_gtm |>
+      tab_style(
+        style = list(cell_fill(color = "#d4edda"), cell_text(weight = "bold")),
+        locations = cells_body(columns = !!col, rows = active_rows)
+      )
+  }
+}
+
+tbl_gtm |>
+  tab_style(style = cell_fill(color = "#fde0dd"),
+            locations = cells_body(columns = priority, rows = priority == "P1")) |>
+  tab_style(style = cell_fill(color = "#fff7bc"),
+            locations = cells_body(columns = priority, rows = priority == "P2")) |>
+  tab_style(style = cell_fill(color = "#d4edda"),
+            locations = cells_body(columns = cerf_label, rows = cerf_label == "\u2713")) |>
+  data_color(columns = c(obs_rp_pri, obs_rp_post),
+             palette = c("#FDEBD0", "#8B4513"),
+             domain = c(1, max(c(gtm_display$obs_rp_pri, gtm_display$obs_rp_post), na.rm = TRUE)),
+             na_color = "white") |>
+  cols_align(align = "center") |>
+  tab_header(
+    title = "Guatemala: Activation Summary",
+    subtitle = "Pr = primera only | Pst = postrera only | Pr+Pst = both seasons"
+  ) |>
+  tab_options(table.font.size = px(11), data_row.padding = px(2))
+```
+
+
+### Guatemala (StartNetwork)
+
+```{r}
+#| label: gtmsn-setup
+
+cfg_gtmsn <- countries$GTM_SN
+primera_lts_gtmsn <- 3
+postrera_lts_gtmsn <- 2
+
+impact_yrs_gtmsn <- impact_by_country$GTM$year
+target_rp_gtmsn <- (EVAL_END - EVAL_START + 1 + 1) / length(impact_yrs_gtmsn)
+```
+
+The StartNetwork Guatemala AOI uses departments Quiché (GT14) and Baja Verapaz (GT15), with `r primera_lts_gtmsn` primera leadtimes and `r postrera_lts_gtmsn` postrera leadtimes. Impact years are drawn from the same country-level EM-DAT record (`r length(impact_yrs_gtmsn)` events, empirical RP = `r sprintf("%.1f", target_rp_gtmsn)`).
+
+**Impact Evaluation & Priority Filtering**
+
+```{r}
+#| label: gtmsn-impact-eval
+#| cache: true
+
+combos_gtmsn <- generate_combos(length(unique(df_gtm_sn$year)),
+                                 primera_lts = primera_lts_gtmsn,
+                                 postrera_lts = postrera_lts_gtmsn) |>
+  grid_constrain_season_monotonic() |>
+  grid_constrain_inter_season_monotonic() |>
+  grid_constrain_lt_rp_range(min_rp = 4, max_rp = 15)
+
+trigger_data_gtmsn <- build_trigger_lookup(df_gtm_sn, min_rp = 2.8, max_rp = 15,
+                                            primera_lts = primera_lts_gtmsn,
+                                            postrera_lts = postrera_lts_gtmsn)
+
+all_results_gtmsn <- evaluate_configs_impact(
+  combos_gtmsn, trigger_data_gtmsn,
+  impact_years = impact_yrs_gtmsn,
+  eval_start = EVAL_START, eval_end = EVAL_END
+)
+
+all_results_gtmsn <- all_results_gtmsn |>
+  add_hit_scores(trigger_data_gtmsn, must_hit_years, should_hit_years,
+                 eval_start = EVAL_START, eval_end = EVAL_END) |>
+  add_lt_set()
+
+gtmsn_candidates <- all_results_gtmsn |>
+  filter(p_lt_count == primera_lts_gtmsn, s_lt_count == postrera_lts_gtmsn) |>
+  filter(must_hit_score == max(must_hit_score)) |>
+  filter(should_hit_score == max(should_hit_score))
+```
+
+After priority filtering, **`r format(nrow(gtmsn_candidates), big.mark = ",")`** candidates remain, hitting `r sprintf("%.0f%%", max(gtmsn_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(gtmsn_candidates$should_hit_score) * 100)` of Priority 2 years.
+
+
+**ERA5 Evaluation & Combined Scoring**
+
+```{r}
+#| label: gtmsn-era5-join
+#| cache: true
+
+gtmsn_candidate_combos <- gtmsn_candidates |>
+  select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")))
+
+gtmsn_era5 <- evaluate_configs(gtmsn_candidate_combos, trigger_data_gtmsn, rp_buffer = 1)
+
+threshold_cols_gtmsn <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
+                                  names(gtmsn_candidates))
+
+gtmsn_combined <- gtmsn_candidates |>
+  select(config_id, all_of(threshold_cols_gtmsn),
+         impact_f1 = mean_f1,
+         impact_primera_f1 = primera_f1,
+         impact_postrera_f1 = postrera_f1,
+         must_hit_score, should_hit_score,
+         annual_rp, p_seasonal_rp, s_seasonal_rp) |>
+  left_join(
+    gtmsn_era5 |>
+      select(all_of(threshold_cols_gtmsn),
+             era5_matched_f1 = mean_f1,
+             era5_tol_f1 = mean_tol_f1,
+             era5_primera_tol_f1 = primera_tol_f1,
+             era5_postrera_tol_f1 = postrera_tol_f1,
+             mean_cv, total_early_tp, total_marginal_fp),
+    by = threshold_cols_gtmsn
+  )
+```
+
+
+```{r}
+#| label: gtmsn-tradeoff-data
+
+gtmsn_tradeoff <- plot_f1_tradeoff(gtmsn_combined, target_rp = target_rp_gtmsn, n_nearest = 2)
+
+gtmsn_all_hl <- gtmsn_tradeoff$data |> filter(rp_group != "other")
+
+# Option A per RP: best avg_f1, tiebroken by lowest CV
+gtmsn_opt_a <- gtmsn_tradeoff$best_per_rp |>
+  group_by(annual_rp) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "A", selection = "max avg F1")
+
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+gtmsn_opt_b <- gtmsn_all_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(mean_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "B", selection = "max ERA5 tol F1")
+
+gtmsn_final <- bind_rows(gtmsn_opt_a, gtmsn_opt_b) |>
+  group_by(annual_rp, across(all_of(threshold_cols_gtmsn))) |>
+  mutate(selection = if (n() > 1) "both" else selection) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  arrange(annual_rp, selection) |>
+  group_by(annual_rp) |>
+  mutate(option = LETTERS[row_number()]) |>
+  ungroup() |>
+  mutate(
+    config_label = sprintf("RP %.1f %s", annual_rp, option),
+    row_idx = row_number()
+  )
+
+# Pre-render GT activation tables for each final config
+gtmsn_activation_tables <- lapply(seq_len(nrow(gtmsn_final)), function(i) {
+  tbl <- build_trigger_activation_gt(
+    gtmsn_final[i, ], trigger_data_gtmsn, df_gtm_sn,
+    df_cerf_drought, df_emdat_drought, "GTM",
+    eval_start = EVAL_START, eval_end = EVAL_END,
+    df_emdat_interp = df_emdat_drought_interp,
+    must_hit_years = must_hit_years,
+    should_hit_years = should_hit_years,
+    sort_by = "activation"
+  )
+  as.character(gt::as_raw_html(tbl))
+})
+
+gtmsn_default_idx <- which.min(abs(gtmsn_final$annual_rp - target_rp_gtmsn))
+```
+
+```{r}
+#| label: fig-gtmsn-tradeoff-interactive
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork). Click a circled point to see its trigger activation detail below."
+
+gtmsn_df <- gtmsn_tradeoff$data
+gtmsn_bg <- gtmsn_df |> filter(rp_group == "other")
+gtmsn_hl <- gtmsn_df |> filter(rp_group != "other")
+
+# Flag configs with all equal thresholds
+gtmsn_uniform <- gtmsn_df |>
+  filter(apply(gtmsn_df[, threshold_cols_gtmsn], 1, function(x) length(unique(x)) == 1))
+
+gtmsn_rp_levels <- levels(gtmsn_df$rp_group)
+gtmsn_hl_levels <- setdiff(gtmsn_rp_levels, "other")
+gtmsn_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                      "#ff7f00", "#a65628")[seq_along(gtmsn_hl_levels)]
+gtmsn_colors <- c(setNames(gtmsn_hl_colors, gtmsn_hl_levels), "other" = "grey80")
+
+# Deduplicate labels
+gtmsn_labels <- gtmsn_final |>
+  group_by(era5_tol_f1, impact_f1, rp_group) |>
+  summarise(
+    label = paste(config_label, collapse = " / "),
+    avg_f1 = max(avg_f1),
+    .groups = "drop"
+  ) |>
+  mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
+
+p_gtmsn <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point_interactive(
+    data = gtmsn_bg,
+    aes(tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    color = "grey80", size = 1.5, alpha = 0.4
+  ) +
+  geom_point_interactive(
+    data = gtmsn_hl,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, impact_f1, era5_tol_f1)),
+    size = 2.5, alpha = 0.8
+  ) +
+  {if (nrow(gtmsn_uniform) > 0) geom_point(
+    data = gtmsn_uniform, color = "#ffd700", size = 9,
+    shape = 16, alpha = 0.5, show.legend = FALSE
+  )} +
+  geom_point_interactive(
+    data = gtmsn_final,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f %s | avg F1 = %.3f | CV = %.3f\nClick to view activation table",
+                          annual_rp, option, avg_f1, mean_cv),
+        data_id = as.character(row_idx),
+        onclick = sapply(row_idx, make_onclick_js, prefix = "gtmsn")),
+    size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE
+  ) +
+  geom_label_repel(
+    data = gtmsn_labels,
+    aes(label = label, color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtmsn_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala (StartNetwork)",
+       subtitle = "Click circled points for detail | Yellow = uniform thresholds across all LTs") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+
+girafe(ggobj = p_gtmsn,
+       options = list(
+         opts_hover(css = "cursor:pointer;stroke-width:3;"),
+         opts_selection(type = "single", css = "stroke-width:3;"),
+         opts_sizing(rescale = TRUE, width = 1)
+       ))
+```
+
+```{r}
+#| label: tbl-gtmsn-final
+#| tbl-cap: "Guatemala (StartNetwork) recommended configurations: best average F1 per return period, tiebroken by lowest threshold CV."
+
+gtmsn_final |>
+  select(
+    config_label, selection,
+    any_of(c("p0", "p1", "p2", "s0", "s1")),
+    annual_rp, p_seasonal_rp, s_seasonal_rp,
+    impact_f1, era5_tol_f1, avg_f1, mean_cv
+  ) |>
+  mutate(
+    across(c(impact_f1, era5_tol_f1, avg_f1, mean_cv), \(x) round(x, 3)),
+    across(c(annual_rp, p_seasonal_rp, s_seasonal_rp), \(x) round(x, 2))
+  ) |>
+  gt() |>
+  cols_align(align = "center") |>
+  cols_label(selection = "Criterion") |>
+  tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
+  tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
+  tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
+  tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv)) |>
+  tab_header(
+    title = "Guatemala (StartNetwork): Recommended Configurations",
+    subtitle = "A = max avg F1 | B = max ERA5 tolerant F1 | per RP, lowest CV tiebreak"
+  )
+```
+
+**Trigger Activation Detail (per leadtime)**
+
+Click a circled point on the tradeoff plot above to swap the detailed per-leadtime activation table below.
+
+```{r}
+#| label: tbl-gtmsn-activation-interactive
+
+gtmsn_divs <- lapply(seq_along(gtmsn_activation_tables), function(i) {
+  display <- if (i == gtmsn_default_idx) "block" else "none"
+  htmltools::div(
+    id = sprintf("gtmsn-tbl-%d", i),
+    class = "gtmsn-activation-tbl",
+    style = sprintf("display:%s;", display),
+    htmltools::HTML(gtmsn_activation_tables[[i]])
+  )
+})
+htmltools::browsable(htmltools::tagList(gtmsn_divs))
+```
+
+**Activation Summary**
+
+```{r}
+#| label: tbl-gtmsn-activation-summary
+
+obs_by_year_gtmsn <- df_gtm_sn |>
+  filter(year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year, window, obs_mm)
+
+gtmsn_obs_rps <- bind_rows(
+  obs_by_year_gtmsn |> filter(window == "primera") |>
+    mutate(obs_rp_pri = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_pri),
+  obs_by_year_gtmsn |> filter(window == "postrera") |>
+    mutate(obs_rp_post = (n() + 1) / rank(obs_mm, ties.method = "first")) |>
+    select(year, obs_rp_post)
+) |> group_by(year) |> summarise(across(everything(), ~ max(.x, na.rm = TRUE)), .groups = "drop")
+
+cerf_gtmsn <- df_cerf_drought |>
+  filter(iso3 == "GTM", year >= EVAL_START, year <= EVAL_END) |>
+  distinct(year) |> mutate(cerf = TRUE)
+
+emdat_interp_gtmsn <- df_emdat_drought_interp |>
+  filter(iso3 == "GTM", year >= EVAL_START, year <= EVAL_END) |>
+  select(year, total_affected_interp)
+
+gtmsn_summary <- tibble(year = years) |>
+  mutate(
+    priority = case_when(
+      year %in% must_hit_years ~ "P1",
+      year %in% should_hit_years ~ "P2",
+      TRUE ~ ""
+    )
+  ) |>
+  left_join(cerf_gtmsn, by = "year") |>
+  mutate(cerf = replace_na(cerf, FALSE),
+         cerf_label = if_else(cerf, "\u2713", "")) |>
+  left_join(emdat_interp_gtmsn, by = "year") |>
+  left_join(gtmsn_obs_rps, by = "year")
+
+for (i in seq_len(nrow(gtmsn_final))) {
+  activation <- get_seasonal_activation(gtmsn_final[i, ], trigger_data_gtmsn,
+                                         EVAL_START, EVAL_END)
+  col_name <- gtmsn_final$config_label[i]
+  p_hit <- gtmsn_summary$year %in% activation$primera
+  s_hit <- gtmsn_summary$year %in% activation$postrera
+  gtmsn_summary[[col_name]] <- case_when(
+    p_hit & s_hit ~ "Pr+Pst",
+    p_hit ~ "Pr",
+    s_hit ~ "Pst",
+    TRUE ~ ""
+  )
+}
+
+gtmsn_config_labels <- gtmsn_final$config_label
+
+gtmsn_summary <- gtmsn_summary |>
+  mutate(.any_active = if_any(all_of(gtmsn_config_labels), ~ .x != "")) |>
+  arrange(desc(.any_active), year) |>
+  select(-.any_active)
+
+gtmsn_display <- gtmsn_summary |>
+  select(year, priority, cerf_label, total_affected_interp,
+         obs_rp_pri, obs_rp_post, all_of(gtmsn_config_labels))
+
+gtmsn_max_bar <- max(gtmsn_display$total_affected_interp, na.rm = TRUE)
+
+tbl_gtmsn <- gtmsn_display |>
+  gt() |>
+  cols_label(
+    year = "Year", priority = "P", cerf_label = "CERF",
+    total_affected_interp = "EM-DAT",
+    obs_rp_pri = "Pri", obs_rp_post = "Post"
+  ) |>
+  fmt_number(columns = c(obs_rp_pri, obs_rp_post), decimals = 1) |>
+  sub_missing(columns = c(obs_rp_pri, obs_rp_post), missing_text = "") |>
+  text_transform(
+    locations = cells_body(columns = total_affected_interp),
+    fn = make_bar_transform("#e6550d", gtmsn_max_bar)
+  ) |>
+  tab_spanner(label = "ERA5 Obs RP", columns = c(obs_rp_pri, obs_rp_post)) |>
+  tab_spanner(label = "Activation", columns = all_of(gtmsn_config_labels))
+
+for (col in gtmsn_config_labels) {
+  active_rows <- which(gtmsn_display[[col]] != "")
+  if (length(active_rows) > 0) {
+    tbl_gtmsn <- tbl_gtmsn |>
+      tab_style(
+        style = list(cell_fill(color = "#d4edda"), cell_text(weight = "bold")),
+        locations = cells_body(columns = !!col, rows = active_rows)
+      )
+  }
+}
+
+tbl_gtmsn |>
+  tab_style(style = cell_fill(color = "#fde0dd"),
+            locations = cells_body(columns = priority, rows = priority == "P1")) |>
+  tab_style(style = cell_fill(color = "#fff7bc"),
+            locations = cells_body(columns = priority, rows = priority == "P2")) |>
+  tab_style(style = cell_fill(color = "#d4edda"),
+            locations = cells_body(columns = cerf_label, rows = cerf_label == "\u2713")) |>
+  data_color(columns = c(obs_rp_pri, obs_rp_post),
+             palette = c("#FDEBD0", "#8B4513"),
+             domain = c(1, max(c(gtmsn_display$obs_rp_pri, gtmsn_display$obs_rp_post), na.rm = TRUE)),
+             na_color = "white") |>
+  cols_align(align = "center") |>
+  tab_header(
+    title = "Guatemala (StartNetwork): Activation Summary",
+    subtitle = "Pr = primera only | Pst = postrera only | Pr+Pst = both seasons"
+  ) |>
+  tab_options(table.font.size = px(11), data_row.padding = px(2))
+```
+
 :::
 
 
@@ -1368,6 +2149,8 @@ pick_rec <- function(df_final, selection_pref, target_rp = 2.9) {
 hnd_rec <- pick_rec(hnd_final, "max ERA5 tol F1")
 hnd_alt <- pick_rec(hnd_final, "max avg F1", target_rp = 2.7)
 slv_rec <- pick_rec(slv_final, "max avg F1")
+gtm_rec <- pick_rec(gtm_final, "max avg F1", target_rp = target_rp_gtm)
+gtmsn_rec <- pick_rec(gtmsn_final, "max avg F1", target_rp = target_rp_gtmsn)
 
 # Helper: format thresholds as "LT0=X, LT1=Y, ..."
 fmt_thresholds <- function(rec, prefix, n_lts) {
@@ -1403,6 +2186,20 @@ It is worth noting that **`r hnd_alt$config_label`** (`r hnd_alt$selection`) is 
 - Impact F1 = `r sprintf("%.3f", slv_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", slv_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", slv_rec$avg_f1)` | CV = `r sprintf("%.3f", slv_rec$mean_cv)`
 
 El Salvador has fewer EM-DAT impact years, making impact F1 a more informative discriminator. The max avg F1 option provides the best balance between capturing impact events and predicting rainfall anomalies. Prioritizing ERA5 skill alone would sacrifice impact detection without sufficient gain in rainfall accuracy to justify the tradeoff.
+
+**Guatemala: `r gtm_rec$config_label`** (`r gtm_rec$selection`)
+
+- Primera thresholds (RP): `r fmt_thresholds(gtm_rec, "p", primera_lts_gtm)`
+- Postrera thresholds (RP): `r fmt_thresholds(gtm_rec, "s", postrera_lts_gtm)`
+- Seasonal RPs: primera = `r sprintf("%.1f", gtm_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", gtm_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", gtm_rec$annual_rp)`
+- Impact F1 = `r sprintf("%.3f", gtm_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", gtm_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", gtm_rec$avg_f1)` | CV = `r sprintf("%.3f", gtm_rec$mean_cv)`
+
+**Guatemala (StartNetwork): `r gtmsn_rec$config_label`** (`r gtmsn_rec$selection`)
+
+- Primera thresholds (RP): `r fmt_thresholds(gtmsn_rec, "p", primera_lts_gtmsn)`
+- Postrera thresholds (RP): `r fmt_thresholds(gtmsn_rec, "s", postrera_lts_gtmsn)`
+- Seasonal RPs: primera = `r sprintf("%.1f", gtmsn_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", gtmsn_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", gtmsn_rec$annual_rp)`
+- Impact F1 = `r sprintf("%.3f", gtmsn_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", gtmsn_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", gtmsn_rec$avg_f1)` | CV = `r sprintf("%.3f", gtmsn_rec$mean_cv)`
 
 
 ## Appendix: ROC Analysis {.appendix}
@@ -1442,6 +2239,17 @@ roc_slv$plot
 roc_gtm <- plot_impact_roc(df_gtm, df_emdat_drought, "GTM",
                             eval_start = EVAL_START, eval_end = EVAL_END)
 roc_gtm$plot
+```
+
+### Guatemala (StartNetwork)
+
+```{r}
+#| label: fig-roc-gtmsn
+#| fig-cap: "ROC-style curve for Guatemala (StartNetwork): ERA5 rainfall RP threshold vs EM-DAT drought detection."
+
+roc_gtmsn <- plot_impact_roc(df_gtm_sn, df_emdat_drought, "GTM",
+                              eval_start = EVAL_START, eval_end = EVAL_END)
+roc_gtmsn$plot
 ```
 
 :::
