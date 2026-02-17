@@ -371,6 +371,8 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
     s_vals <- unlist(row[s_cols]) |> na.omit()
     p_cv <- if (length(p_vals) >= 2) sd(p_vals) / mean(p_vals) else 0
     s_cv <- if (length(s_vals) >= 2) sd(s_vals) / mean(s_vals) else 0
+    all_vals <- c(p_vals, s_vals)
+    all_cv <- if (length(all_vals) >= 2) sd(all_vals) / mean(all_vals) else 0
 
     # Build early warning column names dynamically
     # Primera: reversed order so index 1 = highest LT, last = LT0
@@ -394,6 +396,8 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
       annual_rp = annual_rp,
       primera_tp = p_tp, primera_fp = p_fp, primera_fn = p_fn, primera_f1 = p_f1,
       postrera_tp = s_tp, postrera_fp = s_fp, postrera_fn = s_fn, postrera_f1 = s_f1,
+      primera_tol_tp = p_tol_tp, primera_tol_fp = p_tol_fp, primera_tol_fn = p_tol_fn,
+      postrera_tol_tp = s_tol_tp, postrera_tol_fp = s_tol_fp, postrera_tol_fn = s_tol_fn,
       primera_tol_f1 = p_tol_f1, postrera_tol_f1 = s_tol_f1,
       mean_tol_f1 = (p_tol_f1 + s_tol_f1) / 2,
       !!!ew_vals,
@@ -402,7 +406,8 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
       rp_diff = s_rp - p_rp,
       p_cv = p_cv,
       s_cv = s_cv,
-      mean_cv = (p_cv + s_cv) / 2
+      mean_cv = (p_cv + s_cv) / 2,
+      all_cv = all_cv
     )
   })
 
@@ -932,6 +937,8 @@ evaluate_configs_impact <- function(combos, trigger_data,
     s_vals <- unlist(row[s_cols]) |> na.omit()
     p_cv <- if (length(p_vals) >= 2) sd(p_vals) / mean(p_vals) else 0
     s_cv <- if (length(s_vals) >= 2) sd(s_vals) / mean(s_vals) else 0
+    all_vals <- c(p_vals, s_vals)
+    all_cv <- if (length(all_vals) >= 2) sd(all_vals) / mean(all_vals) else 0
 
     # Build early warning column names dynamically
     p_ew_names <- paste0("p_tp_earliest_lt", rev(seq_along(p_lt_yrs)) - 1)
@@ -962,7 +969,8 @@ evaluate_configs_impact <- function(combos, trigger_data,
       rp_diff = s_rp - p_rp,
       p_cv = p_cv,
       s_cv = s_cv,
-      mean_cv = (p_cv + s_cv) / 2
+      mean_cv = (p_cv + s_cv) / 2,
+      all_cv = all_cv
     )
   })
 
@@ -1122,6 +1130,8 @@ evaluate_configs_impact_or <- function(combos,
     s_vals <- unlist(row[s_cols]) |> na.omit()
     p_cv <- if (length(p_vals) >= 2) sd(p_vals) / mean(p_vals) else 0
     s_cv <- if (length(s_vals) >= 2) sd(s_vals) / mean(s_vals) else 0
+    all_vals <- c(p_vals, s_vals)
+    all_cv <- if (length(all_vals) >= 2) sd(all_vals) / mean(all_vals) else 0
 
     # Build early warning column names dynamically
     p_ew_names <- paste0("p_tp_earliest_lt", rev(seq_along(p_lt_yrs)) - 1)
@@ -1152,7 +1162,8 @@ evaluate_configs_impact_or <- function(combos,
       rp_diff = s_rp - p_rp,
       p_cv = p_cv,
       s_cv = s_cv,
-      mean_cv = (p_cv + s_cv) / 2
+      mean_cv = (p_cv + s_cv) / 2,
+      all_cv = all_cv
     )
   })
 

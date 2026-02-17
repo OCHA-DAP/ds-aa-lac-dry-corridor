@@ -35,7 +35,7 @@ We evaluate how skill varies by:
 ## Data Preparation
 
 ```{r}
-#| label: load-data
+#| label: load-data1
 #| cache: true
 
 PRIMERA_MONTHS <- 5:8
@@ -143,6 +143,7 @@ df_joined <- df_seas5_seasonal |>
   mutate(
     country_aoi = pcode_to_country(pcode)
   ) |>
+  filter(!is.na(country_aoi)) |>
   group_by(country_aoi, year, window, leadtime, issued_date) |>
   # aggregate geographically via weighted mean
   summarise(

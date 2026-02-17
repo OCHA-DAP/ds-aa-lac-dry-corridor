@@ -2658,7 +2658,11 @@ build_trigger_activation_gt <- function(config_row, trigger_data, df_joined,
 
   # Title
   annual_rp_str <- if ("annual_rp" %in% names(config_row)) {
-    sprintf(" | Annual RP = %.2f", config_row$annual_rp)
+    rp_part <- sprintf("Annual RP = %.2f", config_row$annual_rp)
+    label_part <- if ("config_label" %in% names(config_row) && !is.na(config_row$config_label)) {
+      sprintf(" (%s)", gsub("\n", " ", config_row$config_label))
+    } else ""
+    sprintf(" | %s%s", rp_part, label_part)
   } else ""
 
   tbl <- tbl |>
