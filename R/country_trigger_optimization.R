@@ -326,6 +326,12 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
     p_tol_f1 <- if (p_tol_tp + p_tol_fp + p_tol_fn > 0) {
       2 * p_tol_tp / (2 * p_tol_tp + p_tol_fp + p_tol_fn)
     } else 0
+    # Strict FN: only count misses of clearly-dry years (RP > seasonal + buffer)
+    p_strict_rp <- p_rp + rp_buffer
+    p_n_strict <- min(round(n_years / p_strict_rp), n_years)
+    p_strict_drought <- head(primera_ranked, p_n_strict)
+    p_strict_fn <- length(setdiff(p_strict_drought, p_trigger_yrs))
+    p_strict_tp <- length(intersect(p_trigger_yrs, p_strict_drought))
 
     s_tol_rp <- max(s_rp - rp_buffer, 1)
     s_n_wide <- min(round(n_years / s_tol_rp), n_years)
@@ -336,6 +342,11 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
     s_tol_f1 <- if (s_tol_tp + s_tol_fp + s_tol_fn > 0) {
       2 * s_tol_tp / (2 * s_tol_tp + s_tol_fp + s_tol_fn)
     } else 0
+    s_strict_rp <- s_rp + rp_buffer
+    s_n_strict <- min(round(n_years / s_strict_rp), n_years)
+    s_strict_drought <- head(postrera_ranked, s_n_strict)
+    s_strict_fn <- length(setdiff(s_strict_drought, s_trigger_yrs))
+    s_strict_tp <- length(intersect(s_trigger_yrs, s_strict_drought))
 
     # --- Early warning: TPs first caught at earlier LTs ---
     # Primera: from earliest (highest LT index) to latest (LT0)
@@ -397,7 +408,9 @@ evaluate_configs <- function(combos, trigger_data, rp_buffer = 1) {
       primera_tp = p_tp, primera_fp = p_fp, primera_fn = p_fn, primera_f1 = p_f1,
       postrera_tp = s_tp, postrera_fp = s_fp, postrera_fn = s_fn, postrera_f1 = s_f1,
       primera_tol_tp = p_tol_tp, primera_tol_fp = p_tol_fp, primera_tol_fn = p_tol_fn,
+      primera_strict_tp = p_strict_tp, primera_strict_fn = p_strict_fn,
       postrera_tol_tp = s_tol_tp, postrera_tol_fp = s_tol_fp, postrera_tol_fn = s_tol_fn,
+      postrera_strict_tp = s_strict_tp, postrera_strict_fn = s_strict_fn,
       primera_tol_f1 = p_tol_f1, postrera_tol_f1 = s_tol_f1,
       mean_tol_f1 = (p_tol_f1 + s_tol_f1) / 2,
       !!!ew_vals,
