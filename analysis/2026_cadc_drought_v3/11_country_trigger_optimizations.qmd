@@ -905,7 +905,9 @@ all_results_hnd <- all_results_hnd |>
 hnd_candidates <- all_results_hnd |>
   filter(p_lt_count == primera_lts_hnd, s_lt_count == postrera_lts_hnd) |>
   filter(must_hit_score == max(must_hit_score)) |>
-  filter(should_hit_score == max(should_hit_score))
+  group_by(annual_rp) |>
+  filter(should_hit_score == max(should_hit_score)) |>
+  ungroup()
 ```
 
 After generating `r format(nrow(combos_hnd), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(hnd_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(hnd_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(hnd_candidates$should_hit_score) * 100)` of Priority 2 years.
@@ -958,33 +960,28 @@ hnd_tradeoff <- plot_f1_tradeoff(hnd_combined, target_rp = 3, n_nearest = 2)
 
 hnd_all_hl <- hnd_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+# Option A per RP: best avg_f1, tiebroken by lowest CV
 hnd_opt_a <- hnd_all_hl |>
   group_by(annual_rp) |>
-  filter(avg_f1 >= max(avg_f1) - 0.01) |>
+  filter(avg_f1 == max(avg_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+# Exclude Option A configs so we always get a distinct second pick
 hnd_opt_b <- hnd_all_hl |>
+  anti_join(hnd_opt_a, by = c("annual_rp", threshold_cols_hnd)) |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "B", selection = "max ERA5 tol F1")
 
 hnd_ab <- bind_rows(hnd_opt_a, hnd_opt_b) |>
-  group_by(annual_rp, across(all_of(threshold_cols_hnd))) |>
-  mutate(selection = if (n() > 1) "both" else selection) |>
-  slice_head(n = 1) |>
-  ungroup() |>
-  arrange(annual_rp, selection) |>
-  group_by(annual_rp) |>
-  mutate(option = LETTERS[row_number()]) |>
-  ungroup() |>
+  arrange(annual_rp, option) |>
   mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
 
 # Uniform configs from PRE-filter pool (bypasses must-hit/should-hit)
@@ -1138,7 +1135,7 @@ build_config_summary_gt(
   hnd_final, threshold_cols_hnd,
   primera_lts_hnd, postrera_lts_hnd,
   "Honduras",
-  top_picks = c("RP 3.2 B", "RP 2.9 B", "RP 2.7 A", "Uniform thresh 5.0)")
+  top_picks = c("RP 3.2 B", "RP 2.9 A", "RP 2.7 A", "Uniform thresh 5.0")
 )
 ```
 
@@ -1345,7 +1342,7 @@ tbl |>
 
 build_topline_gt(
   hnd_final,
-  top_picks = c("RP 3.2 B", "RP 2.9 B", "RP 2.7 A", "Uniform thresh 5.0)"),
+  top_picks = c("RP 3.2 B", "RP 2.9 A", "RP 2.7 A", "Uniform thresh 5.0"),
   trigger_data_hnd, impact_yrs_hnd,
   must_hit_years, should_hit_years,
   EVAL_START, EVAL_END, "Honduras"
@@ -1428,7 +1425,9 @@ all_results_slv <- all_results_slv |>
 slv_candidates <- all_results_slv |>
   filter(p_lt_count == primera_lts_slv, s_lt_count == postrera_lts_slv) |>
   filter(must_hit_score == max(must_hit_score)) |>
-  filter(should_hit_score == max(should_hit_score))
+  group_by(annual_rp) |>
+  filter(should_hit_score == max(should_hit_score)) |>
+  ungroup()
 ```
 
 After priority filtering, **`r format(nrow(slv_candidates), big.mark = ",")`** candidates remain, hitting `r sprintf("%.0f%%", max(slv_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(slv_candidates$should_hit_score) * 100)` of Priority 2 years.
@@ -1481,33 +1480,27 @@ slv_tradeoff <- plot_f1_tradeoff(slv_combined, target_rp = target_rp_slv, n_near
 
 slv_all_hl <- slv_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+# Option A per RP: best avg_f1, tiebroken by lowest CV
 slv_opt_a <- slv_all_hl |>
   group_by(annual_rp) |>
-  filter(avg_f1 >= max(avg_f1) - 0.01) |>
+  filter(avg_f1 == max(avg_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
 slv_opt_b <- slv_all_hl |>
+  anti_join(slv_opt_a, by = c("annual_rp", threshold_cols_slv)) |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "B", selection = "max ERA5 tol F1")
 
 slv_ab <- bind_rows(slv_opt_a, slv_opt_b) |>
-  group_by(annual_rp, across(all_of(threshold_cols_slv))) |>
-  mutate(selection = if (n() > 1) "both" else selection) |>
-  slice_head(n = 1) |>
-  ungroup() |>
-  arrange(annual_rp, selection) |>
-  group_by(annual_rp) |>
-  mutate(option = LETTERS[row_number()]) |>
-  ungroup() |>
+  arrange(annual_rp, option) |>
   mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
 
 # Uniform configs from PRE-filter pool (bypasses must-hit/should-hit)
@@ -1877,7 +1870,9 @@ all_results_gtm <- all_results_gtm |>
 gtm_candidates <- all_results_gtm |>
   filter(p_lt_count == primera_lts_gtm, s_lt_count == postrera_lts_gtm) |>
   filter(must_hit_score == max(must_hit_score)) |>
-  filter(should_hit_score == max(should_hit_score))
+  group_by(annual_rp) |>
+  filter(should_hit_score == max(should_hit_score)) |>
+  ungroup()
 ```
 
 After generating `r format(nrow(combos_gtm), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(gtm_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(gtm_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(gtm_candidates$should_hit_score) * 100)` of Priority 2 years.
@@ -1930,33 +1925,27 @@ gtm_tradeoff <- plot_f1_tradeoff(gtm_combined, target_rp = target_rp_gtm, n_near
 
 gtm_all_hl <- gtm_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+# Option A per RP: best avg_f1, tiebroken by lowest CV
 gtm_opt_a <- gtm_all_hl |>
   group_by(annual_rp) |>
-  filter(avg_f1 >= max(avg_f1) - 0.01) |>
+  filter(avg_f1 == max(avg_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
 gtm_opt_b <- gtm_all_hl |>
+  anti_join(gtm_opt_a, by = c("annual_rp", threshold_cols_gtm)) |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "B", selection = "max ERA5 tol F1")
 
 gtm_ab <- bind_rows(gtm_opt_a, gtm_opt_b) |>
-  group_by(annual_rp, across(all_of(threshold_cols_gtm))) |>
-  mutate(selection = if (n() > 1) "both" else selection) |>
-  slice_head(n = 1) |>
-  ungroup() |>
-  arrange(annual_rp, selection) |>
-  group_by(annual_rp) |>
-  mutate(option = LETTERS[row_number()]) |>
-  ungroup() |>
+  arrange(annual_rp, option) |>
   mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
 
 # Diagnostic: all candidates at RP ~2.9
@@ -2304,7 +2293,9 @@ all_results_gtmsn <- all_results_gtmsn |>
 gtmsn_candidates <- all_results_gtmsn |>
   filter(p_lt_count == primera_lts_gtmsn, s_lt_count == postrera_lts_gtmsn) |>
   filter(must_hit_score == max(must_hit_score)) |>
-  filter(should_hit_score == max(should_hit_score))
+  group_by(annual_rp) |>
+  filter(should_hit_score == max(should_hit_score)) |>
+  ungroup()
 ```
 
 After priority filtering, **`r format(nrow(gtmsn_candidates), big.mark = ",")`** candidates remain, hitting `r sprintf("%.0f%%", max(gtmsn_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(gtmsn_candidates$should_hit_score) * 100)` of Priority 2 years.
@@ -2357,33 +2348,27 @@ gtmsn_tradeoff <- plot_f1_tradeoff(gtmsn_combined, target_rp = target_rp_gtmsn, 
 
 gtmsn_all_hl <- gtmsn_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+# Option A per RP: best avg_f1, tiebroken by lowest CV
 gtmsn_opt_a <- gtmsn_all_hl |>
   group_by(annual_rp) |>
-  filter(avg_f1 >= max(avg_f1) - 0.01) |>
+  filter(avg_f1 == max(avg_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
 gtmsn_opt_b <- gtmsn_all_hl |>
+  anti_join(gtmsn_opt_a, by = c("annual_rp", threshold_cols_gtmsn)) |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "B", selection = "max ERA5 tol F1")
 
 gtmsn_ab <- bind_rows(gtmsn_opt_a, gtmsn_opt_b) |>
-  group_by(annual_rp, across(all_of(threshold_cols_gtmsn))) |>
-  mutate(selection = if (n() > 1) "both" else selection) |>
-  slice_head(n = 1) |>
-  ungroup() |>
-  arrange(annual_rp, selection) |>
-  group_by(annual_rp) |>
-  mutate(option = LETTERS[row_number()]) |>
-  ungroup() |>
+  arrange(annual_rp, option) |>
   mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
 
 # Uniform configs from PRE-filter pool (bypasses must-hit/should-hit)
