@@ -2217,6 +2217,18 @@ tbl_gtm |>
 ```
 
 ```{r}
+#| label: tbl-gtm-topline
+
+build_topline_gt(
+  gtm_final,
+  top_picks = c("RP 2.9 A"),
+  trigger_data_gtm, impact_yrs_gtm,
+  must_hit_years, should_hit_years,
+  EVAL_START, EVAL_END, "Guatemala"
+) |> as_raw_html()
+```
+
+```{r}
 #| label: tbl-gtm-final
 #| tbl-cap: "Guatemala recommended configurations: best average F1 per return period, tiebroken by lowest cross-season threshold CV."
 
