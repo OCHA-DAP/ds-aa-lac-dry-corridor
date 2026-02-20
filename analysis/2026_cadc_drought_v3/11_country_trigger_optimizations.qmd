@@ -288,7 +288,7 @@ countries <- list(
     postrera_issued_months = c(6, 7, 8, 9)
   ),
   GTM = list(
-    aoi_pcodes = c("GT20", "GT16"),
+    aoi_pcodes = c("GT20", "GT21", "GT02", "GT19"),
     primera_months = 5:8,
     postrera_months = 9:11,
     primera_issued_months = c(3, 4, 5),
@@ -958,18 +958,19 @@ hnd_tradeoff <- plot_f1_tradeoff(hnd_combined, target_rp = 3, n_nearest = 2)
 
 hnd_all_hl <- hnd_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1, tiebroken by lowest CV
-hnd_opt_a <- hnd_tradeoff$best_per_rp |>
+# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+hnd_opt_a <- hnd_all_hl |>
   group_by(annual_rp) |>
+  filter(avg_f1 >= max(avg_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
 hnd_opt_b <- hnd_all_hl |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -1480,18 +1481,19 @@ slv_tradeoff <- plot_f1_tradeoff(slv_combined, target_rp = target_rp_slv, n_near
 
 slv_all_hl <- slv_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1, tiebroken by lowest CV
-slv_opt_a <- slv_tradeoff$best_per_rp |>
+# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+slv_opt_a <- slv_all_hl |>
   group_by(annual_rp) |>
+  filter(avg_f1 >= max(avg_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
 slv_opt_b <- slv_all_hl |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -1834,14 +1836,14 @@ build_topline_gt(
 
 cfg_gtm <- countries$GTM
 primera_lts_gtm <- 3
-postrera_lts_gtm <- 2
+postrera_lts_gtm <- 3
 
 impact_yrs_gtm <- impact_by_country$GTM$year
 target_rp_impact_gtm <- (EVAL_END - EVAL_START + 1 + 1) / length(impact_yrs_gtm)
 target_rp_gtm <- 3
 ```
 
-Guatemala uses departments Chiquimula (GT20) and Alta Verapaz (GT16) as the area of interest, with `r primera_lts_gtm` primera leadtimes and `r postrera_lts_gtm` postrera leadtimes. EM-DAT records `r length(impact_yrs_gtm)` impact years in `r EVAL_START`--`r EVAL_END`, giving an empirical impact RP of `r sprintf("%.1f", target_rp_gtm)` years.
+Guatemala uses departments Chiquimula (GT20), Jalapa (GT21), El Progreso (GT02), and Zacapa (GT19) as the area of interest, with `r primera_lts_gtm` primera leadtimes and `r postrera_lts_gtm` postrera leadtimes. EM-DAT records `r length(impact_yrs_gtm)` impact years in `r EVAL_START`--`r EVAL_END`, giving an empirical impact RP of `r sprintf("%.1f", target_rp_gtm)` years.
 
 **Impact Evaluation & Priority Filtering**
 
@@ -1928,18 +1930,19 @@ gtm_tradeoff <- plot_f1_tradeoff(gtm_combined, target_rp = target_rp_gtm, n_near
 
 gtm_all_hl <- gtm_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1, tiebroken by lowest CV
-gtm_opt_a <- gtm_tradeoff$best_per_rp |>
+# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+gtm_opt_a <- gtm_all_hl |>
   group_by(annual_rp) |>
+  filter(avg_f1 >= max(avg_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
 gtm_opt_b <- gtm_all_hl |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -1955,6 +1958,14 @@ gtm_ab <- bind_rows(gtm_opt_a, gtm_opt_b) |>
   mutate(option = LETTERS[row_number()]) |>
   ungroup() |>
   mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
+
+# Diagnostic: all candidates at RP ~2.9
+gtm_rp29 <- gtm_all_hl |>
+  filter(abs(annual_rp - 2.9) < 0.15) |>
+  select(annual_rp, all_of(threshold_cols_gtm), avg_f1, era5_tol_f1, all_cv, mean_cv) |>
+  arrange(all_cv)
+message(sprintf("GTM RP ~2.9 candidates: %d configs", nrow(gtm_rp29)))
+print(gtm_rp29, n = 40)
 
 # Uniform configs from PRE-filter pool (bypasses must-hit/should-hit)
 message("GTM uniform refs:")
@@ -2346,18 +2357,19 @@ gtmsn_tradeoff <- plot_f1_tradeoff(gtmsn_combined, target_rp = target_rp_gtmsn, 
 
 gtmsn_all_hl <- gtmsn_tradeoff$data |> filter(rp_group != "other")
 
-# Option A per RP: best avg_f1, tiebroken by lowest CV
-gtmsn_opt_a <- gtmsn_tradeoff$best_per_rp |>
+# Option A per RP: best avg_f1 (within tolerance), tiebroken by lowest CV
+gtmsn_opt_a <- gtmsn_all_hl |>
   group_by(annual_rp) |>
+  filter(avg_f1 >= max(avg_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
   mutate(option = "A", selection = "max avg F1")
 
-# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+# Option B per RP: best era5_tol_f1 (within tolerance), tiebroken by lowest CV
 gtmsn_opt_b <- gtmsn_all_hl |>
   group_by(annual_rp) |>
-  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  filter(era5_tol_f1 >= max(era5_tol_f1) - 0.01) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>

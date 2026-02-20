@@ -2362,7 +2362,6 @@ build_trigger_activation_gt <- function(config_row, trigger_data, df_joined,
                                         sort_by = "year",
                                         lt_labels = NULL) {
   years <- eval_start:eval_end
-  tl <- trigger_data$trigger_lookup
 
   if (is.null(lt_labels)) {
     lt_labels <- c(
@@ -2381,17 +2380,6 @@ build_trigger_activation_gt <- function(config_row, trigger_data, df_joined,
   }
   p_lts <- active_lts[startsWith(active_lts, "p")]
   s_lts <- active_lts[startsWith(active_lts, "s")]
-
-  # Get trigger years per LT
-  trigger_yrs_per_lt <- setNames(
-    lapply(active_lts, function(col) {
-      key <- sprintf("%s_%.4f", col, config_row[[col]])
-      yrs <- tl[[key]]
-      if (is.null(yrs)) return(integer(0))
-      yrs[yrs >= eval_start & yrs <= eval_end]
-    }),
-    active_lts
-  )
 
   # Forecast empirical RP per year per LT (computed from full dataset)
   fcst_rp_wide <- df_joined |>
@@ -2464,10 +2452,14 @@ build_trigger_activation_gt <- function(config_row, trigger_data, df_joined,
     tbl_data <- tbl_data |> left_join(emdat_interp_data, by = "year")
   }
 
-  # Mark triggered per LT
+  # Mark triggered per LT: green iff displayed forecast RP >= threshold RP
+  # (guarantees visual consistency with the RP values shown in the table)
   for (col in active_lts) {
     trig_col <- paste0("trig_", col)
-    tbl_data[[trig_col]] <- tbl_data$year %in% trigger_yrs_per_lt[[col]]
+    rp_col <- paste0("rp_", col)
+    threshold_rp <- config_row[[col]]
+    tbl_data[[trig_col]] <- !is.na(tbl_data[[rp_col]]) &
+      tbl_data[[rp_col]] >= threshold_rp
   }
 
   # Annual activation: TRUE if any LT triggered for this year

@@ -24,7 +24,7 @@ This chapter extends the skill assessment beyond Chiquimula (Guatemala) to exami
 
 - **Guatemala** (Chiquimula - GT20)
 - **Honduras** (El Paraíso + Francisco Morazán - HN07/HN08, area-weighted)
-- **El Salvador** (Ahuachapán + Santa Ana - SV01/SV12, area-weighted)
+- **El Salvador** (Ahuachapán + Santa Ana - SV01/SV12, area-weighted).
 
 We evaluate how skill varies by:
 
