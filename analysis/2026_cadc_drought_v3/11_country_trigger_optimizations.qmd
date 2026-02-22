@@ -829,17 +829,17 @@ build_topline_gt <- function(df_final, top_picks, trigger_data,
       locations = cells_column_spanners(spanners = "vs ERA5 Rainfall")
     ) |>
     opt_css(css = paste0(
-      ".yr-p{background:#a0ddd5;color:#333;padding:1px 4px;border-radius:3px;font-size:9px;display:inline-block;margin:1px;}",
-      ".yr-b{background:#3aaf9f;color:white;padding:1px 4px;border-radius:3px;font-size:9px;display:inline-block;margin:1px;}",
-      ".yr-s{background:#1a6b5a;color:white;padding:1px 4px;border-radius:3px;font-size:9px;display:inline-block;margin:1px;}",
+      ".yr-p{background:#4a90d9;color:white;padding:1px 4px;border-radius:3px;font-size:9px;display:inline-block;margin:1px;}",
+      ".yr-b{background:#2d8659;color:white;padding:1px 4px;border-radius:3px;font-size:9px;display:inline-block;margin:1px;}",
+      ".yr-s{background:#e67e22;color:white;padding:1px 4px;border-radius:3px;font-size:9px;display:inline-block;margin:1px;}",
       ".yr-notall{outline:2px solid #e74c3c;outline-offset:-1px;}"
     )) |>
     tab_source_note(
       html(paste0(
-        '<span class="yr-p" style="background:#a0ddd5;color:#333;padding:1px 5px;border-radius:3px;font-size:10px;">Primera</span> ',
-        '<span class="yr-b" style="background:#3aaf9f;color:white;padding:1px 5px;border-radius:3px;font-size:10px;">Both</span> ',
-        '<span class="yr-s" style="background:#1a6b5a;color:white;padding:1px 5px;border-radius:3px;font-size:10px;">Postrera</span> ',
-        '<span style="background:#3aaf9f;color:white;padding:1px 5px;border-radius:3px;font-size:10px;outline:2px solid #e74c3c;outline-offset:-1px;">Red outline</span> = not all configs fire'
+        '<span class="yr-p" style="background:#4a90d9;color:white;padding:1px 5px;border-radius:3px;font-size:10px;">Primera</span> ',
+        '<span class="yr-b" style="background:#2d8659;color:white;padding:1px 5px;border-radius:3px;font-size:10px;">Both</span> ',
+        '<span class="yr-s" style="background:#e67e22;color:white;padding:1px 5px;border-radius:3px;font-size:10px;">Postrera</span> ',
+        '<span style="background:#2d8659;color:white;padding:1px 5px;border-radius:3px;font-size:10px;outline:2px solid #e74c3c;outline-offset:-1px;">Red outline</span> = not all configs fire'
       ))
     ) |>
     tab_options(
