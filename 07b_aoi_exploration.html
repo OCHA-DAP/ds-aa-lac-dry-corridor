@@ -203,7 +203,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./11_country_trigger_optimizations.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Trigger Configuration: HND &amp; SLV</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Trigger Configurations</span></span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -246,6 +246,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#rp3-vs-rp4-drought-definition" id="toc-rp3-vs-rp4-drought-definition" class="nav-link" data-scroll-target="#rp3-vs-rp4-drought-definition"><span class="header-section-number">8.5</span> RP3 vs RP4 Drought Definition</a></li>
   <li><a href="#observations" id="toc-observations" class="nav-link" data-scroll-target="#observations"><span class="header-section-number">8.6</span> Observations</a></li>
+  <li><a href="#sec-start-network" id="toc-sec-start-network" class="nav-link" data-scroll-target="#sec-start-network"><span class="header-section-number">8.7</span> Start Network: Baja Verapaz &amp; Quiché</a>
+  <ul class="collapse">
+  <li><a href="#recommendation" id="toc-recommendation" class="nav-link" data-scroll-target="#recommendation"><span class="header-section-number">8.7.1</span> Recommendation</a></li>
+  </ul></li>
+  <li><a href="#sec-sn-appendix" id="toc-sec-sn-appendix" class="nav-link" data-scroll-target="#sec-sn-appendix"><span class="header-section-number">8.8</span> Appendix: Admin 2 Skill Decomposition for GT14+GT15</a>
+  <ul class="collapse">
+  <li><a href="#correlation-matrix" id="toc-correlation-matrix" class="nav-link" data-scroll-target="#correlation-matrix"><span class="header-section-number">8.8.1</span> Correlation Matrix</a></li>
+  <li><a href="#admin-2-forecast-skill-map" id="toc-admin-2-forecast-skill-map" class="nav-link" data-scroll-target="#admin-2-forecast-skill-map"><span class="header-section-number">8.8.2</span> Admin 2 Forecast Skill Map</a></li>
+  <li><a href="#per-lt-leave-one-out-primera-offenders" id="toc-per-lt-leave-one-out-primera-offenders" class="nav-link" data-scroll-target="#per-lt-leave-one-out-primera-offenders"><span class="header-section-number">8.8.3</span> Per-LT Leave-One-Out: Primera Offenders</a></li>
+  <li><a href="#forecast-similarity-clustering" id="toc-forecast-similarity-clustering" class="nav-link" data-scroll-target="#forecast-similarity-clustering"><span class="header-section-number">8.8.4</span> Forecast Similarity Clustering</a></li>
+  <li><a href="#qualitative-admin-2-removal" id="toc-qualitative-admin-2-removal" class="nav-link" data-scroll-target="#qualitative-admin-2-removal"><span class="header-section-number">8.8.5</span> Qualitative Admin 2 Removal</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -511,7 +523,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Get admin-1 boundaries</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>gdf_gtm <span class="ot">&lt;-</span> cumulus<span class="sc">::</span><span class="fu">download_fieldmaps_sf</span>(<span class="at">iso =</span> <span class="st">"gtm"</span>, <span class="at">layer =</span> <span class="st">"gtm_adm1"</span>)<span class="sc">$</span>gtm_adm1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>gdf_gtm <span class="ot">&lt;-</span> cumulus<span class="sc">::</span><span class="fu">download_fieldmaps_sf</span>(<span class="at">iso3 =</span> <span class="st">"gtm"</span>, <span class="at">layer =</span> <span class="st">"gtm_adm1"</span>)<span class="sc">$</span>gtm_adm1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="cell">
@@ -938,23 +950,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_label</span>(<span class="at">aoi_config =</span> <span class="st">"AOI Configuration"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="tylxgkngbe" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#tylxgkngbe table {
+<div id="rdcanhycsp" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#rdcanhycsp table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#tylxgkngbe thead, #tylxgkngbe tbody, #tylxgkngbe tfoot, #tylxgkngbe tr, #tylxgkngbe td, #tylxgkngbe th {
+#rdcanhycsp thead, #rdcanhycsp tbody, #rdcanhycsp tfoot, #rdcanhycsp tr, #rdcanhycsp td, #rdcanhycsp th {
   border-style: none;
 }
 
-#tylxgkngbe p {
+#rdcanhycsp p {
   margin: 0;
   padding: 0;
 }
 
-#tylxgkngbe .gt_table {
+#rdcanhycsp .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -980,12 +992,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-left-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_caption {
+#rdcanhycsp .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#tylxgkngbe .gt_title {
+#rdcanhycsp .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -997,7 +1009,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-width: 0;
 }
 
-#tylxgkngbe .gt_subtitle {
+#rdcanhycsp .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1009,7 +1021,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-top-width: 0;
 }
 
-#tylxgkngbe .gt_heading {
+#rdcanhycsp .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1021,13 +1033,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_bottom_border {
+#rdcanhycsp .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_col_headings {
+#rdcanhycsp .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1042,7 +1054,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_col_heading {
+#rdcanhycsp .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1062,7 +1074,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   overflow-x: hidden;
 }
 
-#tylxgkngbe .gt_column_spanner_outer {
+#rdcanhycsp .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1074,15 +1086,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 4px;
 }
 
-#tylxgkngbe .gt_column_spanner_outer:first-child {
+#rdcanhycsp .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#tylxgkngbe .gt_column_spanner_outer:last-child {
+#rdcanhycsp .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#tylxgkngbe .gt_column_spanner {
+#rdcanhycsp .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1094,11 +1106,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   width: 100%;
 }
 
-#tylxgkngbe .gt_spanner_row {
+#rdcanhycsp .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#tylxgkngbe .gt_group_heading {
+#rdcanhycsp .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1124,7 +1136,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   text-align: left;
 }
 
-#tylxgkngbe .gt_empty_group_heading {
+#rdcanhycsp .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1139,15 +1151,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   vertical-align: middle;
 }
 
-#tylxgkngbe .gt_from_md > :first-child {
+#rdcanhycsp .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#tylxgkngbe .gt_from_md > :last-child {
+#rdcanhycsp .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#tylxgkngbe .gt_row {
+#rdcanhycsp .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1166,7 +1178,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   overflow-x: hidden;
 }
 
-#tylxgkngbe .gt_stub {
+#rdcanhycsp .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1179,7 +1191,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#tylxgkngbe .gt_stub_row_group {
+#rdcanhycsp .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1193,15 +1205,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   vertical-align: top;
 }
 
-#tylxgkngbe .gt_row_group_first td {
+#rdcanhycsp .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#tylxgkngbe .gt_row_group_first th {
+#rdcanhycsp .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#tylxgkngbe .gt_summary_row {
+#rdcanhycsp .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1211,16 +1223,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#tylxgkngbe .gt_first_summary_row {
+#rdcanhycsp .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_first_summary_row.thick {
+#rdcanhycsp .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#tylxgkngbe .gt_last_summary_row {
+#rdcanhycsp .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1230,7 +1242,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_grand_summary_row {
+#rdcanhycsp .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1240,7 +1252,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#tylxgkngbe .gt_first_grand_summary_row {
+#rdcanhycsp .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1250,7 +1262,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-top-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_last_grand_summary_row_top {
+#rdcanhycsp .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1260,11 +1272,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_striped {
+#rdcanhycsp .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#tylxgkngbe .gt_table_body {
+#rdcanhycsp .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1273,7 +1285,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_footnotes {
+#rdcanhycsp .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1287,7 +1299,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_footnote {
+#rdcanhycsp .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1296,7 +1308,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#tylxgkngbe .gt_sourcenotes {
+#rdcanhycsp .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1310,7 +1322,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#tylxgkngbe .gt_sourcenote {
+#rdcanhycsp .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1318,63 +1330,63 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#tylxgkngbe .gt_left {
+#rdcanhycsp .gt_left {
   text-align: left;
 }
 
-#tylxgkngbe .gt_center {
+#rdcanhycsp .gt_center {
   text-align: center;
 }
 
-#tylxgkngbe .gt_right {
+#rdcanhycsp .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#tylxgkngbe .gt_font_normal {
+#rdcanhycsp .gt_font_normal {
   font-weight: normal;
 }
 
-#tylxgkngbe .gt_font_bold {
+#rdcanhycsp .gt_font_bold {
   font-weight: bold;
 }
 
-#tylxgkngbe .gt_font_italic {
+#rdcanhycsp .gt_font_italic {
   font-style: italic;
 }
 
-#tylxgkngbe .gt_super {
+#rdcanhycsp .gt_super {
   font-size: 65%;
 }
 
-#tylxgkngbe .gt_footnote_marks {
+#rdcanhycsp .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#tylxgkngbe .gt_asterisk {
+#rdcanhycsp .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#tylxgkngbe .gt_indent_1 {
+#rdcanhycsp .gt_indent_1 {
   text-indent: 5px;
 }
 
-#tylxgkngbe .gt_indent_2 {
+#rdcanhycsp .gt_indent_2 {
   text-indent: 10px;
 }
 
-#tylxgkngbe .gt_indent_3 {
+#rdcanhycsp .gt_indent_3 {
   text-indent: 15px;
 }
 
-#tylxgkngbe .gt_indent_4 {
+#rdcanhycsp .gt_indent_4 {
   text-indent: 20px;
 }
 
-#tylxgkngbe .gt_indent_5 {
+#rdcanhycsp .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1637,23 +1649,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_label</span>(<span class="at">aoi_config =</span> <span class="st">"AOI Configuration"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="rgfsrxtlwu" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#rgfsrxtlwu table {
+<div id="cjjpeunucn" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#cjjpeunucn table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#rgfsrxtlwu thead, #rgfsrxtlwu tbody, #rgfsrxtlwu tfoot, #rgfsrxtlwu tr, #rgfsrxtlwu td, #rgfsrxtlwu th {
+#cjjpeunucn thead, #cjjpeunucn tbody, #cjjpeunucn tfoot, #cjjpeunucn tr, #cjjpeunucn td, #cjjpeunucn th {
   border-style: none;
 }
 
-#rgfsrxtlwu p {
+#cjjpeunucn p {
   margin: 0;
   padding: 0;
 }
 
-#rgfsrxtlwu .gt_table {
+#cjjpeunucn .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1679,12 +1691,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-left-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_caption {
+#cjjpeunucn .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#rgfsrxtlwu .gt_title {
+#cjjpeunucn .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1696,7 +1708,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-width: 0;
 }
 
-#rgfsrxtlwu .gt_subtitle {
+#cjjpeunucn .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1708,7 +1720,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-top-width: 0;
 }
 
-#rgfsrxtlwu .gt_heading {
+#cjjpeunucn .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1720,13 +1732,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_bottom_border {
+#cjjpeunucn .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_col_headings {
+#cjjpeunucn .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1741,7 +1753,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_col_heading {
+#cjjpeunucn .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1761,7 +1773,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   overflow-x: hidden;
 }
 
-#rgfsrxtlwu .gt_column_spanner_outer {
+#cjjpeunucn .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1773,15 +1785,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 4px;
 }
 
-#rgfsrxtlwu .gt_column_spanner_outer:first-child {
+#cjjpeunucn .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#rgfsrxtlwu .gt_column_spanner_outer:last-child {
+#cjjpeunucn .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#rgfsrxtlwu .gt_column_spanner {
+#cjjpeunucn .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1793,11 +1805,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   width: 100%;
 }
 
-#rgfsrxtlwu .gt_spanner_row {
+#cjjpeunucn .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#rgfsrxtlwu .gt_group_heading {
+#cjjpeunucn .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1823,7 +1835,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   text-align: left;
 }
 
-#rgfsrxtlwu .gt_empty_group_heading {
+#cjjpeunucn .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1838,15 +1850,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   vertical-align: middle;
 }
 
-#rgfsrxtlwu .gt_from_md > :first-child {
+#cjjpeunucn .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#rgfsrxtlwu .gt_from_md > :last-child {
+#cjjpeunucn .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#rgfsrxtlwu .gt_row {
+#cjjpeunucn .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1865,7 +1877,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   overflow-x: hidden;
 }
 
-#rgfsrxtlwu .gt_stub {
+#cjjpeunucn .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1878,7 +1890,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#rgfsrxtlwu .gt_stub_row_group {
+#cjjpeunucn .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1892,15 +1904,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   vertical-align: top;
 }
 
-#rgfsrxtlwu .gt_row_group_first td {
+#cjjpeunucn .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#rgfsrxtlwu .gt_row_group_first th {
+#cjjpeunucn .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#rgfsrxtlwu .gt_summary_row {
+#cjjpeunucn .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1910,16 +1922,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#rgfsrxtlwu .gt_first_summary_row {
+#cjjpeunucn .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_first_summary_row.thick {
+#cjjpeunucn .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#rgfsrxtlwu .gt_last_summary_row {
+#cjjpeunucn .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1929,7 +1941,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_grand_summary_row {
+#cjjpeunucn .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1939,7 +1951,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#rgfsrxtlwu .gt_first_grand_summary_row {
+#cjjpeunucn .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1949,7 +1961,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-top-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_last_grand_summary_row_top {
+#cjjpeunucn .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1959,11 +1971,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_striped {
+#cjjpeunucn .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#rgfsrxtlwu .gt_table_body {
+#cjjpeunucn .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1972,7 +1984,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-bottom-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_footnotes {
+#cjjpeunucn .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1986,7 +1998,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_footnote {
+#cjjpeunucn .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1995,7 +2007,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#rgfsrxtlwu .gt_sourcenotes {
+#cjjpeunucn .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2009,7 +2021,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   border-right-color: #D3D3D3;
 }
 
-#rgfsrxtlwu .gt_sourcenote {
+#cjjpeunucn .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2017,63 +2029,63 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   padding-right: 5px;
 }
 
-#rgfsrxtlwu .gt_left {
+#cjjpeunucn .gt_left {
   text-align: left;
 }
 
-#rgfsrxtlwu .gt_center {
+#cjjpeunucn .gt_center {
   text-align: center;
 }
 
-#rgfsrxtlwu .gt_right {
+#cjjpeunucn .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#rgfsrxtlwu .gt_font_normal {
+#cjjpeunucn .gt_font_normal {
   font-weight: normal;
 }
 
-#rgfsrxtlwu .gt_font_bold {
+#cjjpeunucn .gt_font_bold {
   font-weight: bold;
 }
 
-#rgfsrxtlwu .gt_font_italic {
+#cjjpeunucn .gt_font_italic {
   font-style: italic;
 }
 
-#rgfsrxtlwu .gt_super {
+#cjjpeunucn .gt_super {
   font-size: 65%;
 }
 
-#rgfsrxtlwu .gt_footnote_marks {
+#cjjpeunucn .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#rgfsrxtlwu .gt_asterisk {
+#cjjpeunucn .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#rgfsrxtlwu .gt_indent_1 {
+#cjjpeunucn .gt_indent_1 {
   text-indent: 5px;
 }
 
-#rgfsrxtlwu .gt_indent_2 {
+#cjjpeunucn .gt_indent_2 {
   text-indent: 10px;
 }
 
-#rgfsrxtlwu .gt_indent_3 {
+#cjjpeunucn .gt_indent_3 {
   text-indent: 15px;
 }
 
-#rgfsrxtlwu .gt_indent_4 {
+#cjjpeunucn .gt_indent_4 {
   text-indent: 20px;
 }
 
-#rgfsrxtlwu .gt_indent_5 {
+#cjjpeunucn .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -2458,8 +2470,2382 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="observations" class="level2" data-number="8.6">
 <h2 data-number="8.6" class="anchored" data-anchor-id="observations"><span class="header-section-number">8.6</span> Observations</h2>
 <p><em>To be filled in after running the analysis.</em></p>
+</section>
+<section id="sec-start-network" class="level2" data-number="8.7">
+<h2 data-number="8.7" class="anchored" data-anchor-id="sec-start-network"><span class="header-section-number">8.7</span> Start Network: Baja Verapaz &amp; Quiché</h2>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Partner-specific analysis
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The Start Network is exploring a separate trigger for <strong>Baja Verapaz (GT15)</strong> and <strong>Quiché (GT14)</strong>. This section summarises the AOI skill assessment and recommended monitoring configuration. Detailed admin 2 decomposition is in <a href="#sec-sn-appendix" class="quarto-xref"><span>Section 8.8</span></a>.</p>
+</div>
+</div>
+<p>The Guatemala bar charts above already include Quiché, Baja Verapaz, and their combination (GT14+GT15). At the RP4 drought definition, the merged GT14+GT15 AOI exceeds ROC-AUC 0.7 at primera LT0 and LT1, and performs well for postrera. The main weak point is primera LT2, where the merged skill is dragged down by low-skill zones in northern Quiché. However, Baja Verapaz alone retains adequate skill at LT2.</p>
+<section id="recommendation" class="level3" data-number="8.7.1">
+<h3 data-number="8.7.1" class="anchored" data-anchor-id="recommendation"><span class="header-section-number">8.7.1</span> Recommendation</h3>
+<p>For the Start Network trigger covering Baja Verapaz and Quiché:</p>
+<ul>
+<li><strong>Primera LT0-LT1 and all postrera lead times</strong>: Use the merged <strong>GT14+GT15</strong> AOI. The combined area has ROC-AUC above 0.7 at these lead times, and spatial averaging benefits skill.</li>
+<li><strong>Primera LT2</strong>: Monitor <strong>Baja Verapaz (GT15) only</strong>. The merged AOI falls below acceptable skill at this lead time due to poorly-predicted zones in northern Quiché. If Baja Verapaz activates at primera LT2, the Start Network can still decide how best to prioritise resources between the two departments.</li>
+</ul>
+</section>
+</section>
+<section id="sec-sn-appendix" class="level2" data-number="8.8">
+<h2 data-number="8.8" class="anchored" data-anchor-id="sec-sn-appendix"><span class="header-section-number">8.8</span> Appendix: Admin 2 Skill Decomposition for GT14+GT15</h2>
+<p>This appendix contains supplementary spatial analysis supporting the Start Network recommendation above, including inter-departmental rainfall correlation, admin 2-level forecast skill maps, leave-one-out decomposition, and forecast-similarity clustering.</p>
+<section id="correlation-matrix" class="level3" data-number="8.8.1">
+<h3 data-number="8.8.1" class="anchored" data-anchor-id="correlation-matrix"><span class="header-section-number">8.8.1</span> Correlation Matrix</h3>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(corrplot)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Get department names from spatial data</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>name_col <span class="ot">&lt;-</span> <span class="fu">intersect</span>(<span class="fu">c</span>(<span class="st">"ADM1_ES"</span>, <span class="st">"adm1_es"</span>, <span class="st">"ADM1_EN"</span>, <span class="st">"adm1_en"</span>, <span class="st">"shapeName"</span>), <span class="fu">names</span>(gdf_gtm))[<span class="dv">1</span>]</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>gtm_names <span class="ot">&lt;-</span> gdf_gtm <span class="sc">|&gt;</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_drop_geometry</span>() <span class="sc">|&gt;</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col, <span class="at">dept_name =</span> <span class="sc">!!</span>name_col) <span class="sc">|&gt;</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pcode, dept_name) <span class="sc">|&gt;</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (szn <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>)) {</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  era5_wide <span class="ot">&lt;-</span> df_gtm_seasonal <span class="sc">|&gt;</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(window <span class="sc">==</span> szn) <span class="sc">|&gt;</span></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(gtm_names, <span class="at">by =</span> <span class="st">"pcode"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">label =</span> <span class="fu">paste0</span>(dept_name, <span class="st">" ("</span>, pcode, <span class="st">")"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(year, label, obs_mm) <span class="sc">|&gt;</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> label, <span class="at">values_from =</span> obs_mm)</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>  cor_mat <span class="ot">&lt;-</span> <span class="fu">cor</span>(era5_wide <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>year), <span class="at">method =</span> <span class="st">"spearman"</span>, <span class="at">use =</span> <span class="st">"complete.obs"</span>)</span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">corrplot</span>(cor_mat, <span class="at">method =</span> <span class="st">"color"</span>, <span class="at">type =</span> <span class="st">"lower"</span>,</span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>           <span class="at">tl.col =</span> <span class="st">"black"</span>, <span class="at">tl.cex =</span> <span class="fl">0.55</span>, <span class="at">tl.srt =</span> <span class="dv">45</span>,</span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>           <span class="at">addCoef.col =</span> <span class="st">"black"</span>, <span class="at">number.cex =</span> <span class="fl">0.45</span>,</span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>           <span class="at">cl.cex =</span> <span class="fl">0.7</span>, <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">0</span>),</span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>           <span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">"ERA5 "</span>, tools<span class="sc">::</span><span class="fu">toTitleCase</span>(szn),</span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>                          <span class="st">" Rainfall: Spearman Correlation (1981-2024)"</span>))</span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-gtm-corrplot-1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-gtm-corrplot-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-gtm-corrplot-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gtm-corrplot-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.1: Spearman rank correlation of ERA5 seasonal rainfall across all Guatemala admin 1 departments (1981-2024).
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div id="fig-gtm-corrplot-2" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-gtm-corrplot-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-gtm-corrplot-2.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gtm-corrplot-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.2: Spearman rank correlation of ERA5 seasonal rainfall across all Guatemala admin 1 departments (1981-2024).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="admin-2-forecast-skill-map" class="level3" data-number="8.8.2">
+<h3 data-number="8.8.2" class="anchored" data-anchor-id="admin-2-forecast-skill-map"><span class="header-section-number">8.8.2</span> Admin 2 Forecast Skill Map</h3>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">pg_con</span>()</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>df_seas5_gtm_adm2 <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"seas5"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(iso3 <span class="sc">==</span> <span class="st">"GTM"</span>, adm_level <span class="sc">==</span> <span class="dv">2</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>df_era5_gtm_adm2 <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"era5"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(iso3 <span class="sc">==</span> <span class="st">"GTM"</span>, adm_level <span class="sc">==</span> <span class="dv">2</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>gdf_gtm_adm2 <span class="ot">&lt;-</span> cumulus<span class="sc">::</span><span class="fu">download_fieldmaps_sf</span>(<span class="at">iso3 =</span> <span class="st">"gtm"</span>, <span class="at">layer =</span> <span class="st">"gtm_adm2"</span>)<span class="sc">$</span>gtm_adm2</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Process to seasonal totals</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>df_seas5_adm2_mm <span class="ot">&lt;-</span> df_seas5_gtm_adm2 <span class="sc">|&gt;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">value_mm =</span> <span class="fu">days_in_month</span>(valid_date) <span class="sc">*</span> mean)</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>df_seas5_adm2_seasonal <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">seas5_aggregate_forecast</span>(df_seas5_adm2_mm, <span class="at">value =</span> <span class="st">"value_mm"</span>,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">valid_months =</span> PRIMERA_MONTHS,</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"iso3"</span>, <span class="st">"pcode"</span>, <span class="st">"issued_date"</span>)) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">window =</span> <span class="st">"primera"</span>),</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">seas5_aggregate_forecast</span>(df_seas5_adm2_mm, <span class="at">value =</span> <span class="st">"value_mm"</span>,</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">valid_months =</span> POSTRERA_MONTHS,</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"iso3"</span>, <span class="st">"pcode"</span>, <span class="st">"issued_date"</span>)) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">window =</span> <span class="st">"postrera"</span>)</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">fcst_mm =</span> value_mm) <span class="sc">|&gt;</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="fu">year</span>(issued_date), <span class="at">issued_month =</span> <span class="fu">month</span>(issued_date)) <span class="sc">|&gt;</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>    (window <span class="sc">==</span> <span class="st">"primera"</span> <span class="sc">&amp;</span> issued_month <span class="sc">%in%</span> PRIMERA_ISSUED_MONTHS) <span class="sc">|</span></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>    (window <span class="sc">==</span> <span class="st">"postrera"</span> <span class="sc">&amp;</span> issued_month <span class="sc">%in%</span> POSTRERA_ISSUED_MONTHS)</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>df_era5_adm2_monthly <span class="ot">&lt;-</span> df_era5_gtm_adm2 <span class="sc">|&gt;</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="fu">year</span>(valid_date), <span class="at">month =</span> <span class="fu">month</span>(valid_date),</span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>         <span class="at">value_mm =</span> mean <span class="sc">*</span> <span class="fu">days_in_month</span>(valid_date))</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>df_era5_adm2_seasonal <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>  df_era5_adm2_monthly <span class="sc">|&gt;</span></span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(month <span class="sc">%in%</span> PRIMERA_MONTHS) <span class="sc">|&gt;</span></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(pcode, iso3, year) <span class="sc">|&gt;</span></span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">obs_mm =</span> <span class="fu">sum</span>(value_mm), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">window =</span> <span class="st">"primera"</span>),</span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a>  df_era5_adm2_monthly <span class="sc">|&gt;</span></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(month <span class="sc">%in%</span> POSTRERA_MONTHS) <span class="sc">|&gt;</span></span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(pcode, iso3, year) <span class="sc">|&gt;</span></span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">obs_mm =</span> <span class="fu">sum</span>(value_mm), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">window =</span> <span class="st">"postrera"</span>)</span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a>df_adm2_joined <span class="ot">&lt;-</span> df_seas5_adm2_seasonal <span class="sc">|&gt;</span></span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(df_era5_adm2_seasonal <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, year, window, obs_mm),</span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a>            <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"year"</span>, <span class="st">"window"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(obs_mm))</span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute ROC-AUC per pcode/window/leadtime</span></span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a>drought_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"drought"</span>, <span class="st">"no_drought"</span>)</span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a>baseline_start <span class="ot">&lt;-</span> <span class="dv">1981</span></span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a>baseline_end <span class="ot">&lt;-</span> <span class="dv">2024</span></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a>rp_target <span class="ot">&lt;-</span> <span class="dv">4</span></span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a>df_adm2_baseline <span class="ot">&lt;-</span> df_adm2_joined <span class="sc">|&gt;</span></span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(year <span class="sc">&gt;=</span> baseline_start, year <span class="sc">&lt;=</span> baseline_end)</span>
+<span id="cb23-50"><a href="#cb23-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-51"><a href="#cb23-51" aria-hidden="true" tabindex="-1"></a>obs_thresh_adm2 <span class="ot">&lt;-</span> df_adm2_baseline <span class="sc">|&gt;</span></span>
+<span id="cb23-52"><a href="#cb23-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(pcode, window) <span class="sc">|&gt;</span></span>
+<span id="cb23-53"><a href="#cb23-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">obs_thresh =</span> <span class="fu">calc_rp_threshold</span>(obs_mm, rp_target, <span class="sc">-</span><span class="dv">1</span>), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb23-54"><a href="#cb23-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-55"><a href="#cb23-55" aria-hidden="true" tabindex="-1"></a>fcst_thresh_adm2 <span class="ot">&lt;-</span> df_adm2_baseline <span class="sc">|&gt;</span></span>
+<span id="cb23-56"><a href="#cb23-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(pcode, window, leadtime) <span class="sc">|&gt;</span></span>
+<span id="cb23-57"><a href="#cb23-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">fcst_thresh =</span> <span class="fu">calc_rp_threshold</span>(fcst_mm, rp_target, <span class="sc">-</span><span class="dv">1</span>), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb23-58"><a href="#cb23-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-59"><a href="#cb23-59" aria-hidden="true" tabindex="-1"></a>df_adm2_skill <span class="ot">&lt;-</span> df_adm2_baseline <span class="sc">|&gt;</span></span>
+<span id="cb23-60"><a href="#cb23-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(obs_thresh_adm2, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"window"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-61"><a href="#cb23-61" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(fcst_thresh_adm2, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"pcode"</span>, <span class="st">"window"</span>, <span class="st">"leadtime"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-62"><a href="#cb23-62" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb23-63"><a href="#cb23-63" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> <span class="fu">fct</span>(<span class="fu">if_else</span>(obs_mm <span class="sc">&lt;=</span> obs_thresh, <span class="st">"drought"</span>, <span class="st">"no_drought"</span>),</span>
+<span id="cb23-64"><a href="#cb23-64" aria-hidden="true" tabindex="-1"></a>                <span class="at">levels =</span> drought_levels),</span>
+<span id="cb23-65"><a href="#cb23-65" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> <span class="fu">fct</span>(<span class="fu">if_else</span>(fcst_mm <span class="sc">&lt;=</span> fcst_thresh, <span class="st">"drought"</span>, <span class="st">"no_drought"</span>),</span>
+<span id="cb23-66"><a href="#cb23-66" aria-hidden="true" tabindex="-1"></a>                   <span class="at">levels =</span> drought_levels)</span>
+<span id="cb23-67"><a href="#cb23-67" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb23-68"><a href="#cb23-68" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(truth), <span class="sc">!</span><span class="fu">is.na</span>(estimate)) <span class="sc">|&gt;</span></span>
+<span id="cb23-69"><a href="#cb23-69" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(pcode, window, leadtime) <span class="sc">|&gt;</span></span>
+<span id="cb23-70"><a href="#cb23-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb23-71"><a href="#cb23-71" aria-hidden="true" tabindex="-1"></a>    <span class="at">roc_auc =</span> <span class="fu">tryCatch</span>(<span class="fu">roc_auc_vec</span>(truth, <span class="sc">-</span>fcst_mm, <span class="at">event_level =</span> <span class="st">"first"</span>),</span>
+<span id="cb23-72"><a href="#cb23-72" aria-hidden="true" tabindex="-1"></a>                       <span class="at">error =</span> <span class="cf">function</span>(e) <span class="cn">NA_real_</span>),</span>
+<span id="cb23-73"><a href="#cb23-73" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb23-74"><a href="#cb23-74" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Normalise leadtime per window</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>df_adm2_skill <span class="ot">&lt;-</span> df_adm2_skill <span class="sc">|&gt;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(window) <span class="sc">|&gt;</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">leadtime =</span> leadtime <span class="sc">-</span> <span class="fu">min</span>(leadtime)) <span class="sc">|&gt;</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>pcode_col_adm2 <span class="ot">&lt;-</span> <span class="fu">intersect</span>(<span class="fu">c</span>(<span class="st">"ADM2_PCODE"</span>, <span class="st">"adm2_pcode"</span>, <span class="st">"pcode"</span>), <span class="fu">names</span>(gdf_gtm_adm2))[<span class="dv">1</span>]</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>gdf_adm2_skill <span class="ot">&lt;-</span> gdf_gtm_adm2 <span class="sc">|&gt;</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col_adm2) <span class="sc">|&gt;</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(df_adm2_skill, <span class="at">by =</span> <span class="st">"pcode"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(window)) <span class="sc">|&gt;</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">factor</span>(window,</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"primera"</span>, <span class="st">"postrera"</span>),</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Primera (May-Aug)"</span>, <span class="st">"Postrera (Sep-Nov)"</span>)</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime)</span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Admin 1 borders for reference</span></span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a>gdf_adm1_border <span class="ot">&lt;-</span> gdf_gtm <span class="sc">|&gt;</span></span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col) <span class="sc">|&gt;</span></span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_union</span>() <span class="sc">|&gt;</span></span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_cast</span>(<span class="st">"MULTILINESTRING"</span>)</span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(gdf_adm2_skill) <span class="sc">+</span></span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> roc_auc), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">data =</span> gdf_gtm <span class="sc">|&gt;</span> <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col),</span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a>          <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"grey40"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb24-32"><a href="#cb24-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(</span>
+<span id="cb24-33"><a href="#cb24-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">low =</span> <span class="st">"#D73027"</span>, <span class="at">mid =</span> <span class="st">"#FFFFBF"</span>, <span class="at">high =</span> <span class="st">"#1A9850"</span>,</span>
+<span id="cb24-34"><a href="#cb24-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">midpoint =</span> <span class="fl">0.65</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="fl">0.3</span>, <span class="dv">1</span>), <span class="at">name =</span> <span class="st">"ROC-AUC"</span>,</span>
+<span id="cb24-35"><a href="#cb24-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">oob =</span> scales<span class="sc">::</span>squish, <span class="at">na.value =</span> <span class="st">"grey90"</span></span>
+<span id="cb24-36"><a href="#cb24-36" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb24-37"><a href="#cb24-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb24-38"><a href="#cb24-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Guatemala Admin 2: SEAS5 Forecast Skill (ROC-AUC)"</span>,</span>
+<span id="cb24-39"><a href="#cb24-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"RP4 drought | 1981-2024 baseline | Admin 1 borders in grey"</span></span>
+<span id="cb24-40"><a href="#cb24-40" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb24-41"><a href="#cb24-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb24-42"><a href="#cb24-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb24-43"><a href="#cb24-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb24-44"><a href="#cb24-44" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"right"</span>,</span>
+<span id="cb24-45"><a href="#cb24-45" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb24-46"><a href="#cb24-46" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>)</span>
+<span id="cb24-47"><a href="#cb24-47" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-gtm-adm2-roc-map" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-gtm-adm2-roc-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-gtm-adm2-roc-map-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gtm-adm2-roc-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.3: ROC-AUC for predicting 1-in-4 year drought at admin 2 level across Guatemala (1981-2024).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter to admin 2s within Baja Verapaz (GT15) and Quiché (GT14)</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>zoom_adm1 <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"GT14"</span>, <span class="st">"GT15"</span>)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>gdf_zoom <span class="ot">&lt;-</span> gdf_adm2_skill <span class="sc">|&gt;</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">substr</span>(pcode, <span class="dv">1</span>, <span class="dv">4</span>) <span class="sc">%in%</span> zoom_adm1)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Subset with high skill for purple highlight</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>gdf_high_skill <span class="ot">&lt;-</span> gdf_zoom <span class="sc">|&gt;</span> <span class="fu">filter</span>(roc_auc <span class="sc">&gt;=</span> <span class="fl">0.7</span>)</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Admin 1 borders within zoom area</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>gdf_adm1_zoom <span class="ot">&lt;-</span> gdf_gtm <span class="sc">|&gt;</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col) <span class="sc">|&gt;</span></span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(pcode <span class="sc">%in%</span> zoom_adm1)</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Centroid labels with ROC-AUC score</span></span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>gdf_zoom_centroids <span class="ot">&lt;-</span> <span class="fu">st_centroid</span>(gdf_zoom) <span class="sc">|&gt;</span></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">roc_label =</span> <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, roc_auc))</span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(gdf_zoom) <span class="sc">+</span></span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> roc_auc), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">data =</span> gdf_high_skill, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"#9B30FF"</span>, <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">data =</span> gdf_adm1_zoom, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.5</span>, <span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="at">data =</span> gdf_zoom_centroids, <span class="fu">aes</span>(<span class="at">label =</span> roc_label),</span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>               <span class="at">size =</span> <span class="fl">2.2</span>, <span class="at">color =</span> <span class="st">"grey20"</span>) <span class="sc">+</span></span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(lt_label <span class="sc">~</span> window_label) <span class="sc">+</span></span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(</span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">low =</span> <span class="st">"#D73027"</span>, <span class="at">mid =</span> <span class="st">"#FFFFBF"</span>, <span class="at">high =</span> <span class="st">"#1A9850"</span>,</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">midpoint =</span> <span class="fl">0.65</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="fl">0.3</span>, <span class="dv">1</span>), <span class="at">name =</span> <span class="st">"ROC-AUC"</span>,</span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">oob =</span> scales<span class="sc">::</span>squish, <span class="at">na.value =</span> <span class="st">"grey90"</span></span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Baja Verapaz &amp; Quiché: Admin 2 Forecast Skill (ROC-AUC)"</span>,</span>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"RP4 drought | 1981-2024 baseline | Purple = ROC-AUC \u2265 0.7"</span></span>
+<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">strip.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"right"</span>,</span>
+<span id="cb25-38"><a href="#cb25-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb25-39"><a href="#cb25-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>)</span>
+<span id="cb25-40"><a href="#cb25-40" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-gtm-adm2-roc-map-zoom" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-gtm-adm2-roc-map-zoom-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-gtm-adm2-roc-map-zoom-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gtm-adm2-roc-map-zoom-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.4: ROC-AUC zoomed to Baja Verapaz &amp; Quiché. Purple borders highlight admin 2 zones with ROC-AUC &gt;= 0.7.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Admin 2 pixel weights for GT14+GT15</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">pg_con</span>()</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>df_weights_adm2 <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, <span class="st">"polygon"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(pcode, as.character)) <span class="sc">|&gt;</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(adm_level <span class="sc">==</span> <span class="dv">2</span>, iso3 <span class="sc">==</span> <span class="st">"GTM"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pcode, seas5_n_upsampled_pixels) <span class="sc">|&gt;</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect</span>() <span class="sc">|&gt;</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">substr</span>(pcode, <span class="dv">1</span>, <span class="dv">4</span>) <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"GT14"</span>, <span class="st">"GT15"</span>))</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>sn_adm1 <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"GT14"</span>, <span class="st">"GT15"</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter admin 2 joined data to GT14+GT15 (already loaded from earlier chunks)</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>df_sn_joined <span class="ot">&lt;-</span> df_adm2_joined <span class="sc">|&gt;</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">substr</span>(pcode, <span class="dv">1</span>, <span class="dv">4</span>) <span class="sc">%in%</span> sn_adm1) <span class="sc">|&gt;</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(year <span class="sc">&gt;=</span> <span class="dv">1981</span>, year <span class="sc">&lt;=</span> <span class="dv">2024</span>) <span class="sc">|&gt;</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(window) <span class="sc">|&gt;</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">leadtime =</span> leadtime <span class="sc">-</span> <span class="fu">min</span>(leadtime)) <span class="sc">|&gt;</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>sn_all_pcodes <span class="ot">&lt;-</span> <span class="fu">unique</span>(df_sn_joined<span class="sc">$</span>pcode)</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"Admin 2 zones in GT14+GT15: %d</span><span class="sc">\n</span><span class="st">"</span>, <span class="fu">length</span>(sn_all_pcodes)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Admin 2 zones in GT14+GT15: 29</code></pre>
+</div>
+</div>
+</section>
+<section id="per-lt-leave-one-out-primera-offenders" class="level3" data-number="8.8.3">
+<h3 data-number="8.8.3" class="anchored" data-anchor-id="per-lt-leave-one-out-primera-offenders"><span class="header-section-number">8.8.3</span> Per-LT Leave-One-Out: Primera Offenders</h3>
+<p>For each primera lead time, we compute the change in merged ROC-AUC when each admin 2 zone is removed. Green zones are contributors (removing them hurts); red zones are offenders (removing them helps). Individual LOO deltas are small because the offending zones are spatially clustered and share correlated forecast errors — removing one barely helps when its neighbours remain.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Helper: merged ROC for single window-LT</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>sn_merged_roc <span class="ot">&lt;-</span> <span class="cf">function</span>(pcodes, df_joined, df_weights,</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>                           <span class="at">rp_target =</span> <span class="dv">3</span>, target_window, target_lt) {</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  df_m <span class="ot">&lt;-</span> df_joined <span class="sc">|&gt;</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(pcode <span class="sc">%in%</span> pcodes, window <span class="sc">==</span> target_window, leadtime <span class="sc">==</span> target_lt) <span class="sc">|&gt;</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_weights <span class="sc">|&gt;</span> <span class="fu">filter</span>(pcode <span class="sc">%in%</span> pcodes), <span class="at">by =</span> <span class="st">"pcode"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(year) <span class="sc">|&gt;</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">fcst_mm =</span> <span class="fu">weighted.mean</span>(fcst_mm, <span class="at">w =</span> seas5_n_upsampled_pixels),</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">obs_mm  =</span> <span class="fu">weighted.mean</span>(obs_mm,  <span class="at">w =</span> seas5_n_upsampled_pixels),</span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>  obs_thresh <span class="ot">&lt;-</span> <span class="fu">calc_rp_threshold</span>(df_m<span class="sc">$</span>obs_mm, rp_target, <span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>  df_m <span class="ot">&lt;-</span> df_m <span class="sc">|&gt;</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">truth =</span> <span class="fu">fct</span>(<span class="fu">if_else</span>(obs_mm <span class="sc">&lt;=</span> obs_thresh, <span class="st">"drought"</span>, <span class="st">"no_drought"</span>),</span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>                       <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"drought"</span>, <span class="st">"no_drought"</span>)))</span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tryCatch</span>(<span class="fu">roc_auc_vec</span>(df_m<span class="sc">$</span>truth, <span class="sc">-</span>df_m<span class="sc">$</span>fcst_mm, <span class="at">event_level =</span> <span class="st">"first"</span>),</span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>           <span class="at">error =</span> <span class="cf">function</span>(e) <span class="cn">NA_real_</span>)</span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a>primera_lts <span class="ot">&lt;-</span> df_sn_joined <span class="sc">|&gt;</span></span>
+<span id="cb29-22"><a href="#cb29-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"primera"</span>) <span class="sc">|&gt;</span> <span class="fu">distinct</span>(leadtime) <span class="sc">|&gt;</span></span>
+<span id="cb29-23"><a href="#cb29-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(leadtime) <span class="sc">|&gt;</span> <span class="fu">pull</span>(leadtime)</span>
+<span id="cb29-24"><a href="#cb29-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-25"><a href="#cb29-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Baseline per LT</span></span>
+<span id="cb29-26"><a href="#cb29-26" aria-hidden="true" tabindex="-1"></a>baseline_lt <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb29-27"><a href="#cb29-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">leadtime =</span> primera_lts,</span>
+<span id="cb29-28"><a href="#cb29-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">baseline_roc =</span> <span class="fu">map_dbl</span>(primera_lts, <span class="sc">~</span><span class="fu">sn_merged_roc</span>(</span>
+<span id="cb29-29"><a href="#cb29-29" aria-hidden="true" tabindex="-1"></a>    sn_all_pcodes, df_sn_joined, df_weights_adm2, <span class="dv">3</span>, <span class="st">"primera"</span>, .x))</span>
+<span id="cb29-30"><a href="#cb29-30" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb29-31"><a href="#cb29-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-32"><a href="#cb29-32" aria-hidden="true" tabindex="-1"></a><span class="co"># LOO per admin 2 per LT</span></span>
+<span id="cb29-33"><a href="#cb29-33" aria-hidden="true" tabindex="-1"></a>loo_lt <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb29-34"><a href="#cb29-34" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (pc <span class="cf">in</span> sn_all_pcodes) {</span>
+<span id="cb29-35"><a href="#cb29-35" aria-hidden="true" tabindex="-1"></a>  remaining <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(sn_all_pcodes, pc)</span>
+<span id="cb29-36"><a href="#cb29-36" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (lt <span class="cf">in</span> primera_lts) {</span>
+<span id="cb29-37"><a href="#cb29-37" aria-hidden="true" tabindex="-1"></a>    roc_without <span class="ot">&lt;-</span> <span class="fu">sn_merged_roc</span>(remaining, df_sn_joined, df_weights_adm2, <span class="dv">3</span>, <span class="st">"primera"</span>, lt)</span>
+<span id="cb29-38"><a href="#cb29-38" aria-hidden="true" tabindex="-1"></a>    bl <span class="ot">&lt;-</span> baseline_lt<span class="sc">$</span>baseline_roc[baseline_lt<span class="sc">$</span>leadtime <span class="sc">==</span> lt]</span>
+<span id="cb29-39"><a href="#cb29-39" aria-hidden="true" tabindex="-1"></a>    loo_lt[[<span class="fu">length</span>(loo_lt) <span class="sc">+</span> <span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb29-40"><a href="#cb29-40" aria-hidden="true" tabindex="-1"></a>      <span class="at">pcode =</span> pc, <span class="at">leadtime =</span> lt, <span class="at">roc_without =</span> roc_without,</span>
+<span id="cb29-41"><a href="#cb29-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">baseline_roc =</span> bl, <span class="at">delta =</span> roc_without <span class="sc">-</span> bl</span>
+<span id="cb29-42"><a href="#cb29-42" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb29-43"><a href="#cb29-43" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb29-44"><a href="#cb29-44" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb29-45"><a href="#cb29-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-46"><a href="#cb29-46" aria-hidden="true" tabindex="-1"></a>df_sn_loo <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(loo_lt) <span class="sc">|&gt;</span></span>
+<span id="cb29-47"><a href="#cb29-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Spatial data already loaded</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>pcode_col_adm2 <span class="ot">&lt;-</span> <span class="fu">intersect</span>(<span class="fu">c</span>(<span class="st">"ADM2_PCODE"</span>, <span class="st">"adm2_pcode"</span>, <span class="st">"pcode"</span>), <span class="fu">names</span>(gdf_gtm_adm2))[<span class="dv">1</span>]</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>gdf_sn <span class="ot">&lt;-</span> gdf_gtm_adm2 <span class="sc">|&gt;</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col_adm2) <span class="sc">|&gt;</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">substr</span>(pcode, <span class="dv">1</span>, <span class="dv">4</span>) <span class="sc">%in%</span> sn_adm1)</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>gdf_sn_adm1 <span class="ot">&lt;-</span> gdf_gtm <span class="sc">|&gt;</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">pcode =</span> <span class="sc">!!</span>pcode_col) <span class="sc">|&gt;</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(pcode <span class="sc">%in%</span> sn_adm1)</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>loo_maps <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (lt <span class="cf">in</span> primera_lts) {</span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>  gdf_lt <span class="ot">&lt;-</span> gdf_sn <span class="sc">|&gt;</span></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_sn_loo <span class="sc">|&gt;</span> <span class="fu">filter</span>(leadtime <span class="sc">==</span> lt) <span class="sc">|&gt;</span> <span class="fu">select</span>(pcode, delta),</span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">by =</span> <span class="st">"pcode"</span>)</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>  gdf_lt_c <span class="ot">&lt;-</span> <span class="fu">st_centroid</span>(gdf_lt) <span class="sc">|&gt;</span></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">delta_label =</span> <span class="fu">sprintf</span>(<span class="st">"%+.3f"</span>, delta))</span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a>  bl_roc <span class="ot">&lt;-</span> baseline_lt<span class="sc">$</span>baseline_roc[baseline_lt<span class="sc">$</span>leadtime <span class="sc">==</span> lt]</span>
+<span id="cb30-20"><a href="#cb30-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-21"><a href="#cb30-21" aria-hidden="true" tabindex="-1"></a>  loo_maps[[<span class="fu">paste0</span>(<span class="st">"LT"</span>, lt)]] <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(gdf_lt) <span class="sc">+</span></span>
+<span id="cb30-22"><a href="#cb30-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> delta), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb30-23"><a href="#cb30-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> gdf_sn_adm1, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb30-24"><a href="#cb30-24" aria-hidden="true" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.7</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb30-25"><a href="#cb30-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf_text</span>(<span class="at">data =</span> gdf_lt_c, <span class="fu">aes</span>(<span class="at">label =</span> delta_label),</span>
+<span id="cb30-26"><a href="#cb30-26" aria-hidden="true" tabindex="-1"></a>                 <span class="at">size =</span> <span class="fl">3.5</span>, <span class="at">color =</span> <span class="st">"grey20"</span>, <span class="at">fontface =</span> <span class="st">"bold"</span>) <span class="sc">+</span></span>
+<span id="cb30-27"><a href="#cb30-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_gradient2</span>(</span>
+<span id="cb30-28"><a href="#cb30-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">low =</span> <span class="st">"#D73027"</span>, <span class="at">mid =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"#1A9850"</span>,</span>
+<span id="cb30-29"><a href="#cb30-29" aria-hidden="true" tabindex="-1"></a>      <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">name =</span> <span class="st">"Delta</span><span class="sc">\n</span><span class="st">ROC-AUC"</span>,</span>
+<span id="cb30-30"><a href="#cb30-30" aria-hidden="true" tabindex="-1"></a>      <span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.04</span>, <span class="fl">0.04</span>), <span class="at">oob =</span> scales<span class="sc">::</span>squish</span>
+<span id="cb30-31"><a href="#cb30-31" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb30-32"><a href="#cb30-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">sprintf</span>(<span class="st">"Primera LT%d (baseline ROC = %.3f)"</span>, lt, bl_roc)) <span class="sc">+</span></span>
+<span id="cb30-33"><a href="#cb30-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb30-34"><a href="#cb30-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(</span>
+<span id="cb30-35"><a href="#cb30-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb30-36"><a href="#cb30-36" aria-hidden="true" tabindex="-1"></a>      <span class="at">legend.position =</span> <span class="st">"right"</span>,</span>
+<span id="cb30-37"><a href="#cb30-37" aria-hidden="true" tabindex="-1"></a>      <span class="at">legend.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>),</span>
+<span id="cb30-38"><a href="#cb30-38" aria-hidden="true" tabindex="-1"></a>      <span class="at">legend.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>)</span>
+<span id="cb30-39"><a href="#cb30-39" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb30-40"><a href="#cb30-40" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb30-41"><a href="#cb30-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-42"><a href="#cb30-42" aria-hidden="true" tabindex="-1"></a>patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>(loo_maps, <span class="at">ncol =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb30-43"><a href="#cb30-43" aria-hidden="true" tabindex="-1"></a>  patchwork<span class="sc">::</span><span class="fu">plot_annotation</span>(</span>
+<span id="cb30-44"><a href="#cb30-44" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"LOO: primera skill change when admin 2 removed (per lead time, RP3)"</span>,</span>
+<span id="cb30-45"><a href="#cb30-45" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Green = removing hurts (good zone) | Red = removing helps (offender)"</span>,</span>
+<span id="cb30-46"><a href="#cb30-46" aria-hidden="true" tabindex="-1"></a>    <span class="at">theme =</span> <span class="fu">theme</span>(</span>
+<span id="cb30-47"><a href="#cb30-47" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb30-48"><a href="#cb30-48" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>)</span>
+<span id="cb30-49"><a href="#cb30-49" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb30-50"><a href="#cb30-50" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-sn-loo-primera" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sn-loo-primera-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-sn-loo-primera-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sn-loo-primera-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.5: Leave-one-out primera skill impact per lead time (RP3 drought, 1981-2024). Green = removing zone hurts merged skill (good zone). Red = removing zone helps (offender).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="forecast-similarity-clustering" class="level3" data-number="8.8.4">
+<h3 data-number="8.8.4" class="anchored" data-anchor-id="forecast-similarity-clustering"><span class="header-section-number">8.8.4</span> Forecast Similarity Clustering</h3>
+<p>To address the limitation of single-zone LOO (offenders are spatially correlated, so individual deltas are tiny), we cluster admin 2 zones by forecast similarity and evaluate skill when entire clusters are removed.</p>
+<p>We compute pairwise Spearman correlation of primera forecast time series across all admin 2 zones, then apply hierarchical clustering (Ward’s D2 on the distance matrix <code>1 - correlation</code>). We evaluate cuts at k = 2 and k = 3 to find a partition that cleanly separates the low-skill block.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build primera forecast matrix: rows = years, cols = admin 2 zones</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Average across lead times for the clustering</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>df_primera_wide <span class="ot">&lt;-</span> df_sn_joined <span class="sc">|&gt;</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"primera"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(pcode, year) <span class="sc">|&gt;</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">fcst_mm =</span> <span class="fu">mean</span>(fcst_mm), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> pcode, <span class="at">values_from =</span> fcst_mm)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>fcst_mat <span class="ot">&lt;-</span> df_primera_wide <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>year) <span class="sc">|&gt;</span> <span class="fu">as.matrix</span>()</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(fcst_mat) <span class="ot">&lt;-</span> df_primera_wide<span class="sc">$</span>year</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Spearman correlation → distance → hierarchical clustering</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>cor_mat <span class="ot">&lt;-</span> <span class="fu">cor</span>(fcst_mat, <span class="at">method =</span> <span class="st">"spearman"</span>, <span class="at">use =</span> <span class="st">"complete.obs"</span>)</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>dist_mat <span class="ot">&lt;-</span> <span class="fu">as.dist</span>(<span class="dv">1</span> <span class="sc">-</span> cor_mat)</span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>hc <span class="ot">&lt;-</span> <span class="fu">hclust</span>(dist_mat, <span class="at">method =</span> <span class="st">"ward.D2"</span>)</span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Get zone names column</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>sn_name_col <span class="ot">&lt;-</span> <span class="fu">intersect</span>(</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="st">"ADM2_ES"</span>, <span class="st">"adm2_es"</span>, <span class="st">"ADM2_EN"</span>, <span class="st">"adm2_en"</span>, <span class="st">"shapeName"</span>),</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>(gdf_sn)</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>)[<span class="dv">1</span>]</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Cut at k = 2 and k = 3</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a>df_clusters_k2 <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">pcode =</span> <span class="fu">names</span>(<span class="fu">cutree</span>(hc, <span class="at">k =</span> <span class="dv">2</span>)),</span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a>                          <span class="at">cluster =</span> <span class="fu">cutree</span>(hc, <span class="at">k =</span> <span class="dv">2</span>))</span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a>df_clusters_k3 <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">pcode =</span> <span class="fu">names</span>(<span class="fu">cutree</span>(hc, <span class="at">k =</span> <span class="dv">3</span>)),</span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a>                          <span class="at">cluster =</span> <span class="fu">cutree</span>(hc, <span class="at">k =</span> <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>cluster_pal <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"1"</span> <span class="ot">=</span> <span class="st">"#E41A1C"</span>, <span class="st">"2"</span> <span class="ot">=</span> <span class="st">"#377EB8"</span>,</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"3"</span> <span class="ot">=</span> <span class="st">"#4DAF4A"</span>, <span class="st">"4"</span> <span class="ot">=</span> <span class="st">"#984EA3"</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>make_cluster_map <span class="ot">&lt;-</span> <span class="cf">function</span>(df_cl, k_label) {</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  gdf_cl <span class="ot">&lt;-</span> gdf_sn <span class="sc">|&gt;</span></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(df_cl, <span class="at">by =</span> <span class="st">"pcode"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">cluster_label =</span> <span class="fu">factor</span>(cluster))</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>  gdf_cl_c <span class="ot">&lt;-</span> <span class="fu">st_centroid</span>(gdf_cl) <span class="sc">|&gt;</span></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rename</span>(<span class="at">zone_name =</span> <span class="sc">!!</span>sn_name_col)</span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(gdf_cl) <span class="sc">+</span></span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> cluster_label), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> gdf_sn_adm1, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.7</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf_text</span>(<span class="at">data =</span> gdf_cl_c, <span class="fu">aes</span>(<span class="at">label =</span> zone_name),</span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a>                 <span class="at">size =</span> <span class="fl">2.2</span>, <span class="at">color =</span> <span class="st">"grey20"</span>) <span class="sc">+</span></span>
+<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> cluster_pal, <span class="at">name =</span> <span class="st">"Cluster"</span>, <span class="at">drop =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">title =</span> k_label) <span class="sc">+</span></span>
+<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(</span>
+<span id="cb32-24"><a href="#cb32-24" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">13</span>, <span class="at">face =</span> <span class="st">"bold"</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb32-25"><a href="#cb32-25" aria-hidden="true" tabindex="-1"></a>      <span class="at">legend.position =</span> <span class="st">"right"</span></span>
+<span id="cb32-26"><a href="#cb32-26" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb32-27"><a href="#cb32-27" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb32-28"><a href="#cb32-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-29"><a href="#cb32-29" aria-hidden="true" tabindex="-1"></a>p_k2 <span class="ot">&lt;-</span> <span class="fu">make_cluster_map</span>(df_clusters_k2, <span class="st">"k = 2"</span>)</span>
+<span id="cb32-30"><a href="#cb32-30" aria-hidden="true" tabindex="-1"></a>p_k3 <span class="ot">&lt;-</span> <span class="fu">make_cluster_map</span>(df_clusters_k3, <span class="st">"k = 3"</span>)</span>
+<span id="cb32-31"><a href="#cb32-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-32"><a href="#cb32-32" aria-hidden="true" tabindex="-1"></a>patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>(p_k2, p_k3, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb32-33"><a href="#cb32-33" aria-hidden="true" tabindex="-1"></a>  patchwork<span class="sc">::</span><span class="fu">plot_annotation</span>(</span>
+<span id="cb32-34"><a href="#cb32-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Forecast Similarity Clusters (Primera)"</span>,</span>
+<span id="cb32-35"><a href="#cb32-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Ward's D2 on Spearman correlation of SEAS5 primera forecasts"</span>,</span>
+<span id="cb32-36"><a href="#cb32-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">theme =</span> <span class="fu">theme</span>(</span>
+<span id="cb32-37"><a href="#cb32-37" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">"bold"</span>),</span>
+<span id="cb32-38"><a href="#cb32-38" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>)</span>
+<span id="cb32-39"><a href="#cb32-39" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb32-40"><a href="#cb32-40" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-sn-cluster-maps" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sn-cluster-maps-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-sn-cluster-maps-1.png" class="img-fluid figure-img" width="1800">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sn-cluster-maps-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.6: Admin 2 zones coloured by forecast similarity cluster at k=2 (left) and k=3 (right). Hierarchical clustering (Ward’s D2) on Spearman correlation of primera SEAS5 forecasts.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># For each k and each cluster, compute merged primera skill without it</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>build_cluster_configs <span class="ot">&lt;-</span> <span class="cf">function</span>(df_cl, k_label) {</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  configs <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Individual cluster removal</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (cl <span class="cf">in</span> <span class="fu">sort</span>(<span class="fu">unique</span>(df_cl<span class="sc">$</span>cluster))) {</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>    cl_zones <span class="ot">&lt;-</span> df_cl <span class="sc">|&gt;</span> <span class="fu">filter</span>(cluster <span class="sc">==</span> cl) <span class="sc">|&gt;</span> <span class="fu">pull</span>(pcode)</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>    remaining <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(sn_all_pcodes, cl_zones)</span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>    n_removed <span class="ot">&lt;-</span> <span class="fu">length</span>(cl_zones)</span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>    configs[[<span class="fu">sprintf</span>(<span class="st">"%s: Drop CL%d (%d zones)"</span>, k_label, cl, n_removed)]] <span class="ot">&lt;-</span> remaining</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Multi-cluster removal: all 2-cluster combos</span></span>
+<span id="cb33-14"><a href="#cb33-14" aria-hidden="true" tabindex="-1"></a>  all_cls <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(df_cl<span class="sc">$</span>cluster))</span>
+<span id="cb33-15"><a href="#cb33-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(all_cls) <span class="sc">&gt;=</span> <span class="dv">2</span>) {</span>
+<span id="cb33-16"><a href="#cb33-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(all_cls)) {</span>
+<span id="cb33-17"><a href="#cb33-17" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_along</span>(all_cls)) {</span>
+<span id="cb33-18"><a href="#cb33-18" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> (j <span class="sc">&lt;=</span> i) <span class="cf">next</span></span>
+<span id="cb33-19"><a href="#cb33-19" aria-hidden="true" tabindex="-1"></a>        cl_i <span class="ot">&lt;-</span> all_cls[i]; cl_j <span class="ot">&lt;-</span> all_cls[j]</span>
+<span id="cb33-20"><a href="#cb33-20" aria-hidden="true" tabindex="-1"></a>        cl_zones <span class="ot">&lt;-</span> df_cl <span class="sc">|&gt;</span> <span class="fu">filter</span>(cluster <span class="sc">%in%</span> <span class="fu">c</span>(cl_i, cl_j)) <span class="sc">|&gt;</span> <span class="fu">pull</span>(pcode)</span>
+<span id="cb33-21"><a href="#cb33-21" aria-hidden="true" tabindex="-1"></a>        remaining <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(sn_all_pcodes, cl_zones)</span>
+<span id="cb33-22"><a href="#cb33-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> (<span class="fu">length</span>(remaining) <span class="sc">&lt;</span> <span class="dv">4</span>) <span class="cf">next</span></span>
+<span id="cb33-23"><a href="#cb33-23" aria-hidden="true" tabindex="-1"></a>        n_removed <span class="ot">&lt;-</span> <span class="fu">length</span>(cl_zones)</span>
+<span id="cb33-24"><a href="#cb33-24" aria-hidden="true" tabindex="-1"></a>        configs[[<span class="fu">sprintf</span>(<span class="st">"%s: Drop CL%d+CL%d (%d zones)"</span>, k_label,</span>
+<span id="cb33-25"><a href="#cb33-25" aria-hidden="true" tabindex="-1"></a>                         cl_i, cl_j, n_removed)]] <span class="ot">&lt;-</span> remaining</span>
+<span id="cb33-26"><a href="#cb33-26" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb33-27"><a href="#cb33-27" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb33-28"><a href="#cb33-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb33-29"><a href="#cb33-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-30"><a href="#cb33-30" aria-hidden="true" tabindex="-1"></a>  configs</span>
+<span id="cb33-31"><a href="#cb33-31" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb33-32"><a href="#cb33-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-33"><a href="#cb33-33" aria-hidden="true" tabindex="-1"></a>sn_cluster_configs <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb33-34"><a href="#cb33-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="st">"All 29 zones (baseline)"</span> <span class="ot">=</span> sn_all_pcodes),</span>
+<span id="cb33-35"><a href="#cb33-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">build_cluster_configs</span>(df_clusters_k2, <span class="st">"k=2"</span>),</span>
+<span id="cb33-36"><a href="#cb33-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">build_cluster_configs</span>(df_clusters_k3, <span class="st">"k=3"</span>)</span>
+<span id="cb33-37"><a href="#cb33-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb33-38"><a href="#cb33-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-39"><a href="#cb33-39" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute skill for each config</span></span>
+<span id="cb33-40"><a href="#cb33-40" aria-hidden="true" tabindex="-1"></a>sn_cluster_skill <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb33-41"><a href="#cb33-41" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (nm <span class="cf">in</span> <span class="fu">names</span>(sn_cluster_configs)) {</span>
+<span id="cb33-42"><a href="#cb33-42" aria-hidden="true" tabindex="-1"></a>  pcs <span class="ot">&lt;-</span> sn_cluster_configs[[nm]]</span>
+<span id="cb33-43"><a href="#cb33-43" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (lt <span class="cf">in</span> primera_lts) {</span>
+<span id="cb33-44"><a href="#cb33-44" aria-hidden="true" tabindex="-1"></a>    roc_val <span class="ot">&lt;-</span> <span class="fu">sn_merged_roc</span>(pcs, df_sn_joined, df_weights_adm2, <span class="dv">3</span>, <span class="st">"primera"</span>, lt)</span>
+<span id="cb33-45"><a href="#cb33-45" aria-hidden="true" tabindex="-1"></a>    sn_cluster_skill[[<span class="fu">length</span>(sn_cluster_skill) <span class="sc">+</span> <span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb33-46"><a href="#cb33-46" aria-hidden="true" tabindex="-1"></a>      <span class="at">config =</span> nm, <span class="at">leadtime =</span> lt, <span class="at">roc_auc =</span> roc_val,</span>
+<span id="cb33-47"><a href="#cb33-47" aria-hidden="true" tabindex="-1"></a>      <span class="at">n_zones =</span> <span class="fu">length</span>(pcs)</span>
+<span id="cb33-48"><a href="#cb33-48" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb33-49"><a href="#cb33-49" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb33-50"><a href="#cb33-50" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb33-51"><a href="#cb33-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-52"><a href="#cb33-52" aria-hidden="true" tabindex="-1"></a>df_cluster_skill <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(sn_cluster_skill)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build cluster membership footnotes for both k values</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>make_cluster_footnote <span class="ot">&lt;-</span> <span class="cf">function</span>(df_cl, k_label) {</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  df_cl <span class="sc">|&gt;</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>      gdf_sn <span class="sc">|&gt;</span> <span class="fu">st_drop_geometry</span>() <span class="sc">|&gt;</span></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">select</span>(pcode, <span class="fu">any_of</span>(sn_name_col)) <span class="sc">|&gt;</span></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">rename</span>(<span class="at">name =</span> <span class="sc">!!</span>sn_name_col),</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">by =</span> <span class="st">"pcode"</span></span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(cluster) <span class="sc">|&gt;</span></span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">zones =</span> <span class="fu">paste</span>(name, <span class="at">collapse =</span> <span class="st">", "</span>), <span class="at">n =</span> <span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">"%s CL%d (%d): %s"</span>, k_label, cluster, n, zones)) <span class="sc">|&gt;</span></span>
+<span id="cb34-13"><a href="#cb34-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pull</span>(label) <span class="sc">|&gt;</span></span>
+<span id="cb34-14"><a href="#cb34-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">paste</span>(<span class="at">collapse =</span> <span class="st">". "</span>)</span>
+<span id="cb34-15"><a href="#cb34-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb34-16"><a href="#cb34-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-17"><a href="#cb34-17" aria-hidden="true" tabindex="-1"></a>footnote_k2 <span class="ot">&lt;-</span> <span class="fu">make_cluster_footnote</span>(df_clusters_k2, <span class="st">"k=2"</span>)</span>
+<span id="cb34-18"><a href="#cb34-18" aria-hidden="true" tabindex="-1"></a>footnote_k3 <span class="ot">&lt;-</span> <span class="fu">make_cluster_footnote</span>(df_clusters_k3, <span class="st">"k=3"</span>)</span>
+<span id="cb34-19"><a href="#cb34-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-20"><a href="#cb34-20" aria-hidden="true" tabindex="-1"></a>df_cluster_skill <span class="sc">|&gt;</span></span>
+<span id="cb34-21"><a href="#cb34-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb34-22"><a href="#cb34-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">lt_label =</span> <span class="fu">paste0</span>(<span class="st">"LT"</span>, leadtime),</span>
+<span id="cb34-23"><a href="#cb34-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">roc_label =</span> <span class="fu">sprintf</span>(<span class="st">"%.3f"</span>, roc_auc)</span>
+<span id="cb34-24"><a href="#cb34-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb34-25"><a href="#cb34-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(config, n_zones, lt_label, roc_label) <span class="sc">|&gt;</span></span>
+<span id="cb34-26"><a href="#cb34-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> lt_label, <span class="at">values_from =</span> roc_label) <span class="sc">|&gt;</span></span>
+<span id="cb34-27"><a href="#cb34-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n_zones)) <span class="sc">|&gt;</span></span>
+<span id="cb34-28"><a href="#cb34-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>() <span class="sc">|&gt;</span></span>
+<span id="cb34-29"><a href="#cb34-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_header</span>(</span>
+<span id="cb34-30"><a href="#cb34-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**Leave-Cluster-Out: Primera Skill**"</span>),</span>
+<span id="cb34-31"><a href="#cb34-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"ROC-AUC | RP3 drought | 1981-2024 baseline"</span></span>
+<span id="cb34-32"><a href="#cb34-32" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb34-33"><a href="#cb34-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_label</span>(<span class="at">config =</span> <span class="st">"Configuration"</span>, <span class="at">n_zones =</span> <span class="st">"Zones"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb34-34"><a href="#cb34-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_footnote</span>(<span class="at">footnote =</span> footnote_k2) <span class="sc">|&gt;</span></span>
+<span id="cb34-35"><a href="#cb34-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_footnote</span>(<span class="at">footnote =</span> footnote_k3)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-sn-cluster-out" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sn-cluster-out-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;8.1: Leave-cluster-out analysis: primera ROC-AUC (RP3) when clusters are removed. Shown for k=2 and k=3 cuts of the dendrogram.
+</figcaption>
+<div aria-describedby="tbl-sn-cluster-out-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div id="ovkrqxbcls" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ovkrqxbcls table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#ovkrqxbcls thead, #ovkrqxbcls tbody, #ovkrqxbcls tfoot, #ovkrqxbcls tr, #ovkrqxbcls td, #ovkrqxbcls th {
+  border-style: none;
+}
+
+#ovkrqxbcls p {
+  margin: 0;
+  padding: 0;
+}
+
+#ovkrqxbcls .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#ovkrqxbcls .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#ovkrqxbcls .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#ovkrqxbcls .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ovkrqxbcls .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ovkrqxbcls .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ovkrqxbcls .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ovkrqxbcls .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ovkrqxbcls .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#ovkrqxbcls .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#ovkrqxbcls .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ovkrqxbcls .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#ovkrqxbcls .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#ovkrqxbcls .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ovkrqxbcls .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ovkrqxbcls .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#ovkrqxbcls .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#ovkrqxbcls .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#ovkrqxbcls .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ovkrqxbcls .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#ovkrqxbcls .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ovkrqxbcls .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ovkrqxbcls .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ovkrqxbcls .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ovkrqxbcls .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ovkrqxbcls .gt_left {
+  text-align: left;
+}
+
+#ovkrqxbcls .gt_center {
+  text-align: center;
+}
+
+#ovkrqxbcls .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ovkrqxbcls .gt_font_normal {
+  font-weight: normal;
+}
+
+#ovkrqxbcls .gt_font_bold {
+  font-weight: bold;
+}
+
+#ovkrqxbcls .gt_font_italic {
+  font-style: italic;
+}
+
+#ovkrqxbcls .gt_super {
+  font-size: 65%;
+}
+
+#ovkrqxbcls .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#ovkrqxbcls .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#ovkrqxbcls .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#ovkrqxbcls .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#ovkrqxbcls .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#ovkrqxbcls .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#ovkrqxbcls .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+
+<table class="gt_table do-not-create-environment cell caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_heading header">
+<td colspan="5" class="gt_heading gt_title gt_font_normal"><strong>Leave-Cluster-Out: Primera Skill</strong></td>
+</tr>
+<tr class="gt_heading even">
+<td colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">ROC-AUC | RP3 drought | 1981-2024 baseline</td>
+</tr>
+<tr class="gt_col_headings header">
+<th id="Configuration" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Configuration</th>
+<th id="Zones" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Zones</th>
+<th id="LT0" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">LT0</th>
+<th id="LT1" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">LT1</th>
+<th id="LT2" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">LT2</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">All 29 zones (baseline)</td>
+<td class="gt_row gt_right" headers="n_zones">29</td>
+<td class="gt_row gt_right" headers="LT0">0.738</td>
+<td class="gt_row gt_right" headers="LT1">0.630</td>
+<td class="gt_row gt_right" headers="LT2">0.568</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="config">k=2: Drop CL2 (6 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">23</td>
+<td class="gt_row gt_right" headers="LT0">0.743</td>
+<td class="gt_row gt_right" headers="LT1">0.614</td>
+<td class="gt_row gt_right" headers="LT2">0.561</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">k=3: Drop CL3 (6 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">23</td>
+<td class="gt_row gt_right" headers="LT0">0.743</td>
+<td class="gt_row gt_right" headers="LT1">0.614</td>
+<td class="gt_row gt_right" headers="LT2">0.561</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="config">k=3: Drop CL2 (11 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">18</td>
+<td class="gt_row gt_right" headers="LT0">0.733</td>
+<td class="gt_row gt_right" headers="LT1">0.657</td>
+<td class="gt_row gt_right" headers="LT2">0.616</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">k=3: Drop CL1 (12 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">17</td>
+<td class="gt_row gt_right" headers="LT0">0.802</td>
+<td class="gt_row gt_right" headers="LT1">0.706</td>
+<td class="gt_row gt_right" headers="LT2">0.669</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="config">k=3: Drop CL2+CL3 (17 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">12</td>
+<td class="gt_row gt_right" headers="LT0">0.731</td>
+<td class="gt_row gt_right" headers="LT1">0.637</td>
+<td class="gt_row gt_right" headers="LT2">0.605</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">k=3: Drop CL1+CL3 (18 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">11</td>
+<td class="gt_row gt_right" headers="LT0">0.784</td>
+<td class="gt_row gt_right" headers="LT1">0.692</td>
+<td class="gt_row gt_right" headers="LT2">0.667</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="config">k=2: Drop CL1 (23 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">6</td>
+<td class="gt_row gt_right" headers="LT0">0.821</td>
+<td class="gt_row gt_right" headers="LT1">0.722</td>
+<td class="gt_row gt_right" headers="LT2">0.632</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">k=3: Drop CL1+CL2 (23 zones)</td>
+<td class="gt_row gt_right" headers="n_zones">6</td>
+<td class="gt_row gt_right" headers="LT0">0.821</td>
+<td class="gt_row gt_right" headers="LT1">0.722</td>
+<td class="gt_row gt_right" headers="LT2">0.632</td>
+</tr>
+</tbody><tfoot class="gt_footnotes">
+<tr class="odd">
+<td colspan="5" class="gt_footnote">k=2 CL1 (23): Santa Cruz del Quiché, Chiché, Chinique, Zacualpa, Chajul, San Antonio Ilotenango, San Pedro Jocopilas, Cunén, San Juan Cotzal, Nebaj, San Andrés Sajcabajá, Uspantán, Sacapulas, San Bartolomé Jocotenango, Canillá, Chicamán, Ixcán, Salamá, San Miguel Chicaj, Rabinal, Cubulco, San Jerónimo, Purulhá. k=2 CL2 (6): Chichicastenango, Patzité, Joyabaj, Pachalum, Granados, El Chol</td>
+</tr>
+<tr class="even">
+<td colspan="5" class="gt_footnote">k=3 CL1 (12): Santa Cruz del Quiché, Chiché, Chinique, Chajul, San Antonio Ilotenango, San Pedro Jocopilas, Cunén, San Juan Cotzal, Nebaj, Sacapulas, San Bartolomé Jocotenango, Ixcán. k=3 CL2 (11): Zacualpa, San Andrés Sajcabajá, Uspantán, Canillá, Chicamán, Salamá, San Miguel Chicaj, Rabinal, Cubulco, San Jerónimo, Purulhá. k=3 CL3 (6): Chichicastenango, Patzité, Joyabaj, Pachalum, Granados, El Chol</td>
+</tr>
+</tfoot>
+
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The clustering confirms that the low-skill zones concentrate in a geographically coherent block in northern Quiché. However, no single cluster removal fully captures the set of offenders — the low-skill zones span multiple forecast-similarity clusters, and the spatial correlation of forecast errors makes automated selection difficult. This supports the simpler approach adopted in the main recommendation: use the merged AOI where skill is adequate (primera LT0-LT1, all postrera), and fall back to Baja Verapaz only for primera LT2.</p>
+</section>
+<section id="qualitative-admin-2-removal" class="level3" data-number="8.8.5">
+<h3 data-number="8.8.5" class="anchored" data-anchor-id="qualitative-admin-2-removal"><span class="header-section-number">8.8.5</span> Qualitative Admin 2 Removal</h3>
+<p>As an alternative to automated clustering, we manually identified 7 low-skill Quiché admin 2 zones informed by the LOO and greedy analyses above. Removing these zones yields a 22-zone AOI. The table below compares ROC-AUC across all lead times and seasons for three configurations: the full 29-zone merge, the 22-zone qualitative selection, and Baja Verapaz (GT15) only.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>qual_remove <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"GT1413"</span>, <span class="st">"GT1411"</span>, <span class="st">"GT1410"</span>, <span class="st">"GT1416"</span>, <span class="st">"GT1409"</span>, <span class="st">"GT1415"</span>, <span class="st">"GT1405"</span>)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>qual_remaining <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(sn_all_pcodes, qual_remove)</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>gt15_only <span class="ot">&lt;-</span> sn_all_pcodes[<span class="fu">startsWith</span>(sn_all_pcodes, <span class="st">"GT15"</span>)]</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>postrera_lts <span class="ot">&lt;-</span> df_sn_joined <span class="sc">|&gt;</span></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(window <span class="sc">==</span> <span class="st">"postrera"</span>) <span class="sc">|&gt;</span> <span class="fu">distinct</span>(leadtime) <span class="sc">|&gt;</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(leadtime) <span class="sc">|&gt;</span> <span class="fu">pull</span>(leadtime)</span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>aoi_configs <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">"All 29 zones (GT14+GT15)"</span> <span class="ot">=</span> sn_all_pcodes,</span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"22 zones (7 Quiché removed)"</span> <span class="ot">=</span> qual_remaining,</span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GT15 only (Baja Verapaz)"</span> <span class="ot">=</span> gt15_only</span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>qual_results <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (rp <span class="cf">in</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">4</span>)) {</span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (nm <span class="cf">in</span> <span class="fu">names</span>(aoi_configs)) {</span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a>    pcs <span class="ot">&lt;-</span> aoi_configs[[nm]]</span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (lt <span class="cf">in</span> primera_lts) {</span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a>      roc_val <span class="ot">&lt;-</span> <span class="fu">sn_merged_roc</span>(pcs, df_sn_joined, df_weights_adm2, rp, <span class="st">"primera"</span>, lt)</span>
+<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a>      qual_results[[<span class="fu">length</span>(qual_results) <span class="sc">+</span> <span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a>        <span class="at">config =</span> nm, <span class="at">rp_def =</span> rp, <span class="at">window =</span> <span class="st">"primera"</span>, <span class="at">leadtime =</span> lt,</span>
+<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a>        <span class="at">roc_auc =</span> roc_val, <span class="at">n_zones =</span> <span class="fu">length</span>(pcs)</span>
+<span id="cb35-24"><a href="#cb35-24" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb35-25"><a href="#cb35-25" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb35-26"><a href="#cb35-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (lt <span class="cf">in</span> postrera_lts) {</span>
+<span id="cb35-27"><a href="#cb35-27" aria-hidden="true" tabindex="-1"></a>      roc_val <span class="ot">&lt;-</span> <span class="fu">sn_merged_roc</span>(pcs, df_sn_joined, df_weights_adm2, rp, <span class="st">"postrera"</span>, lt)</span>
+<span id="cb35-28"><a href="#cb35-28" aria-hidden="true" tabindex="-1"></a>      qual_results[[<span class="fu">length</span>(qual_results) <span class="sc">+</span> <span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb35-29"><a href="#cb35-29" aria-hidden="true" tabindex="-1"></a>        <span class="at">config =</span> nm, <span class="at">rp_def =</span> rp, <span class="at">window =</span> <span class="st">"postrera"</span>, <span class="at">leadtime =</span> lt,</span>
+<span id="cb35-30"><a href="#cb35-30" aria-hidden="true" tabindex="-1"></a>        <span class="at">roc_auc =</span> roc_val, <span class="at">n_zones =</span> <span class="fu">length</span>(pcs)</span>
+<span id="cb35-31"><a href="#cb35-31" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb35-32"><a href="#cb35-32" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb35-33"><a href="#cb35-33" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb35-34"><a href="#cb35-34" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb35-35"><a href="#cb35-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-36"><a href="#cb35-36" aria-hidden="true" tabindex="-1"></a>df_qual <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(qual_results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>gdf_qual <span class="ot">&lt;-</span> gdf_sn <span class="sc">|&gt;</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">status =</span> <span class="fu">if_else</span>(pcode <span class="sc">%in%</span> qual_remove, <span class="st">"Removed"</span>, <span class="st">"Retained"</span>),</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">dept =</span> <span class="fu">if_else</span>(<span class="fu">startsWith</span>(pcode, <span class="st">"GT15"</span>), <span class="st">"Baja Verapaz"</span>, <span class="st">"Quiché"</span>)</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>gdf_qual_c <span class="ot">&lt;-</span> <span class="fu">st_centroid</span>(gdf_qual) <span class="sc">|&gt;</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">zone_name =</span> <span class="sc">!!</span>sn_name_col)</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(gdf_qual) <span class="sc">+</span></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> status), <span class="at">color =</span> <span class="st">"white"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">data =</span> gdf_sn_adm1, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>          <span class="at">linewidth =</span> <span class="fl">0.7</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="at">data =</span> gdf_qual_c, <span class="fu">aes</span>(<span class="at">label =</span> zone_name),</span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>               <span class="at">size =</span> <span class="fl">2.2</span>, <span class="at">color =</span> <span class="st">"grey20"</span>) <span class="sc">+</span></span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(</span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Retained"</span> <span class="ot">=</span> <span class="st">"#1A9850"</span>, <span class="st">"Removed"</span> <span class="ot">=</span> <span class="st">"#D73027"</span>),</span>
+<span id="cb36-18"><a href="#cb36-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">"Status"</span></span>
+<span id="cb36-19"><a href="#cb36-19" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb36-20"><a href="#cb36-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb36-21"><a href="#cb36-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Qualitative Admin 2 Selection (GT14 + GT15)"</span>,</span>
+<span id="cb36-22"><a href="#cb36-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"7 low-skill Quiché zones removed → 22-zone AOI"</span></span>
+<span id="cb36-23"><a href="#cb36-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb36-24"><a href="#cb36-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb36-25"><a href="#cb36-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb36-26"><a href="#cb36-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">13</span>, <span class="at">face =</span> <span class="st">"bold"</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb36-27"><a href="#cb36-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb36-28"><a href="#cb36-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"right"</span></span>
+<span id="cb36-29"><a href="#cb36-29" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-sn-qual-removal-map" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sn-qual-removal-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="07b_aoi_exploration_files/figure-html/fig-sn-qual-removal-map-1.png" class="img-fluid figure-img" width="1200">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sn-qual-removal-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.7: Qualitative admin 2 selection for the 22-zone AOI. Green = retained (22 zones), red = removed (7 low-skill Quiché zones).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get zone names for removed zones</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>qual_names <span class="ot">&lt;-</span> gdf_sn <span class="sc">|&gt;</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_drop_geometry</span>() <span class="sc">|&gt;</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(pcode <span class="sc">%in%</span> qual_remove) <span class="sc">|&gt;</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pcode, <span class="fu">any_of</span>(sn_name_col))</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>qual_footnote <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">"Removed zones: %s"</span>,</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste</span>(<span class="fu">sprintf</span>(<span class="st">"%s (%s)"</span>, qual_names[[sn_name_col]], qual_names<span class="sc">$</span>pcode), <span class="at">collapse =</span> <span class="st">", "</span>))</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>make_qual_gt <span class="ot">&lt;-</span> <span class="cf">function</span>(df, rp_val) {</span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>  df <span class="sc">|&gt;</span></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(rp_def <span class="sc">==</span> rp_val) <span class="sc">|&gt;</span></span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">lt_label =</span> <span class="fu">sprintf</span>(<span class="st">"%s LT%d"</span>, tools<span class="sc">::</span><span class="fu">toTitleCase</span>(window), leadtime),</span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">roc_label =</span> <span class="fu">sprintf</span>(<span class="st">"%.3f"</span>, roc_auc)</span>
+<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(config, n_zones, lt_label, roc_label) <span class="sc">|&gt;</span></span>
+<span id="cb37-18"><a href="#cb37-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> lt_label, <span class="at">values_from =</span> roc_label) <span class="sc">|&gt;</span></span>
+<span id="cb37-19"><a href="#cb37-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">gt</span>() <span class="sc">|&gt;</span></span>
+<span id="cb37-20"><a href="#cb37-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_header</span>(</span>
+<span id="cb37-21"><a href="#cb37-21" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="fu">md</span>(<span class="fu">sprintf</span>(<span class="st">"**Qualitative Removal: Skill Across Seasons &amp; Lead Times (RP%d)**"</span>, rp_val)),</span>
+<span id="cb37-22"><a href="#cb37-22" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> <span class="fu">sprintf</span>(<span class="st">"ROC-AUC | RP%d drought definition"</span>, rp_val)</span>
+<span id="cb37-23"><a href="#cb37-23" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb37-24"><a href="#cb37-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cols_label</span>(<span class="at">config =</span> <span class="st">"Configuration"</span>, <span class="at">n_zones =</span> <span class="st">"Zones"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb37-25"><a href="#cb37-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_spanner</span>(<span class="at">label =</span> <span class="st">"Primera"</span>, <span class="at">columns =</span> <span class="fu">starts_with</span>(<span class="st">"Primera"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb37-26"><a href="#cb37-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_spanner</span>(<span class="at">label =</span> <span class="st">"Postrera"</span>, <span class="at">columns =</span> <span class="fu">starts_with</span>(<span class="st">"Postrera"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb37-27"><a href="#cb37-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_footnote</span>(<span class="at">footnote =</span> qual_footnote)</span>
+<span id="cb37-28"><a href="#cb37-28" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb37-29"><a href="#cb37-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-30"><a href="#cb37-30" aria-hidden="true" tabindex="-1"></a><span class="fu">make_qual_gt</span>(df_qual, <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-sn-qual-removal" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sn-qual-removal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;8.2: ROC-AUC for three AOI configurations across all lead times and seasons at RP3 and RP4 drought definitions.
+</figcaption>
+<div aria-describedby="tbl-sn-qual-removal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div id="owckrvxhvk" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#owckrvxhvk table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#owckrvxhvk thead, #owckrvxhvk tbody, #owckrvxhvk tfoot, #owckrvxhvk tr, #owckrvxhvk td, #owckrvxhvk th {
+  border-style: none;
+}
+
+#owckrvxhvk p {
+  margin: 0;
+  padding: 0;
+}
+
+#owckrvxhvk .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#owckrvxhvk .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#owckrvxhvk .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#owckrvxhvk .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#owckrvxhvk .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#owckrvxhvk .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#owckrvxhvk .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#owckrvxhvk .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#owckrvxhvk .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#owckrvxhvk .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#owckrvxhvk .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#owckrvxhvk .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#owckrvxhvk .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#owckrvxhvk .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#owckrvxhvk .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#owckrvxhvk .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#owckrvxhvk .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#owckrvxhvk .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#owckrvxhvk .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#owckrvxhvk .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#owckrvxhvk .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#owckrvxhvk .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#owckrvxhvk .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#owckrvxhvk .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#owckrvxhvk .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#owckrvxhvk .gt_left {
+  text-align: left;
+}
+
+#owckrvxhvk .gt_center {
+  text-align: center;
+}
+
+#owckrvxhvk .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#owckrvxhvk .gt_font_normal {
+  font-weight: normal;
+}
+
+#owckrvxhvk .gt_font_bold {
+  font-weight: bold;
+}
+
+#owckrvxhvk .gt_font_italic {
+  font-style: italic;
+}
+
+#owckrvxhvk .gt_super {
+  font-size: 65%;
+}
+
+#owckrvxhvk .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#owckrvxhvk .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#owckrvxhvk .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#owckrvxhvk .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#owckrvxhvk .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#owckrvxhvk .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#owckrvxhvk .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+
+<table class="gt_table do-not-create-environment cell caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_heading header">
+<td colspan="9" class="gt_heading gt_title gt_font_normal"><strong>Qualitative Removal: Skill Across Seasons &amp; Lead Times (RP4)</strong></td>
+</tr>
+<tr class="gt_heading even">
+<td colspan="9" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">ROC-AUC | RP4 drought definition</td>
+</tr>
+<tr class="gt_col_headings gt_spanner_row header">
+<th rowspan="2" id="Configuration" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Configuration</th>
+<th rowspan="2" id="Zones" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Zones</th>
+<th colspan="3" id="Primera" class="gt_center gt_columns_top_border gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="gt_column_spanner">Primera</span></th>
+<th colspan="4" id="Postrera" class="gt_center gt_columns_top_border gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="gt_column_spanner">Postrera</span></th>
+</tr>
+<tr class="gt_col_headings even">
+<th id="Primera LT0" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Primera LT0</th>
+<th id="Primera LT1" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Primera LT1</th>
+<th id="Primera LT2" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Primera LT2</th>
+<th id="Postrera LT0" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT0</th>
+<th id="Postrera LT1" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT1</th>
+<th id="Postrera LT2" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT2</th>
+<th id="Postrera LT3" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT3</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">All 29 zones (GT14+GT15)</td>
+<td class="gt_row gt_right" headers="n_zones">29</td>
+<td class="gt_row gt_right" headers="Primera LT0">0.810</td>
+<td class="gt_row gt_right" headers="Primera LT1">0.700</td>
+<td class="gt_row gt_right" headers="Primera LT2">0.667</td>
+<td class="gt_row gt_right" headers="Postrera LT0">0.840</td>
+<td class="gt_row gt_right" headers="Postrera LT1">0.793</td>
+<td class="gt_row gt_right" headers="Postrera LT2">0.719</td>
+<td class="gt_row gt_right" headers="Postrera LT3">0.719</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="config">22 zones (7 Quiché removed)</td>
+<td class="gt_row gt_right" headers="n_zones">22</td>
+<td class="gt_row gt_right" headers="Primera LT0">0.821</td>
+<td class="gt_row gt_right" headers="Primera LT1">0.705</td>
+<td class="gt_row gt_right" headers="Primera LT2">0.683</td>
+<td class="gt_row gt_right" headers="Postrera LT0">0.744</td>
+<td class="gt_row gt_right" headers="Postrera LT1">0.683</td>
+<td class="gt_row gt_right" headers="Postrera LT2">0.609</td>
+<td class="gt_row gt_right" headers="Postrera LT3">0.609</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">GT15 only (Baja Verapaz)</td>
+<td class="gt_row gt_right" headers="n_zones">8</td>
+<td class="gt_row gt_right" headers="Primera LT0">0.832</td>
+<td class="gt_row gt_right" headers="Primera LT1">0.736</td>
+<td class="gt_row gt_right" headers="Primera LT2">0.752</td>
+<td class="gt_row gt_right" headers="Postrera LT0">0.733</td>
+<td class="gt_row gt_right" headers="Postrera LT1">0.678</td>
+<td class="gt_row gt_right" headers="Postrera LT2">0.620</td>
+<td class="gt_row gt_right" headers="Postrera LT3">0.603</td>
+</tr>
+</tbody><tfoot class="gt_footnotes">
+<tr class="odd">
+<td colspan="9" class="gt_footnote">Removed zones: Chajul (GT1405), Cunén (GT1410), Nebaj (GT1413), Sacapulas (GT1416), San Juan Cotzal (GT1411), San Pedro Jocopilas (GT1409), Uspantán (GT1415)</td>
+</tr>
+</tfoot>
+
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make_qual_gt</span>(df_qual, <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-sn-qual-removal-rp3" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl quarto-uncaptioned" id="tbl-sn-qual-removal-rp3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;8.3
+</figcaption>
+<div aria-describedby="tbl-sn-qual-removal-rp3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div id="apdhefhwvu" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#apdhefhwvu table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#apdhefhwvu thead, #apdhefhwvu tbody, #apdhefhwvu tfoot, #apdhefhwvu tr, #apdhefhwvu td, #apdhefhwvu th {
+  border-style: none;
+}
+
+#apdhefhwvu p {
+  margin: 0;
+  padding: 0;
+}
+
+#apdhefhwvu .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#apdhefhwvu .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#apdhefhwvu .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#apdhefhwvu .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#apdhefhwvu .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#apdhefhwvu .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#apdhefhwvu .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#apdhefhwvu .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#apdhefhwvu .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#apdhefhwvu .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#apdhefhwvu .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#apdhefhwvu .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#apdhefhwvu .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#apdhefhwvu .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#apdhefhwvu .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#apdhefhwvu .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#apdhefhwvu .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#apdhefhwvu .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#apdhefhwvu .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#apdhefhwvu .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#apdhefhwvu .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#apdhefhwvu .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#apdhefhwvu .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#apdhefhwvu .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#apdhefhwvu .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#apdhefhwvu .gt_left {
+  text-align: left;
+}
+
+#apdhefhwvu .gt_center {
+  text-align: center;
+}
+
+#apdhefhwvu .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#apdhefhwvu .gt_font_normal {
+  font-weight: normal;
+}
+
+#apdhefhwvu .gt_font_bold {
+  font-weight: bold;
+}
+
+#apdhefhwvu .gt_font_italic {
+  font-style: italic;
+}
+
+#apdhefhwvu .gt_super {
+  font-size: 65%;
+}
+
+#apdhefhwvu .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#apdhefhwvu .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#apdhefhwvu .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#apdhefhwvu .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#apdhefhwvu .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#apdhefhwvu .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#apdhefhwvu .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+
+<table class="gt_table do-not-create-environment caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_heading header">
+<td colspan="9" class="gt_heading gt_title gt_font_normal"><strong>Qualitative Removal: Skill Across Seasons &amp; Lead Times (RP3)</strong></td>
+</tr>
+<tr class="gt_heading even">
+<td colspan="9" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">ROC-AUC | RP3 drought definition</td>
+</tr>
+<tr class="gt_col_headings gt_spanner_row header">
+<th rowspan="2" id="Configuration" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Configuration</th>
+<th rowspan="2" id="Zones" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Zones</th>
+<th colspan="3" id="Primera" class="gt_center gt_columns_top_border gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="gt_column_spanner">Primera</span></th>
+<th colspan="4" id="Postrera" class="gt_center gt_columns_top_border gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="gt_column_spanner">Postrera</span></th>
+</tr>
+<tr class="gt_col_headings even">
+<th id="Primera LT0" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Primera LT0</th>
+<th id="Primera LT1" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Primera LT1</th>
+<th id="Primera LT2" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Primera LT2</th>
+<th id="Postrera LT0" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT0</th>
+<th id="Postrera LT1" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT1</th>
+<th id="Postrera LT2" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT2</th>
+<th id="Postrera LT3" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera LT3</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">All 29 zones (GT14+GT15)</td>
+<td class="gt_row gt_right" headers="n_zones">29</td>
+<td class="gt_row gt_right" headers="Primera LT0">0.738</td>
+<td class="gt_row gt_right" headers="Primera LT1">0.630</td>
+<td class="gt_row gt_right" headers="Primera LT2">0.568</td>
+<td class="gt_row gt_right" headers="Postrera LT0">0.828</td>
+<td class="gt_row gt_right" headers="Postrera LT1">0.759</td>
+<td class="gt_row gt_right" headers="Postrera LT2">0.685</td>
+<td class="gt_row gt_right" headers="Postrera LT3">0.701</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="config">22 zones (7 Quiché removed)</td>
+<td class="gt_row gt_right" headers="n_zones">22</td>
+<td class="gt_row gt_right" headers="Primera LT0">0.793</td>
+<td class="gt_row gt_right" headers="Primera LT1">0.701</td>
+<td class="gt_row gt_right" headers="Primera LT2">0.657</td>
+<td class="gt_row gt_right" headers="Postrera LT0">0.777</td>
+<td class="gt_row gt_right" headers="Postrera LT1">0.745</td>
+<td class="gt_row gt_right" headers="Postrera LT2">0.671</td>
+<td class="gt_row gt_right" headers="Postrera LT3">0.680</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="config">GT15 only (Baja Verapaz)</td>
+<td class="gt_row gt_right" headers="n_zones">8</td>
+<td class="gt_row gt_right" headers="Primera LT0">0.784</td>
+<td class="gt_row gt_right" headers="Primera LT1">0.763</td>
+<td class="gt_row gt_right" headers="Primera LT2">0.754</td>
+<td class="gt_row gt_right" headers="Postrera LT0">0.793</td>
+<td class="gt_row gt_right" headers="Postrera LT1">0.761</td>
+<td class="gt_row gt_right" headers="Postrera LT2">0.713</td>
+<td class="gt_row gt_right" headers="Postrera LT3">0.703</td>
+</tr>
+</tbody><tfoot class="gt_footnotes">
+<tr class="odd">
+<td colspan="9" class="gt_footnote">Removed zones: Chajul (GT1405), Cunén (GT1410), Nebaj (GT1413), Sacapulas (GT1416), San Juan Cotzal (GT1411), San Pedro Jocopilas (GT1409), Uspantán (GT1415)</td>
+</tr>
+</tfoot>
+
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -2870,8 +5256,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./11_country_trigger_optimizations.html" class="pagination-link" aria-label="Trigger Configuration: HND &amp; SLV">
-        <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Trigger Configuration: HND &amp; SLV</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./11_country_trigger_optimizations.html" class="pagination-link" aria-label="Trigger Configurations">
+        <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Trigger Configurations</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
