@@ -1,4 +1,4 @@
-# Trigger Configuration: HND & SLV {#sec-trigger-config}
+# Trigger Configurations {#sec-trigger-config}
 
 ```{r}
 #| label: setup-trigger-config
@@ -27,7 +27,7 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-@sec-honduras-trigger developed a purely rainfall-based trigger optimization for Honduras, defining drought as the N driest ERA5 years (matched return period). This chapter takes a different approach: we begin with **humanitarian impact data** to identify which years *must* be triggered, then layer in ERA5 rainfall skill to select the final configuration
+An earlier analysis developed a purely rainfall-based trigger optimization for Honduras, defining drought as the N driest ERA5 years (matched return period). This chapter takes a different approach: we begin with **humanitarian impact data** to identify which years *must* be triggered, then layer in ERA5 rainfall skill to select the final configuration
 
 The key insight motivating this approach is that seasonal rainfall forecasts are an imperfect proxy for drought impact. EM-DAT records and CERF allocations provide direct evidence of when humanitarian consequences occurred. Rather than optimizing solely against observed rainfall, we first ensure our trigger catches the most consequential events, then optimize for rainfall prediction accuracy among configurations that meet that constraint.
 
@@ -432,6 +432,10 @@ df_hnd <- load_country_data(countries$HND)
 df_gtm <- load_country_data(countries$GTM)
 df_slv <- load_country_data(countries$SLV)
 df_gtm_sn <- load_country_data(countries$GTM_SN)
+df_gtm_sn_lt2 <- load_country_data(list(
+  aoi_pcodes = "GT15", primera_months = 5:8, postrera_months = 9:11,
+  primera_issued_months = c(3, 4, 5), postrera_issued_months = c(6, 7, 8, 9)
+))
 ```
 
 The validation tables below cross-reference each year's primera and postrera rainfall dry rank with CERF allocations, EM-DAT records, and total affected population. Years are sorted by maximum seasonal dryness rank so the most extreme rainfall years appear first. A mismatch between dry rank and impact columns indicates that rainfall alone is not a reliable predictor of humanitarian consequences.
@@ -493,7 +497,7 @@ Given that rainfall is an imperfect predictor of humanitarian impact, we adopt a
 
 1. **Impact-first filtering**: Evaluate all threshold configurations against EM-DAT impact years using standard F1. Keep only configs that trigger in all Priority 1 years (must-hit). Among those, keep configs with the maximum Priority 2 hits (should-hit).
 
-2. **ERA5 rainfall evaluation**: For the surviving candidate pool, evaluate against ERA5 observed rainfall using the tolerant matched-RP F1 from @sec-honduras-trigger. This tells us how well each config predicts actual rainfall anomalies, independent of the impact definition.
+2. **ERA5 rainfall evaluation**: For the surviving candidate pool, evaluate against ERA5 observed rainfall using the tolerant matched-RP F1 approach. This tells us how well each config predicts actual rainfall anomalies, independent of the impact definition.
 
 3. **Combined selection**: Plot impact F1 against ERA5 tolerant F1 to visualize the tradeoff. Compute an average of both F1 scores and identify the best-performing config at each return period level. Among tied configs, select the one with the lowest threshold coefficient of variation (most operationally uniform thresholds).
 
@@ -1875,7 +1879,7 @@ gtm_candidates <- all_results_gtm |>
   ungroup()
 ```
 
-After generating `r format(nrow(combos_gtm), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(gtm_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(gtm_candidates$must_hit_score) * 100)` of Priority 1 years and `r sprintf("%.0f%%", max(gtm_candidates$should_hit_score) * 100)` of Priority 2 years.
+After generating `r format(nrow(combos_gtm), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(gtm_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(gtm_candidates$must_hit_score) * 100)` of Priority 1 years and the maximum achievable Priority 2 score per annual RP.
 
 
 **ERA5 Evaluation & Combined Scoring**
@@ -1948,13 +1952,11 @@ gtm_ab <- bind_rows(gtm_opt_a, gtm_opt_b) |>
   arrange(annual_rp, option) |>
   mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
 
-# Diagnostic: all candidates at RP ~2.9
+# Diagnostic: all candidates at RP ~2.9 (suppressed from output)
 gtm_rp29 <- gtm_all_hl |>
   filter(abs(annual_rp - 2.9) < 0.15) |>
   select(annual_rp, all_of(threshold_cols_gtm), avg_f1, era5_tol_f1, all_cv, mean_cv) |>
   arrange(all_cv)
-message(sprintf("GTM RP ~2.9 candidates: %d configs", nrow(gtm_rp29)))
-print(gtm_rp29, n = 40)
 
 # Uniform configs from PRE-filter pool (bypasses must-hit/should-hit)
 message("GTM uniform refs:")
@@ -2080,7 +2082,8 @@ girafe(ggobj = p_gtm,
 build_config_summary_gt(
   gtm_final, threshold_cols_gtm,
   primera_lts_gtm, postrera_lts_gtm,
-  "Guatemala"
+  "Guatemala",
+  top_picks = c("RP 2.9 A")
 )
 ```
 
@@ -2264,14 +2267,14 @@ gtm_final |>
 
 cfg_gtmsn <- countries$GTM_SN
 primera_lts_gtmsn <- 3
-postrera_lts_gtmsn <- 2
+postrera_lts_gtmsn <- 3
 
 impact_yrs_gtmsn <- impact_by_country$GTM$year
 target_rp_impact_gtmsn <- (EVAL_END - EVAL_START + 1 + 1) / length(impact_yrs_gtmsn)
 target_rp_gtmsn <- 3
 ```
 
-The StartNetwork Guatemala AOI uses departments Quiché (GT14) and Baja Verapaz (GT15), with `r primera_lts_gtmsn` primera leadtimes and `r postrera_lts_gtmsn` postrera leadtimes. Impact years are drawn from the same country-level EM-DAT record (`r length(impact_yrs_gtmsn)` events, empirical RP = `r sprintf("%.1f", target_rp_gtmsn)`).
+The StartNetwork Guatemala AOI covers Quiché (GT14) and Baja Verapaz (GT15). Based on the forecast skill assessment (@sec-start-network), we use a split-AOI approach: **merged GT14+GT15** for primera LT0-LT1 and all postrera lead times, and **GT15 (Baja Verapaz) only** for primera LT2 where merged skill is inadequate. The optimization uses `r primera_lts_gtmsn` primera and `r postrera_lts_gtmsn` postrera leadtimes. Impact years are drawn from the same country-level EM-DAT record (`r length(impact_yrs_gtmsn)` events, empirical RP = `r sprintf("%.1f", target_rp_gtmsn)`).
 
 **Impact Evaluation & Priority Filtering**
 
@@ -2284,12 +2287,27 @@ combos_gtmsn <- generate_combos(length(unique(df_gtm_sn$year)),
                                  postrera_lts = postrera_lts_gtmsn,
                                  max_rp = MAX_RP) |>
   grid_constrain_season_monotonic() |>
-  grid_constrain_inter_season_monotonic() |>
+  # grid_constrain_inter_season_monotonic() |>
   grid_constrain_lt_rp_range(min_rp = 4, max_rp = MAX_RP)
 
-trigger_data_gtmsn <- build_trigger_lookup(df_gtm_sn, min_rp = 2.8, max_rp = MAX_RP,
-                                            primera_lts = primera_lts_gtmsn,
-                                            postrera_lts = postrera_lts_gtmsn)
+# Build separate trigger lookups:
+# - Merged GT14+GT15 for primera LT0-LT1 and all postrera
+# - GT15-only for primera LT2 (where merged skill is inadequate)
+trigger_data_merged <- build_trigger_lookup(df_gtm_sn, min_rp = 2.8, max_rp = MAX_RP,
+                                             primera_lts = primera_lts_gtmsn,
+                                             postrera_lts = postrera_lts_gtmsn)
+
+trigger_data_lt2 <- build_trigger_lookup(df_gtm_sn_lt2, min_rp = 2.8, max_rp = MAX_RP,
+                                          primera_lts = primera_lts_gtmsn,
+                                          postrera_lts = postrera_lts_gtmsn)
+
+# Hybrid trigger_data: p2 from GT15-only, everything else from merged GT14+GT15
+trigger_data_gtmsn <- trigger_data_merged
+trigger_data_gtmsn$trigger_lookup <- c(
+  trigger_data_merged$trigger_lookup[!grepl("^p2_", names(trigger_data_merged$trigger_lookup))],
+  trigger_data_lt2$trigger_lookup[grepl("^p2_", names(trigger_data_lt2$trigger_lookup))]
+)
+trigger_data_gtmsn$rp_options$p2 <- trigger_data_lt2$rp_options$p2
 
 all_results_gtmsn <- evaluate_configs_impact(
   combos_gtmsn, trigger_data_gtmsn,
@@ -2408,7 +2426,8 @@ gtmsn_activation_tables <- lapply(seq_len(nrow(gtmsn_final)), function(i) {
   as.character(gt::as_raw_html(tbl))
 })
 
-gtmsn_default_idx <- which.min(abs(gtmsn_final$annual_rp - target_rp_gtmsn))
+gtmsn_default_idx <- which(grepl("RP 2.9 B", gtmsn_final$config_label, fixed = TRUE))[1]
+if (is.na(gtmsn_default_idx)) gtmsn_default_idx <- which.min(abs(gtmsn_final$annual_rp - target_rp_gtmsn))
 ```
 
 ```{r}
@@ -2508,8 +2527,61 @@ build_config_summary_gt(
   gtmsn_final, threshold_cols_gtmsn,
   primera_lts_gtmsn, postrera_lts_gtmsn,
   "Guatemala (StartNetwork)",
-  top_picks = c("RP 2.9 A", "Uniform thresh 5.8)", "RP 2.7 A")
+  top_picks = c("RP 2.9 A", "RP 2.9 B", "Uniform thresh 5.8)", "RP 2.7 A")
 )
+```
+
+```{r}
+#| label: tbl-gtmsn-topline
+
+build_topline_gt(
+  gtmsn_final,
+  top_picks = c("RP 2.9 A", "RP 2.9 B", "Uniform thresh 5.8)", "RP 2.7 A"),
+  trigger_data_gtmsn, impact_yrs_gtmsn,
+  must_hit_years, should_hit_years,
+  EVAL_START, EVAL_END, "Guatemala (StartNetwork)"
+) |> as_raw_html()
+```
+
+::: {.callout-note}
+## Primera thresholds higher than postrera?
+
+The StartNetwork configurations tend to have stricter (higher RP) primera thresholds and looser postrera thresholds --- the opposite of the OCHA Guatemala AOI. This is not an error; it reflects which season drives humanitarian impact in each area. The OCHA AOI covers the eastern dry corridor (Chiquimula, Jalapa, El Progreso, Zacapa), while the StartNetwork AOI covers the western highlands (Quiché and Baja Verapaz merged, with Baja Verapaz only for primera LT2). These are distinct climate regimes, so it is expected that the optimizer arrives at different seasonal threshold structures. The inter-season threshold relationship is a *diagnostic* of local climate dynamics, not an assumption imposed by the framework. @tbl-season-comparison below confirms this: each AOI's optimizer responds to a different season-impact profile.
+:::
+
+```{r}
+#| label: tbl-season-comparison
+#| tbl-cap: "Per-season comparison: OCHA vs StartNetwork AOI (RP 2.9 A vs RP 2.9 B)"
+
+# Compare per-season performance for RP 2.9 A from each AOI
+gtm_pick <- gtm_final |> filter(grepl("RP 2.9 A", config_label, fixed = TRUE)) |> slice_head(n = 1)
+gtmsn_pick <- gtmsn_final |> filter(grepl("RP 2.9 B", config_label, fixed = TRUE)) |> slice_head(n = 1)
+
+# Get per-season trigger years
+gtm_act <- get_seasonal_activation(gtm_pick, trigger_data_gtm, EVAL_START, EVAL_END)
+gtmsn_act <- get_seasonal_activation(gtmsn_pick, trigger_data_gtmsn, EVAL_START, EVAL_END)
+
+comparison_df <- tibble(
+  AOI = c("OCHA (eastern dry corridor)", "StartNetwork (western highlands)"),
+  `Primera seasonal RP` = round(c(gtm_pick$p_seasonal_rp, gtmsn_pick$p_seasonal_rp), 2),
+  `Postrera seasonal RP` = round(c(gtm_pick$s_seasonal_rp, gtmsn_pick$s_seasonal_rp), 2),
+  `Annual RP` = round(c(gtm_pick$annual_rp, gtmsn_pick$annual_rp), 2),
+  `Primera triggers` = c(length(gtm_act$primera), length(gtmsn_act$primera)),
+  `Postrera triggers` = c(length(gtm_act$postrera), length(gtmsn_act$postrera)),
+  `Impact F1 (primera)` = round(c(gtm_pick$impact_primera_f1, gtmsn_pick$impact_primera_f1), 3),
+  `Impact F1 (postrera)` = round(c(gtm_pick$impact_postrera_f1, gtmsn_pick$impact_postrera_f1), 3),
+  `ERA5 tol F1 (primera)` = round(c(gtm_pick$era5_primera_tol_f1, gtmsn_pick$era5_primera_tol_f1), 3),
+  `ERA5 tol F1 (postrera)` = round(c(gtm_pick$era5_postrera_tol_f1, gtmsn_pick$era5_postrera_tol_f1), 3)
+)
+
+comparison_df |>
+  gt() |>
+  cols_align(align = "center", columns = -AOI) |>
+  tab_spanner(label = "Seasonal RP", columns = c(`Primera seasonal RP`, `Postrera seasonal RP`, `Annual RP`)) |>
+  tab_spanner(label = "Trigger count", columns = c(`Primera triggers`, `Postrera triggers`)) |>
+  tab_spanner(label = "Impact F1", columns = c(`Impact F1 (primera)`, `Impact F1 (postrera)`)) |>
+  tab_spanner(label = "ERA5 tol F1", columns = c(`ERA5 tol F1 (primera)`, `ERA5 tol F1 (postrera)`)) |>
+  tab_options(table.font.size = px(12), data_row.padding = px(4))
 ```
 
 **Trigger Activation Detail (per leadtime)**
@@ -2651,7 +2723,7 @@ tbl_gtmsn |>
 gtmsn_final |>
   select(
     config_label, selection,
-    any_of(c("p0", "p1", "p2", "s0", "s1")),
+    any_of(c("p0", "p1", "p2", "s0", "s1", "s2")),
     annual_rp, p_seasonal_rp, s_seasonal_rp,
     impact_f1, era5_tol_f1, avg_f1, mean_cv, all_cv
   ) |>
@@ -2668,6 +2740,358 @@ gtmsn_final |>
   tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv, all_cv)) |>
   tab_header(
     title = "Guatemala (StartNetwork): Recommended Configurations",
+    subtitle = "A = max avg F1 | B = max ERA5 tol F1 | U = uniform (all thresholds equal)"
+  )
+```
+
+
+### Guatemala (StartNetwork v2: 22-zone AOI)
+
+```{r}
+#| label: gtmsnv2-setup
+
+primera_lts_gtmsnv2 <- 3
+postrera_lts_gtmsnv2 <- 3
+
+impact_yrs_gtmsnv2 <- impact_by_country$GTM$year
+target_rp_gtmsnv2 <- 3
+```
+
+This variant tests whether the primera/postrera threshold asymmetry observed in the StartNetwork configuration is driven by the split-AOI design (merged GT14+GT15 for LT0-LT1, GT15-only for LT2). Here we use a **single consistent AOI** for all lead times and both seasons: the qualitative 22-zone selection that removes 7 low-skill Quiché admin 2 zones (GT1413, GT1411, GT1410, GT1416, GT1409, GT1415, GT1405). If the asymmetry disappears or is substantially reduced, it supports the hypothesis that the split-AOI decorrelates primera lead times, mechanically pushing primera thresholds higher.
+
+**Data Loading & Impact Evaluation**
+
+```{r}
+#| label: gtmsnv2-load-data
+#| cache: true
+
+# Load admin 2 level data for GT14+GT15
+con_v2 <- pg_con()
+
+df_seas5_adm2 <- tbl(con_v2, "seas5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 2, substr(pcode, 1, 4) %in% c("GT14", "GT15")) |>
+  collect() |>
+  mutate(value_mm = days_in_month(valid_date) * mean)
+
+df_era5_adm2 <- tbl(con_v2, "era5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(substr(pcode, 1, 4) %in% c("GT14", "GT15")) |>
+  collect()
+
+df_weights_adm2 <- tbl(con_v2, "polygon") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 2, substr(pcode, 1, 4) %in% c("GT14", "GT15")) |>
+  select(pcode, seas5_n_upsampled_pixels) |> collect()
+
+DBI::dbDisconnect(con_v2)
+
+# Exclude the 7 low-skill Quiché zones
+qual_remove_v2 <- c("GT1413", "GT1411", "GT1410", "GT1416", "GT1409", "GT1415", "GT1405")
+keep_pcodes_v2 <- setdiff(
+  df_weights_adm2$pcode,
+  qual_remove_v2
+)
+
+df_weights_v2 <- df_weights_adm2 |> filter(pcode %in% keep_pcodes_v2)
+
+cfg_v2 <- countries$GTM_SN  # reuse seasonal config
+
+# Aggregate SEAS5 forecasts across 22 zones
+df_seas5_seasonal_v2 <- bind_rows(
+  seas5_aggregate_forecast(df_seas5_adm2 |> filter(pcode %in% keep_pcodes_v2),
+    value = "value_mm",
+    valid_months = cfg_v2$primera_months, by = c("iso3", "pcode", "issued_date")
+  ) |> mutate(window = "primera"),
+  seas5_aggregate_forecast(df_seas5_adm2 |> filter(pcode %in% keep_pcodes_v2),
+    value = "value_mm",
+    valid_months = cfg_v2$postrera_months, by = c("iso3", "pcode", "issued_date")
+  ) |> mutate(window = "postrera")
+) |>
+  rename(fcst_mm = value_mm) |>
+  mutate(year = year(issued_date), issued_month = month(issued_date)) |>
+  filter(
+    (window == "primera" & issued_month %in% cfg_v2$primera_issued_months) |
+    (window == "postrera" & issued_month %in% cfg_v2$postrera_issued_months)
+  )
+
+# ERA5 observed seasonal totals
+df_era5_monthly_v2 <- df_era5_adm2 |>
+  filter(pcode %in% keep_pcodes_v2) |>
+  mutate(year = year(valid_date), month = month(valid_date),
+         value_mm = mean * days_in_month(valid_date))
+
+df_era5_seasonal_v2 <- bind_rows(
+  df_era5_monthly_v2 |> filter(month %in% cfg_v2$primera_months) |>
+    group_by(pcode, iso3, year) |>
+    summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "primera"),
+  df_era5_monthly_v2 |> filter(month %in% cfg_v2$postrera_months) |>
+    group_by(pcode, iso3, year) |>
+    summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "postrera")
+)
+
+# Pixel-weighted merge to single AOI time series
+df_gtm_sn_v2 <- df_seas5_seasonal_v2 |>
+  left_join(df_era5_seasonal_v2 |> select(pcode, year, window, obs_mm),
+            by = c("pcode", "year", "window")) |>
+  filter(!is.na(obs_mm)) |>
+  left_join(df_weights_v2, by = "pcode") |>
+  group_by(year, window, leadtime) |>
+  summarise(
+    fcst_mm = weighted.mean(fcst_mm, w = seas5_n_upsampled_pixels),
+    obs_mm  = weighted.mean(obs_mm,  w = seas5_n_upsampled_pixels),
+    .groups = "drop"
+  ) |>
+  filter(year >= BASELINE_START, year <= BASELINE_END) |>
+  group_by(window) |>
+  mutate(leadtime = leadtime - min(leadtime)) |>
+  ungroup()
+
+cat(sprintf("22-zone AOI: %d years, %d obs\n",
+            length(unique(df_gtm_sn_v2$year)), nrow(df_gtm_sn_v2)))
+```
+
+```{r}
+#| label: gtmsnv2-impact-eval
+#| cache: true
+
+combos_gtmsnv2 <- generate_combos(length(unique(df_gtm_sn_v2$year)),
+                                    primera_lts = primera_lts_gtmsnv2,
+                                    postrera_lts = postrera_lts_gtmsnv2,
+                                    max_rp = MAX_RP) |>
+  grid_constrain_season_monotonic() |>
+  # No inter-season constraint (matching StartNetwork v1)
+  grid_constrain_lt_rp_range(min_rp = 4, max_rp = MAX_RP)
+
+# Single AOI for ALL lead times — no split
+trigger_data_gtmsnv2 <- build_trigger_lookup(df_gtm_sn_v2, min_rp = 2.8, max_rp = MAX_RP,
+                                              primera_lts = primera_lts_gtmsnv2,
+                                              postrera_lts = postrera_lts_gtmsnv2)
+
+all_results_gtmsnv2 <- evaluate_configs_impact(
+  combos_gtmsnv2, trigger_data_gtmsnv2,
+  impact_years = impact_yrs_gtmsnv2,
+  eval_start = EVAL_START, eval_end = EVAL_END
+)
+
+all_results_gtmsnv2 <- all_results_gtmsnv2 |>
+  add_hit_scores(trigger_data_gtmsnv2, must_hit_years, should_hit_years,
+                 eval_start = EVAL_START, eval_end = EVAL_END) |>
+  add_lt_set()
+
+gtmsnv2_candidates <- all_results_gtmsnv2 |>
+  filter(p_lt_count == primera_lts_gtmsnv2, s_lt_count == postrera_lts_gtmsnv2) |>
+  filter(must_hit_score == max(must_hit_score)) |>
+  group_by(annual_rp) |>
+  filter(should_hit_score == max(should_hit_score)) |>
+  ungroup()
+```
+
+After generating `r format(nrow(combos_gtmsnv2), big.mark = ",")` constrained configurations and evaluating against impact years, priority filtering retains **`r format(nrow(gtmsnv2_candidates), big.mark = ",")`** candidates that hit `r sprintf("%.0f%%", max(gtmsnv2_candidates$must_hit_score) * 100)` of Priority 1 years and the maximum achievable Priority 2 score per annual RP.
+
+**ERA5 Evaluation & Combined Scoring**
+
+```{r}
+#| label: gtmsnv2-era5-join
+#| cache: true
+
+gtmsnv2_candidate_combos <- gtmsnv2_candidates |>
+  select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2")))
+
+gtmsnv2_era5 <- evaluate_configs(gtmsnv2_candidate_combos, trigger_data_gtmsnv2, rp_buffer = 1)
+
+threshold_cols_gtmsnv2 <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2"),
+                                     names(gtmsnv2_candidates))
+
+gtmsnv2_combined <- gtmsnv2_candidates |>
+  select(config_id, all_of(threshold_cols_gtmsnv2),
+         impact_f1 = mean_f1,
+         impact_primera_f1 = primera_f1,
+         impact_postrera_f1 = postrera_f1,
+         must_hit_score, should_hit_score,
+         annual_rp, p_seasonal_rp, s_seasonal_rp) |>
+  left_join(
+    gtmsnv2_era5 |>
+      select(all_of(threshold_cols_gtmsnv2),
+             era5_matched_f1 = mean_f1,
+             era5_tol_f1 = mean_tol_f1,
+             era5_primera_tol_f1 = primera_tol_f1,
+             era5_postrera_tol_f1 = postrera_tol_f1,
+             era5_p_tp = primera_tp, era5_p_fp = primera_fp, era5_p_fn = primera_fn,
+             era5_p_tol_tp = primera_tol_tp, era5_p_tol_fp = primera_tol_fp, era5_p_tol_fn = primera_tol_fn,
+             era5_p_strict_tp = primera_strict_tp, era5_p_strict_fn = primera_strict_fn,
+             era5_s_tp = postrera_tp, era5_s_fp = postrera_fp, era5_s_fn = postrera_fn,
+             era5_s_tol_tp = postrera_tol_tp, era5_s_tol_fp = postrera_tol_fp, era5_s_tol_fn = postrera_tol_fn,
+             era5_s_strict_tp = postrera_strict_tp, era5_s_strict_fn = postrera_strict_fn,
+             mean_cv, all_cv, total_early_tp, total_marginal_fp),
+    by = threshold_cols_gtmsnv2
+  )
+```
+
+```{r}
+#| label: gtmsnv2-tradeoff-data
+
+gtmsnv2_tradeoff <- plot_f1_tradeoff(gtmsnv2_combined, target_rp = target_rp_gtmsnv2, n_nearest = 2)
+
+gtmsnv2_all_hl <- gtmsnv2_tradeoff$data |> filter(rp_group != "other")
+
+# Option A per RP: best avg_f1, tiebroken by lowest CV
+gtmsnv2_opt_a <- gtmsnv2_all_hl |>
+  group_by(annual_rp) |>
+  filter(avg_f1 == max(avg_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "A", selection = "max avg F1")
+
+# Option B per RP: best era5_tol_f1, tiebroken by lowest CV
+gtmsnv2_opt_b <- gtmsnv2_all_hl |>
+  anti_join(gtmsnv2_opt_a, by = c("annual_rp", threshold_cols_gtmsnv2)) |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  mutate(option = "B", selection = "max ERA5 tol F1")
+
+gtmsnv2_ab <- bind_rows(gtmsnv2_opt_a, gtmsnv2_opt_b) |>
+  arrange(annual_rp, option) |>
+  mutate(config_label = sprintf("RP %.1f %s", annual_rp, option))
+
+# Uniform configs
+gtmsnv2_uniform_ref <- get_uniform_refs_prefilter(
+  all_results_gtmsnv2, threshold_cols_gtmsnv2,
+  primera_lts_gtmsnv2, postrera_lts_gtmsnv2,
+  target_rp = target_rp_gtmsnv2, era5_data = gtmsnv2_era5
+)
+
+gtmsnv2_final <- bind_rows(gtmsnv2_ab, gtmsnv2_uniform_ref) |>
+  mutate(row_idx = row_number())
+```
+
+```{r}
+#| label: fig-gtmsnv2-tradeoff-interactive
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork v2: 22-zone AOI)."
+
+gtmsnv2_df <- gtmsnv2_tradeoff$data
+gtmsnv2_bg <- gtmsnv2_df |> filter(rp_group == "other")
+gtmsnv2_hl <- gtmsnv2_df |> filter(rp_group != "other")
+
+gtmsnv2_rp_levels <- levels(gtmsnv2_df$rp_group)
+gtmsnv2_hl_levels <- setdiff(gtmsnv2_rp_levels, "other")
+gtmsnv2_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                        "#ff7f00", "#a65628")[seq_along(gtmsnv2_hl_levels)]
+gtmsnv2_colors <- c(setNames(gtmsnv2_hl_colors, gtmsnv2_hl_levels), "other" = "grey80")
+
+gtmsnv2_labels <- gtmsnv2_final |>
+  filter(option != "U") |>
+  group_by(era5_tol_f1, impact_f1, rp_group) |>
+  summarise(
+    label = paste(config_label, collapse = " / "),
+    avg_f1 = max(avg_f1),
+    .groups = "drop"
+  ) |>
+  mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
+
+gtmsnv2_final_ab <- gtmsnv2_final |> filter(option != "U")
+gtmsnv2_final_u <- gtmsnv2_final |> filter(option == "U")
+
+p_gtmsnv2 <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point_interactive(
+    data = gtmsnv2_bg,
+    aes(tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f | all CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, all_cv, impact_f1, era5_tol_f1)),
+    color = "grey80", size = 1.5, alpha = 0.4
+  ) +
+  {if (nrow(gtmsnv2_final_u) > 0) geom_point_interactive(
+    data = gtmsnv2_final_u,
+    aes(tooltip = sprintf("UNIFORM: RP %.2f | all thresholds = %.1f\navg F1 = %.3f | Impact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, .data[[threshold_cols_gtmsnv2[1]]], avg_f1, impact_f1, era5_tol_f1),
+        data_id = as.character(row_idx)),
+    color = "#ffd700", size = 9, shape = 1, stroke = 1.5, show.legend = FALSE
+  )} +
+  geom_point_interactive(
+    data = gtmsnv2_hl,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f | avg F1 = %.3f | CV = %.3f | all CV = %.3f\nImpact = %.3f | ERA5 tol = %.3f",
+                          annual_rp, avg_f1, mean_cv, all_cv, impact_f1, era5_tol_f1)),
+    size = 2.5, alpha = 0.8
+  ) +
+  geom_point_interactive(
+    data = gtmsnv2_final_ab,
+    aes(color = rp_group,
+        tooltip = sprintf("RP %.2f %s (%s)\navg F1 = %.3f | CV = %.3f | all CV = %.3f",
+                          annual_rp, option, selection, avg_f1, mean_cv, all_cv),
+        data_id = as.character(row_idx)),
+    size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE
+  ) +
+  geom_label_repel(
+    data = gtmsnv2_labels,
+    aes(label = label, color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_y = 0.02
+  ) +
+  {if (nrow(gtmsnv2_final_u) > 0) geom_label_repel(
+    data = gtmsnv2_final_u,
+    aes(label = config_label),
+    size = 2.8, fill = alpha("#ffd700", 0.3), label.size = 0.2, color = "black",
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_y = 0.02
+  )} +
+  scale_color_manual(values = gtmsnv2_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala (StartNetwork v2: 22-zone)",
+       subtitle = "Circles = A (max avg F1) / B (max ERA5) per RP | Yellow halos = uniform") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+
+girafe(ggobj = p_gtmsnv2,
+       options = list(
+         opts_hover(css = "cursor:pointer;stroke-width:3;"),
+         opts_selection(type = "single", css = "stroke-width:3;"),
+         opts_sizing(rescale = TRUE, width = 1)
+       ))
+```
+
+```{r}
+#| label: tbl-gtmsnv2-config-summary
+
+build_config_summary_gt(
+  gtmsnv2_final, threshold_cols_gtmsnv2,
+  primera_lts_gtmsnv2, postrera_lts_gtmsnv2,
+  "Guatemala (StartNetwork v2: 22-zone)"
+)
+```
+
+```{r}
+#| label: tbl-gtmsnv2-final
+#| tbl-cap: "Guatemala (StartNetwork v2) recommended configurations."
+
+gtmsnv2_final |>
+  select(
+    config_label, selection,
+    any_of(c("p0", "p1", "p2", "s0", "s1", "s2")),
+    annual_rp, p_seasonal_rp, s_seasonal_rp,
+    impact_f1, era5_tol_f1, avg_f1, mean_cv, all_cv
+  ) |>
+  mutate(
+    across(c(impact_f1, era5_tol_f1, avg_f1, mean_cv, all_cv), \(x) round(x, 3)),
+    across(c(annual_rp, p_seasonal_rp, s_seasonal_rp), \(x) round(x, 2))
+  ) |>
+  gt() |>
+  cols_align(align = "center") |>
+  cols_label(selection = "Criterion") |>
+  tab_spanner(label = "Primera thresholds (RP)", columns = starts_with("p")) |>
+  tab_spanner(label = "Postrera thresholds (RP)", columns = starts_with("s")) |>
+  tab_spanner(label = "Return periods", columns = c(annual_rp, p_seasonal_rp, s_seasonal_rp)) |>
+  tab_spanner(label = "Performance", columns = c(impact_f1, era5_tol_f1, avg_f1, mean_cv, all_cv)) |>
+  tab_header(
+    title = "Guatemala (StartNetwork v2: 22-zone): Recommended Configurations",
     subtitle = "A = max avg F1 | B = max ERA5 tol F1 | U = uniform (all thresholds equal)"
   )
 ```
