@@ -2132,7 +2132,10 @@ gtm_labels <- gtm_final |>
   ) |>
   mutate(label = sprintf("%s\navg=%.2f", label, avg_f1))
 
-gtm_final_ab <- gtm_final |> filter(option != "U")
+gtm_final_ab <- gtm_final |> filter(option != "U") |>
+  group_by(era5_tol_f1, impact_f1) |>
+  mutate(x_plot = era5_tol_f1 + (seq_len(n()) - (n() + 1) / 2) * 0.008) |>
+  ungroup()
 gtm_final_u <- gtm_final |> filter(option == "U")
 
 p_gtm <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
@@ -2159,7 +2162,7 @@ p_gtm <- ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
   ) +
   geom_point_interactive(
     data = gtm_final_ab,
-    aes(color = rp_group,
+    aes(x = x_plot, color = rp_group,
         tooltip = sprintf("RP %.2f %s (%s)\navg F1 = %.3f | CV = %.3f | all CV = %.3f",
                           annual_rp, option, selection, avg_f1, mean_cv, all_cv),
         data_id = as.character(row_idx),
