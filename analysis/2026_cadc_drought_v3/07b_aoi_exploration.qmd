@@ -788,9 +788,77 @@ df_skill_rp_comparison |>
 
 :::
 
-## Observations
+## OCHA AOI Skill Summary
 
-*To be filled in after running the analysis.*
+@tbl-ocha-skill-summary shows forecast skill for the selected OCHA AOIs used in the trigger optimization chapter.
+
+```{r}
+#| label: tbl-ocha-skill-summary
+#| tbl-cap: "SEAS5 Forecast Skill for OCHA AOIs"
+
+# Map OCHA AOI configs to friendly country names
+ocha_aoi_map <- c(
+  "HND: HN07+HN08"          = "Honduras",
+  "GTM: GT20+GT21+GT02+GT19" = "Guatemala",
+  "SLV: Country"             = "El Salvador"
+)
+
+# Relabel the keys using the same relabel_config function
+ocha_aoi_map_relabeled <- setNames(
+  ocha_aoi_map,
+  map_chr(names(ocha_aoi_map), \(x) {
+    if (x == "SLV: Country") x else relabel_config(x)
+  })
+)
+
+df_ocha_skill <- df_skill_admin |>
+  filter(aoi_config %in% names(ocha_aoi_map_relabeled)) |>
+  mutate(country = ocha_aoi_map_relabeled[aoi_config]) |>
+  filter(
+    (window == "primera" & leadtime %in% 0:2) |
+    (window == "postrera" & leadtime %in% 0:3)
+  ) |>
+  mutate(
+    score = sprintf("%.2f (%.2f)", roc_auc, f1),
+    lt_label = paste0("LT", leadtime),
+    window = case_when(
+      window == "primera" ~ "Primera (May\u2013Aug)",
+      window == "postrera" ~ "Postrera (Sep\u2013Nov)"
+    )
+  ) |>
+  select(country, window, lt_label, score) |>
+  pivot_wider(names_from = lt_label, values_from = score)
+
+df_ocha_skill |>
+  gt(groupname_col = "window") |>
+  tab_header(
+    title = md("**SEAS5 Forecast Skill: ROC-AUC (F1)**"),
+    subtitle = "RP4 drought threshold | 1981\u20132024 baseline | OCHA AOIs"
+  ) |>
+  cols_label(country = "Country") |>
+  tab_style(
+    style = cell_text(weight = "bold", size = px(13)),
+    locations = cells_row_groups()
+  ) |>
+  tab_style(
+    style = cell_borders(sides = "bottom", color = "#dee2e6", weight = px(2)),
+    locations = cells_column_labels()
+  ) |>
+  tab_footnote(
+    footnote = "Format: ROC-AUC (F1). ROC-AUC > 0.7 = good; > 0.8 = excellent",
+    locations = cells_column_labels(columns = LT0)
+  ) |>
+  tab_options(
+    table.font.size = px(14),
+    heading.title.font.size = px(18),
+    heading.subtitle.font.size = px(13),
+    column_labels.font.weight = "bold",
+    row_group.background.color = "#f8f9fa",
+    table.border.top.style = "solid",
+    table.border.top.width = px(2),
+    table.border.top.color = "#1a9850"
+  )
+```
 
 ## Start Network: Baja Verapaz & Quiché {#sec-start-network}
 
