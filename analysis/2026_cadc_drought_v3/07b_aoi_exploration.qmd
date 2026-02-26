@@ -615,6 +615,8 @@ df_skill_admin |>
 
 ```{r}
 #| label: admin-summary-table
+#| eval: false
+#| echo: false
 
 df_skill_admin |>
   filter(
@@ -640,6 +642,8 @@ df_skill_admin |>
 
 ```{r}
 #| label: full-summary-table
+#| eval: false
+#| echo: false
 
 df_skill_admin |>
   filter(
@@ -896,12 +900,14 @@ The Start Network is exploring a separate trigger for **Baja Verapaz (GT15)** an
 
 The Guatemala bar charts above already include Quiché, Baja Verapaz, and their combination (GT14+GT15). At the RP4 drought definition, the merged GT14+GT15 AOI exceeds ROC-AUC 0.7 at primera LT0 and LT1, and performs well for postrera. The main weak point is primera LT2, where the merged skill is dragged down by low-skill zones in northern Quiché. However, Baja Verapaz alone retains adequate skill at LT2.
 
+::: {.callout-important}
 ### Recommendation
 
 For the Start Network trigger covering Baja Verapaz and Quiché:
 
 - **Primera LT0-LT1 and all postrera lead times**: Use the merged **GT14+GT15** AOI. The combined area has ROC-AUC above 0.7 at these lead times, and spatial averaging benefits skill.
 - **Primera LT2**: Monitor **Baja Verapaz (GT15) only**. The merged AOI falls below acceptable skill at this lead time due to poorly-predicted zones in northern Quiché. If Baja Verapaz activates at primera LT2, the Start Network can still decide how best to prioritise resources between the two departments.
+:::
 
 ## Appendix: Admin 2 Skill Decomposition for GT14+GT15 {#sec-sn-appendix}
 

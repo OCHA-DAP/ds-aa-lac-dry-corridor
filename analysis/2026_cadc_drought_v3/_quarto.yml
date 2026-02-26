@@ -3,25 +3,29 @@ project:
   output-dir: _book
 
 book:
-  title: "Seasonal Forecast Skill Assessment"
-  subtitle: "INSIVUMEH vs SEAS5 | Central American Dry Corridor"
+  title: "Anticipatory Action Drought Trigger Development & Forecast Evaluation"
+  subtitle: "Central American Dry Corridor | 2026 Season Update"
   author: "OCHA Centre for Humanitarian Data"
   date: today
   chapters:
     - index.qmd
-    - intro.qmd
-    - 01_binary_metrics.qmd
-    - 02_continuous_metrics.qmd
-    - 03_chirps_tiebreaker.qmd
-    - 04_forecast_drift.qmd
-    - 05_inter_lt_correlation.qmd
-    # - 06_enso_stratification.qmd
-    - 07_multi_aoi_comparison.qmd
-    - 07b_aoi_exploration.qmd
-    # - 08_enso_conditional_triggers.qmd
-    # - 09_threshold_optimization.qmd
-    # - 10_honduras_trigger.qmd
-    - 11_country_trigger_optimizations.qmd
+    - part: "Forecast Skill Evaluations"
+      chapters:
+        - intro.qmd
+        - 01_binary_metrics.qmd
+        - 02_continuous_metrics.qmd
+        - 03_chirps_tiebreaker.qmd
+        - 04_forecast_drift.qmd
+        - 05_inter_lt_correlation.qmd
+        # - 06_enso_stratification.qmd
+        - 07_multi_aoi_comparison.qmd
+    - part: "2026 Trigger Design & Tuning"
+      chapters:
+        - 07b_aoi_exploration.qmd
+        # - 08_enso_conditional_triggers.qmd
+        # - 09_threshold_optimization.qmd
+        # - 10_honduras_trigger.qmd
+        - 11_country_trigger_optimizations.qmd
   appendices:
     - appendix_technical_notes.qmd
 

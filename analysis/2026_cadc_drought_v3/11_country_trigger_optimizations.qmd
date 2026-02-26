@@ -1507,6 +1507,8 @@ build_topline_gt(
 ```{r}
 #| label: tbl-hnd-final
 #| tbl-cap: "Honduras recommended configurations: best average F1 per return period, tiebroken by lowest cross-season threshold CV."
+#| eval: false
+#| echo: false
 
 hnd_final |>
   select(
@@ -1939,6 +1941,8 @@ tbl_slv |>
 ```{r}
 #| label: tbl-slv-final
 #| tbl-cap: "El Salvador recommended configurations: best average F1 per return period, tiebroken by lowest cross-season threshold CV."
+#| eval: false
+#| echo: false
 
 slv_final |>
   select(
@@ -2388,6 +2392,8 @@ build_topline_gt(
 ```{r}
 #| label: tbl-gtm-final
 #| tbl-cap: "Guatemala recommended configurations: best average F1 per return period, tiebroken by lowest cross-season threshold CV."
+#| eval: false
+#| echo: false
 
 gtm_final |>
   select(
@@ -2873,6 +2879,8 @@ tbl_gtmsn |>
 ```{r}
 #| label: tbl-gtmsn-final
 #| tbl-cap: "Guatemala (StartNetwork) recommended configurations: best average F1 per return period, tiebroken by lowest cross-season threshold CV."
+#| eval: false
+#| echo: false
 
 gtmsn_final |>
   select(
@@ -3225,6 +3233,8 @@ build_config_summary_gt(
 ```{r}
 #| label: tbl-gtmsnv2-final
 #| tbl-cap: "Guatemala (StartNetwork v2) recommended configurations."
+#| eval: false
+#| echo: false
 
 gtmsnv2_final |>
   select(
@@ -4046,6 +4056,10 @@ tbl_gtmsnp_act
 #| label: tbl-gtmsnp-config-summary
 
 # Primera-only config summary (manual, since build_config_summary_gt expects postrera)
+
+# Preferred configs to highlight and show at top
+gtmsnp_top_picks <- c("RP 3.5 A", "RP 3.9 A", "RP 3.9 B", "RP 4.4 B", "RP 4.4 A")
+
 gtmsnp_summary <- gtmsnp_final |>
   rowwise() |>
   mutate(
@@ -4053,15 +4067,46 @@ gtmsnp_summary <- gtmsnp_final |>
       vals <- c(p0, p1, p2)[!is.na(c(p0, p1, p2))]
       paste(sprintf("LT%d: %.1f", seq_along(vals) - 1, vals), collapse = " | ")
     },
-    config_label_clean = gsub("\n", " ", config_label),
-    is_top = FALSE
+    config_label_clean = gsub("\n", " ", config_label)
   ) |>
-  ungroup() |>
-  arrange(annual_rp) |>
+  ungroup()
+
+# Deduplicate: when an A/B config has same thresholds as a Uniform config, keep the Uniform label
+uniform_thresholds <- gtmsnp_summary |>
+  filter(option == "U") |>
+  select(all_of(threshold_cols_gtmsnp))
+
+dup_ab <- gtmsnp_summary |>
+  filter(option != "U") |>
+  semi_join(uniform_thresholds, by = threshold_cols_gtmsnp) |>
+  pull(config_label_clean)
+
+# Replace top_picks references that match a uniform duplicate
+gtmsnp_top_picks_resolved <- sapply(gtmsnp_top_picks, function(pick) {
+  if (pick %in% dup_ab) {
+    # Find the uniform equivalent
+    ab_row <- gtmsnp_summary |> filter(config_label_clean == pick)
+    u_match <- gtmsnp_summary |>
+      filter(option == "U") |>
+      semi_join(ab_row, by = threshold_cols_gtmsnp)
+    if (nrow(u_match) > 0) u_match$config_label_clean[1] else pick
+  } else pick
+}, USE.NAMES = FALSE) |> unique()
+
+gtmsnp_summary <- gtmsnp_summary |>
+  filter(!(config_label_clean %in% dup_ab)) |>
+  mutate(
+    is_top = config_label_clean %in% gtmsnp_top_picks_resolved,
+    top_order = match(config_label_clean, gtmsnp_top_picks_resolved, nomatch = 999)
+  ) |>
+  arrange(top_order, annual_rp) |>
   mutate(row_num = row_number()) |>
-  select(row_num, config_label_clean, annual_rp, p_seasonal_rp, primera_thresholds)
+  select(row_num, config_label_clean, annual_rp, p_seasonal_rp, primera_thresholds, is_top)
+
+top_rows <- which(gtmsnp_summary$is_top)
 
 gtmsnp_summary |>
+  select(-is_top) |>
   gt() |>
   cols_label(
     row_num = "#",
@@ -4070,9 +4115,14 @@ gtmsnp_summary |>
     p_seasonal_rp = "Seasonal RP",
     primera_thresholds = "Primera Thresholds"
   ) |>
+  fmt_number(columns = c(annual_rp, p_seasonal_rp), decimals = 2) |>
   cols_align(align = "center") |>
   cols_align(align = "left", columns = primera_thresholds) |>
   tab_header(title = "Guatemala (StartNetwork - Primera): Configuration Summary") |>
+  tab_style(
+    style = cell_fill(color = "#d4edda"),
+    locations = cells_body(rows = top_rows)
+  ) |>
   tab_style(
     style = cell_text(font = system_fonts("monospace-code"), size = px(11)),
     locations = cells_body(columns = primera_thresholds)
@@ -4084,8 +4134,22 @@ gtmsnp_summary |>
 ```
 
 ```{r}
+#| label: tbl-gtmsnp-topline
+
+build_topline_gt(
+  gtmsnp_final,
+  top_picks = gtmsnp_top_picks_resolved,
+  trigger_data_gtmsn, impact_yrs_gtmsn,
+  must_hit_years, should_hit_years,
+  EVAL_START, EVAL_END, "Guatemala (StartNetwork - Primera)"
+)
+```
+
+```{r}
 #| label: tbl-gtmsnp-final
 #| tbl-cap: "Guatemala (StartNetwork - Primera) recommended configurations. Primera seasonal RP only."
+#| eval: false
+#| echo: false
 
 gtmsnp_final |>
   select(
