@@ -821,13 +821,23 @@ df_ocha_skill <- df_skill_admin |>
   mutate(
     score = sprintf("%.2f (%.2f)", roc_auc, f1),
     lt_label = paste0("LT", leadtime),
-    window = case_when(
-      window == "primera" ~ "Primera (May\u2013Aug)",
-      window == "postrera" ~ "Postrera (Sep\u2013Nov)"
+    window = factor(
+      case_when(
+        window == "primera" ~ "Primera (May\u2013Aug)",
+        window == "postrera" ~ "Postrera (Sep\u2013Nov)"
+      ),
+      levels = c("Primera (May\u2013Aug)", "Postrera (Sep\u2013Nov)")
     )
   ) |>
   select(country, window, lt_label, score) |>
-  pivot_wider(names_from = lt_label, values_from = score)
+  pivot_wider(names_from = lt_label, values_from = score) |>
+  arrange(window, country)
+
+# Row indices (1-based within each group) for highlight targeting
+primera_rows <- which(df_ocha_skill$window == "Primera (May\u2013Aug)")
+postrera_rows <- which(df_ocha_skill$window == "Postrera (Sep\u2013Nov)")
+postrera_gtm_hnd <- postrera_rows[df_ocha_skill$country[postrera_rows] %in% c("Guatemala", "Honduras")]
+postrera_slv <- postrera_rows[df_ocha_skill$country[postrera_rows] == "El Salvador"]
 
 df_ocha_skill |>
   gt(groupname_col = "window") |>
@@ -836,6 +846,22 @@ df_ocha_skill |>
     subtitle = "RP4 drought threshold | 1981\u20132024 baseline | OCHA AOIs"
   ) |>
   cols_label(country = "Country") |>
+  sub_missing(missing_text = "") |>
+  # Highlight primera non-blank cells (LT0-LT2) green
+  tab_style(
+    style = cell_fill(color = "#d4edda"),
+    locations = cells_body(columns = c(LT0, LT1, LT2), rows = primera_rows)
+  ) |>
+  # Highlight postrera LT0-2 for GTM & HND
+  tab_style(
+    style = cell_fill(color = "#d4edda"),
+    locations = cells_body(columns = c(LT0, LT1, LT2), rows = postrera_gtm_hnd)
+  ) |>
+  # Highlight postrera LT0-1 for SLV
+  tab_style(
+    style = cell_fill(color = "#d4edda"),
+    locations = cells_body(columns = c(LT0, LT1), rows = postrera_slv)
+  ) |>
   tab_style(
     style = cell_text(weight = "bold", size = px(13)),
     locations = cells_row_groups()
@@ -845,7 +871,7 @@ df_ocha_skill |>
     locations = cells_column_labels()
   ) |>
   tab_footnote(
-    footnote = "Format: ROC-AUC (F1). ROC-AUC > 0.7 = good; > 0.8 = excellent",
+    footnote = "Format: ROC-AUC (F1). ROC-AUC > 0.7 = good; > 0.8 = excellent. Green = recommended leadtimes for trigger.",
     locations = cells_column_labels(columns = LT0)
   ) |>
   tab_options(

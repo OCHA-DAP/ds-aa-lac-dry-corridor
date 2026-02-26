@@ -138,6 +138,8 @@ Before defining trigger thresholds, we examine the historical record of drought 
 #| label: tbl-impact-summary
 #| tbl-cap: "Impact data summary across CERF, EM-DAT, and CERF hypothesis years. Priority 1 (pink) = CERF hypothesis drought years. Priority 2 (yellow) = years where all 3 countries appear in EM-DAT expanded."
 
+show_emdat_reported <- FALSE
+
 impact_summary_years <- EVAL_START:EVAL_END
 
 cerf_by_iso <- df_cerf_drought |>
@@ -147,12 +149,14 @@ cerf_by_iso <- df_cerf_drought |>
   pivot_wider(names_from = iso3, values_from = val, names_prefix = "cerf_") |>
   complete(year = impact_summary_years)
 
-emdat_reported <- df_emdat_drought |>
-  filter(year >= EVAL_START, year <= EVAL_END) |>
-  distinct(iso3, year) |>
-  mutate(val = TRUE) |>
-  pivot_wider(names_from = iso3, values_from = val, names_prefix = "emdat_") |>
-  complete(year = impact_summary_years)
+if (show_emdat_reported) {
+  emdat_reported <- df_emdat_drought |>
+    filter(year >= EVAL_START, year <= EVAL_END) |>
+    distinct(iso3, year) |>
+    mutate(val = TRUE) |>
+    pivot_wider(names_from = iso3, values_from = val, names_prefix = "emdat_") |>
+    complete(year = impact_summary_years)
+}
 
 emdat_expanded <- df_emdat_impact |>
   filter(year >= EVAL_START, year <= EVAL_END) |>
@@ -164,8 +168,11 @@ emdat_expanded <- df_emdat_impact |>
 cerf_hyp <- tibble(year = cerf_hyp_years, cerf_hypothesis = TRUE)
 
 impact_summary <- tibble(year = impact_summary_years) |>
-  left_join(cerf_by_iso, by = "year") |>
-  left_join(emdat_reported, by = "year") |>
+  left_join(cerf_by_iso, by = "year")
+if (show_emdat_reported) {
+  impact_summary <- impact_summary |> left_join(emdat_reported, by = "year")
+}
+impact_summary <- impact_summary |>
   left_join(emdat_expanded, by = "year") |>
   left_join(cerf_hyp, by = "year") |>
   mutate(across(-year, ~ if_else(replace_na(.x, FALSE), "\u2713", ""))) |>
@@ -177,24 +184,33 @@ impact_summary <- tibble(year = impact_summary_years) |>
     )
   )
 
+emdat_reported_cols <- c("emdat_HND", "emdat_GTM", "emdat_SLV")
 tick_cols <- c("cerf_HND", "cerf_GTM", "cerf_SLV",
-               "emdat_HND", "emdat_GTM", "emdat_SLV",
+               if (show_emdat_reported) emdat_reported_cols,
                "emdat_exp_HND", "emdat_exp_GTM", "emdat_exp_SLV",
                "cerf_hypothesis")
 
-impact_summary |>
+tbl_gt <- impact_summary |>
   gt() |>
   cols_label(
     year = "Year",
     cerf_HND = "HND", cerf_GTM = "GTM", cerf_SLV = "SLV",
-    emdat_HND = "HND", emdat_GTM = "GTM", emdat_SLV = "SLV",
     emdat_exp_HND = "HND", emdat_exp_GTM = "GTM", emdat_exp_SLV = "SLV",
     cerf_hypothesis = "Hypothesis",
     hit_priority = "Priority"
-  ) |>
+  )
+if (show_emdat_reported) {
+  tbl_gt <- tbl_gt |>
+    cols_label(emdat_HND = "HND", emdat_GTM = "GTM", emdat_SLV = "SLV")
+}
+tbl_gt <- tbl_gt |>
   cols_move(columns = cerf_hypothesis, after = cerf_SLV) |>
-  tab_spanner(label = "CERF", columns = c(cerf_HND, cerf_GTM, cerf_SLV, cerf_hypothesis)) |>
-  tab_spanner(label = "EM-DAT (reported)", columns = c(emdat_HND, emdat_GTM, emdat_SLV)) |>
+  tab_spanner(label = "CERF", columns = c(cerf_HND, cerf_GTM, cerf_SLV, cerf_hypothesis))
+if (show_emdat_reported) {
+  tbl_gt <- tbl_gt |>
+    tab_spanner(label = "EM-DAT (reported)", columns = c(emdat_HND, emdat_GTM, emdat_SLV))
+}
+tbl_gt <- tbl_gt |>
   tab_spanner(label = "EM-DAT (expanded)", columns = c(emdat_exp_HND, emdat_exp_GTM, emdat_exp_SLV)) |>
   cols_align(align = "center", columns = -year) |>
   sub_missing(columns = hit_priority, missing_text = "") |>
@@ -207,16 +223,19 @@ impact_summary |>
   tab_style(style = cell_fill(color = "white"),
     locations = cells_body(columns = cerf_GTM, rows = cerf_GTM == "")) |>
   tab_style(style = cell_fill(color = "white"),
-    locations = cells_body(columns = cerf_SLV, rows = cerf_SLV == "")) |>
-  # EM-DAT (reported): muted — light grey fill + faded text for entire column
-  tab_style(
-    style = list(cell_fill(color = "#f0f0f0"), cell_text(color = "#999999")),
-    locations = list(
-      cells_body(columns = c(emdat_HND, emdat_GTM, emdat_SLV)),
-      cells_column_labels(columns = c(emdat_HND, emdat_GTM, emdat_SLV)),
-      cells_column_spanners(spanners = "EM-DAT (reported)")
+    locations = cells_body(columns = cerf_SLV, rows = cerf_SLV == ""))
+if (show_emdat_reported) {
+  tbl_gt <- tbl_gt |>
+    tab_style(
+      style = list(cell_fill(color = "#f0f0f0"), cell_text(color = "#999999")),
+      locations = list(
+        cells_body(columns = c(emdat_HND, emdat_GTM, emdat_SLV)),
+        cells_column_labels(columns = c(emdat_HND, emdat_GTM, emdat_SLV)),
+        cells_column_spanners(spanners = "EM-DAT (reported)")
+      )
     )
-  ) |>
+}
+tbl_gt <- tbl_gt |>
   tab_style(style = cell_fill(color = "white"),
     locations = cells_body(columns = emdat_exp_HND, rows = emdat_exp_HND == "")) |>
   tab_style(style = cell_fill(color = "white"),
@@ -237,15 +256,19 @@ impact_summary |>
       cells_column_labels(columns = cerf_HND),
       cells_column_spanners(spanners = "CERF")
     )
-  ) |>
-  tab_style(
-    style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
-    locations = list(
-      cells_body(columns = emdat_HND),
-      cells_column_labels(columns = emdat_HND),
-      cells_column_spanners(spanners = "EM-DAT (reported)")
+  )
+if (show_emdat_reported) {
+  tbl_gt <- tbl_gt |>
+    tab_style(
+      style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
+      locations = list(
+        cells_body(columns = emdat_HND),
+        cells_column_labels(columns = emdat_HND),
+        cells_column_spanners(spanners = "EM-DAT (reported)")
+      )
     )
-  ) |>
+}
+tbl_gt <- tbl_gt |>
   tab_style(
     style = cell_borders(sides = "left", color = "#666666", weight = px(2)),
     locations = list(
@@ -268,6 +291,8 @@ impact_summary |>
       EVAL_START, EVAL_END)
   ) |>
   opt_stylize(style = 1)
+
+tbl_gt
 ```
 
 @tbl-impact-rp-summary translates the event counts from the table above into approximate return periods using RP = (N + 1) / n~events~. EM-DAT RPs use the full `r EVAL_START`--`r EVAL_END` window (N = `r EVAL_END - EVAL_START + 1`). CERF RPs use 2006--`r EVAL_END` (N = `r EVAL_END - 2006 + 1`) since CERF was established in 2006.
@@ -315,6 +340,8 @@ n_cerf_p1 <- length(cerf_p1_union)
 n_p1 <- length(must_hit_years)
 n_p2 <- length(should_hit_years)
 n_all3 <- length(all3_years)
+p1_p2_union <- sort(union(must_hit_years, should_hit_years))
+n_p1_p2 <- length(p1_p2_union)
 
 regional_rps <- tibble(
   category = c(
@@ -322,6 +349,7 @@ regional_rps <- tibble(
     "P1: CERF hypothesis",
     sprintf("CERF + P1 union (%d\u2013%d)", CERF_START, EVAL_END),
     "P2: 3/3 countries in EM-DAT (excl. P1)",
+    "P1 + P2",
     "All 3/3 countries in EM-DAT"
   ),
   years = c(
@@ -329,14 +357,16 @@ regional_rps <- tibble(
     paste(sort(must_hit_years), collapse = ", "),
     paste(sort(cerf_p1_union), collapse = ", "),
     paste(sort(should_hit_years), collapse = ", "),
+    paste(sort(p1_p2_union), collapse = ", "),
     paste(sort(all3_years), collapse = ", ")
   ),
-  n_events = c(n_cerf_regional, n_p1, n_cerf_p1, n_p2, n_all3),
+  n_events = c(n_cerf_regional, n_p1, n_cerf_p1, n_p2, n_p1_p2, n_all3),
   rp = c(
     (n_cerf_window + 1) / n_cerf_regional,
     (n_eval + 1) / n_p1,
     (n_cerf_window + 1) / n_cerf_p1,
     (n_eval + 1) / n_p2,
+    (n_eval + 1) / n_p1_p2,
     (n_eval + 1) / n_all3
   )
 )
