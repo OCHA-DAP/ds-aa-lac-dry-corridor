@@ -1178,6 +1178,56 @@ The plot below shows each candidate configuration positioned by its ERA5 toleran
 hnd_tradeoff$plot
 ```
 
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-hnd-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras."
+
+# Recompute color palette
+hnd_fw_rp_levels <- levels(hnd_tradeoff$data$rp_group)
+hnd_fw_hl_levels <- setdiff(hnd_fw_rp_levels, "other")
+hnd_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                       "#ff7f00", "#a65628")[seq_along(hnd_fw_hl_levels)]
+hnd_fw_colors <- c(setNames(hnd_fw_hl_colors, hnd_fw_hl_levels), "other" = "grey80")
+
+hnd_fw_df <- hnd_tradeoff$data
+hnd_fw_bg <- hnd_fw_df |> filter(rp_group == "other")
+hnd_fw_hl <- hnd_fw_df |> filter(rp_group != "other")
+
+# Best config per RP: max ERA5 tol F1, tiebreak by lowest CV
+hnd_fw_best <- hnd_fw_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup()
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = hnd_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = hnd_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = hnd_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = hnd_fw_best,
+    aes(label = sprintf("RP %.1f\nERA5 F1=%.2f", annual_rp, era5_tol_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = hnd_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Honduras",
+       subtitle = "Circled = best ERA5 tolerant F1 per RP level") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
+
 ```{r}
 #| label: fig-hnd-tradeoff-interactive
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras. Click a circled point to see its trigger activation detail below."
@@ -1282,6 +1332,8 @@ girafe(ggobj = p_hnd,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-hnd-config-summary
@@ -1696,6 +1748,56 @@ slv_default_idx <- which.min(abs(slv_final$annual_rp - 2.9))
 slv_tradeoff$plot
 ```
 
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-slv-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador."
+
+# Recompute color palette
+slv_fw_rp_levels <- levels(slv_tradeoff$data$rp_group)
+slv_fw_hl_levels <- setdiff(slv_fw_rp_levels, "other")
+slv_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                       "#ff7f00", "#a65628")[seq_along(slv_fw_hl_levels)]
+slv_fw_colors <- c(setNames(slv_fw_hl_colors, slv_fw_hl_levels), "other" = "grey80")
+
+slv_fw_df <- slv_tradeoff$data
+slv_fw_bg <- slv_fw_df |> filter(rp_group == "other")
+slv_fw_hl <- slv_fw_df |> filter(rp_group != "other")
+
+# Best config per RP: max ERA5 tol F1, tiebreak by lowest CV
+slv_fw_best <- slv_fw_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup()
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = slv_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = slv_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = slv_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = slv_fw_best,
+    aes(label = sprintf("RP %.1f\nERA5 F1=%.2f", annual_rp, era5_tol_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = slv_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — El Salvador",
+       subtitle = "Circled = best ERA5 tolerant F1 per RP level") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
+
 ```{r}
 #| label: fig-slv-tradeoff-interactive
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador. Click a circled point to see its trigger activation detail below."
@@ -1794,6 +1896,8 @@ girafe(ggobj = p_slv,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-slv-config-summary
@@ -2141,6 +2245,56 @@ gtm_activation_tables <- lapply(seq_len(nrow(gtm_final)), function(i) {
 gtm_default_idx <- which.min(abs(gtm_final$annual_rp - target_rp_gtm))
 ```
 
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-gtm-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala."
+
+# Recompute color palette
+gtm_fw_rp_levels <- levels(gtm_tradeoff$data$rp_group)
+gtm_fw_hl_levels <- setdiff(gtm_fw_rp_levels, "other")
+gtm_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                       "#ff7f00", "#a65628")[seq_along(gtm_fw_hl_levels)]
+gtm_fw_colors <- c(setNames(gtm_fw_hl_colors, gtm_fw_hl_levels), "other" = "grey80")
+
+gtm_fw_df <- gtm_tradeoff$data
+gtm_fw_bg <- gtm_fw_df |> filter(rp_group == "other")
+gtm_fw_hl <- gtm_fw_df |> filter(rp_group != "other")
+
+# Best config per RP: max ERA5 tol F1, tiebreak by lowest CV
+gtm_fw_best <- gtm_fw_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup()
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = gtm_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = gtm_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = gtm_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = gtm_fw_best,
+    aes(label = sprintf("RP %.1f\nERA5 F1=%.2f", annual_rp, era5_tol_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtm_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala",
+       subtitle = "Circled = best ERA5 tolerant F1 per RP level") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
+
 ```{r}
 #| label: fig-gtm-tradeoff-interactive
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala. Click a circled point to see its trigger activation detail below."
@@ -2233,6 +2387,8 @@ girafe(ggobj = p_gtm,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-gtm-config-summary
@@ -2590,6 +2746,56 @@ gtmsn_default_idx <- which(grepl("RP 2.9 B", gtmsn_final$config_label, fixed = T
 if (is.na(gtmsn_default_idx)) gtmsn_default_idx <- which.min(abs(gtmsn_final$annual_rp - target_rp_gtmsn))
 ```
 
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-gtmsn-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork)."
+
+# Recompute color palette
+gtmsn_fw_rp_levels <- levels(gtmsn_tradeoff$data$rp_group)
+gtmsn_fw_hl_levels <- setdiff(gtmsn_fw_rp_levels, "other")
+gtmsn_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                         "#ff7f00", "#a65628")[seq_along(gtmsn_fw_hl_levels)]
+gtmsn_fw_colors <- c(setNames(gtmsn_fw_hl_colors, gtmsn_fw_hl_levels), "other" = "grey80")
+
+gtmsn_fw_df <- gtmsn_tradeoff$data
+gtmsn_fw_bg <- gtmsn_fw_df |> filter(rp_group == "other")
+gtmsn_fw_hl <- gtmsn_fw_df |> filter(rp_group != "other")
+
+# Best config per RP: max ERA5 tol F1, tiebreak by lowest CV
+gtmsn_fw_best <- gtmsn_fw_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup()
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = gtmsn_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = gtmsn_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = gtmsn_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = gtmsn_fw_best,
+    aes(label = sprintf("RP %.1f\nERA5 F1=%.2f", annual_rp, era5_tol_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtmsn_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala (StartNetwork)",
+       subtitle = "Circled = best ERA5 tolerant F1 per RP level") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
+
 ```{r}
 #| label: fig-gtmsn-tradeoff-interactive
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork). Click a circled point to see its trigger activation detail below."
@@ -2679,6 +2885,8 @@ girafe(ggobj = p_gtmsn,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-gtmsn-config-summary
@@ -3133,6 +3341,56 @@ gtmsnv2_final <- bind_rows(gtmsnv2_ab, gtmsnv2_uniform_ref) |>
   mutate(row_idx = row_number())
 ```
 
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-gtmsnv2-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork v2: 22-zone)."
+
+# Recompute color palette
+gtmsnv2_fw_rp_levels <- levels(gtmsnv2_tradeoff$data$rp_group)
+gtmsnv2_fw_hl_levels <- setdiff(gtmsnv2_fw_rp_levels, "other")
+gtmsnv2_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                           "#ff7f00", "#a65628")[seq_along(gtmsnv2_fw_hl_levels)]
+gtmsnv2_fw_colors <- c(setNames(gtmsnv2_fw_hl_colors, gtmsnv2_fw_hl_levels), "other" = "grey80")
+
+gtmsnv2_fw_df <- gtmsnv2_tradeoff$data
+gtmsnv2_fw_bg <- gtmsnv2_fw_df |> filter(rp_group == "other")
+gtmsnv2_fw_hl <- gtmsnv2_fw_df |> filter(rp_group != "other")
+
+# Best config per RP: max ERA5 tol F1, tiebreak by lowest CV
+gtmsnv2_fw_best <- gtmsnv2_fw_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup()
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = gtmsnv2_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = gtmsnv2_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = gtmsnv2_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = gtmsnv2_fw_best,
+    aes(label = sprintf("RP %.1f\nERA5 F1=%.2f", annual_rp, era5_tol_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtmsnv2_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala (StartNetwork v2: 22-zone)",
+       subtitle = "Circled = best ERA5 tolerant F1 per RP level") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
+
 ```{r}
 #| label: fig-gtmsnv2-tradeoff-interactive
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork v2: 22-zone AOI)."
@@ -3219,6 +3477,8 @@ girafe(ggobj = p_gtmsnv2,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-gtmsnv2-config-summary
@@ -3838,6 +4098,56 @@ gtmsnp_activation_tables <- lapply(seq_len(nrow(gtmsnp_final)), function(i) {
 gtmsnp_default_idx <- 1
 ```
 
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-gtmsnp-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork - Primera only)."
+
+# Recompute color palette
+gtmsnp_fw_rp_levels <- levels(gtmsnp_tradeoff$data$rp_group)
+gtmsnp_fw_hl_levels <- setdiff(gtmsnp_fw_rp_levels, "other")
+gtmsnp_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                          "#ff7f00", "#a65628")[seq_along(gtmsnp_fw_hl_levels)]
+gtmsnp_fw_colors <- c(setNames(gtmsnp_fw_hl_colors, gtmsnp_fw_hl_levels), "other" = "grey80")
+
+gtmsnp_fw_df <- gtmsnp_tradeoff$data
+gtmsnp_fw_bg <- gtmsnp_fw_df |> filter(rp_group == "other")
+gtmsnp_fw_hl <- gtmsnp_fw_df |> filter(rp_group != "other")
+
+# Best config per RP: max ERA5 tol F1, tiebreak by lowest CV
+gtmsnp_fw_best <- gtmsnp_fw_hl |>
+  group_by(annual_rp) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
+  arrange(all_cv) |>
+  slice_head(n = 1) |>
+  ungroup()
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = gtmsnp_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = gtmsnp_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = gtmsnp_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = gtmsnp_fw_best,
+    aes(label = sprintf("RP %.1f\nERA5 F1=%.2f", annual_rp, era5_tol_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtmsnp_fw_colors, name = "Primera RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — StartNetwork Primera Only",
+       subtitle = "Circled = best ERA5 tolerant F1 per RP level") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
+
 ```{r}
 #| label: fig-gtmsnp-tradeoff-interactive
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork - Primera only). Target primera seasonal RP ~4."
@@ -3926,6 +4236,8 @@ girafe(ggobj = p_gtmsnp,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 **Trigger Activation Detail (per leadtime)**
 
