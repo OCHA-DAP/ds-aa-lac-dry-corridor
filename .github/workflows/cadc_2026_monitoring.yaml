@@ -89,6 +89,6 @@ jobs:
         if: steps.cache-r-deps.outputs.cache-hit != 'true'
         run: Rscript .github/depends_2026b.R
 
-      - name: Run 2026 trigger monitoring
-        shell: bash
-        run: Rscript ./src/monitoring_2026/update_activation_status.R
+      # - name: Run 2026 trigger monitoring
+      #   shell: bash
+      #   run: Rscript ./src/monitoring_2026/update_activation_status.R
