@@ -25,14 +25,12 @@ box::use(
   sf,
   gghdx,
   ggplot2[...],
-  blastula[...],
 )
 
 gghdx$gghdx()
 box::purge_cache()
 box::use(
-  utils = ../utils/gen_utils,
-  eu = ../utils/email_utils,
+  utils = ../utils/gen_utils_2026,
   eu26 = ../utils/email_utils_2026,
   ../utils/map
 )
@@ -40,27 +38,27 @@ box::use(
 
 # Configuration -----------------------------------------------------------
 
-WHEN_TO_MONITOR_LOCAL_DEFAULT <- c("current")[1]
 EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer", "developers", "internal_chd", "full_list")[1]
-
-logger$log_info(paste0("EMAIL_WHO = ", Sys.getenv("EMAIL_WHO")))
-logger$log_info(paste0("WHEN_TO_MONITOR = ", Sys.getenv("WHEN_TO_MONITOR")))
-
 EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = EMAIL_WHO_LOCAL_DEFAULT)
 
-monitoring_when <- Sys.getenv("WHEN_TO_MONITOR", unset = WHEN_TO_MONITOR_LOCAL_DEFAULT)
-run_date_set <- case_when(
-  monitoring_when == "current" ~ Sys.Date(),
-  .default = Sys.Date()
-)
+# Run date: defaults to Sys.Date(), but can be overridden via RUN_YEAR + RUN_MONTH
+# env vars (set in GHA workflow_dispatch or locally for testing).
+run_year <- Sys.getenv("RUN_YEAR", unset = "")
+run_month <- Sys.getenv("RUN_MONTH", unset = "")
+
+if (nzchar(run_year) && nzchar(run_month)) {
+  run_date_set <- lubridate$make_date(as.integer(run_year), as.integer(run_month), 1L)
+} else {
+  run_date_set <- Sys.Date()
+}
+
+current_moment <- lubridate$floor_date(run_date_set, "month")
 
 logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 logger$log_info(paste0("Run date set = ", run_date_set))
+logger$log_info(paste0("Current moment = ", current_moment))
 
-df_email_receps <- eu$load_email_recipients(email_list = EMAIL_LIST)
-
-current_moment <- lubridate$floor_date(run_date_set, "month")
-current_moment <- lubridate$as_date("2025-03-01")
+df_email_receps <- utils$load_email_recipients(email_list = EMAIL_LIST)
 
 # Loading base data -------------------------------------------------------
 
@@ -358,8 +356,8 @@ p_rainfall <- df_status_ocha |>
     nrow = 1, ncol = 3
   ) +
   labs(
-    title = glue("CADC Drought Monitoring - Forecasted {season} Rainfall ({monitored_range} 2026)"),
-    subtitle = glue("Forecast Published: 2026 {month_chr}"),
+    title = glue("CADC Drought Monitoring - Forecasted {season} Rainfall ({monitored_range} {format(run_date_set, '%Y')})"),
+    subtitle = glue("Forecast Published: {format(run_date_set, '%Y')} {month_chr}"),
     y = "Rainfall (mm)",
     caption = "Horizontal red dashed lines indicate trigger threshold level."
   ) +
@@ -378,32 +376,45 @@ p_rainfall <- df_status_ocha |>
 
 # Email delivery ----------------------------------------------------------
 
-email_creds <- creds_envvar(
-  user = Sys.getenv("CHD_DS_EMAIL_USERNAME"),
-  pass_envvar = "CHD_DS_EMAIL_PASSWORD",
-  host = Sys.getenv("CHD_DS_HOST"),
-  port = Sys.getenv("CHD_DS_PORT"),
-  use_ssl = TRUE
+data_accessed <- trimws(format(as.Date(current_moment), "%B %Y"))
+
+# Convert plots to base64 inline images
+map_b64 <- eu26$ggplot_to_base64(m_choro, width = 8, height = 5.5)
+rainfall_b64 <- eu26$ggplot_to_base64(p_rainfall, width = 8, height = 5.5)
+
+# Build OCHA email HTML content
+ocha_html <- eu26$build_email_html_ocha(
+  email_txt = email_txt,
+  gt_threshold_en = gt_threshold_ocha_en,
+  gt_threshold_es = gt_threshold_ocha_es,
+  gt_aoi_en = gt_aoi_en,
+  gt_aoi_es = gt_aoi_es,
+  map_b64 = map_b64,
+  rainfall_b64 = rainfall_b64,
+  data_accessed = data_accessed
 )
 
-# ── OCHA email ──
+# ── Send OCHA email ──
 eu26$send_monitoring_email(
-  template = "email_cadc_drought_monitoring_2026.Rmd",
   subject = email_txt$subj,
-  render_env = parent.frame(),
+  body_html = ocha_html,
   recipients = df_email_receps,
-  email_list = EMAIL_LIST,
-  credentials = email_creds
+  email_list = EMAIL_LIST
 )
 
-# ── StartNetwork email ──
+# ── Send StartNetwork email ──
 if (nrow(df_status_sn) > 0) {
+  sn_html <- eu26$build_email_html_sn(
+    email_txt = email_txt_sn,
+    gt_threshold_en = gt_threshold_sn_en,
+    gt_threshold_es = gt_threshold_sn_es,
+    data_accessed = data_accessed
+  )
+
   eu26$send_monitoring_email(
-    template = "email_cadc_drought_monitoring_2026_startnetwork.Rmd",
     subject = email_txt_sn$subj,
-    render_env = parent.frame(),
+    body_html = sn_html,
     recipients = df_email_receps,
-    email_list = EMAIL_LIST,
-    credentials = email_creds
+    email_list = EMAIL_LIST
   )
 }

@@ -1,0 +1,94 @@
+# 2026 CADC drought trigger monitoring
+#
+# Reads SEAS5 from prod postgres, thresholds from dev blob.
+# Sends bilingual email notification via Listmonk transactional API.
+
+name: cadc-2026-trigger-monitoring
+
+on:
+  workflow_dispatch:
+    inputs:
+      EMAIL_WHO:
+        required: true
+        type: choice
+        default: 'core_developer'
+        options:
+          - core_developer
+          - developers
+          - internal_chd
+          - internal_ocha
+          - full_list
+      RUN_YEAR:
+        description: 'Override year (e.g. 2025). Leave empty for current date.'
+        required: false
+        type: string
+        default: ''
+      RUN_MONTH:
+        description: 'Override month number (1-12, e.g. 3 for March). Leave empty for current date.'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      DSCI_LISTMONK_API_USERNAME: ${{ vars.DSCI_LISTMONK_API_USERNAME }}
+      DSCI_LISTMONK_API_KEY: ${{ secrets.DSCI_LISTMONK_API_KEY }}
+      DS_AZ_BLOB_DEV_SAS: ${{ secrets.DSCI_AZ_BLOB_DEV_SAS_WRITE }}
+      DS_AZ_DB_PROD_UID_WRITE: ${{ secrets.DSCI_AZ_DB_PROD_UID_WRITE }}
+      DS_AZ_DB_PROD_HOST: ${{ secrets.DSCI_AZ_DB_PROD_HOST }}
+      DS_AZ_DB_PROD_PW_WRITE: ${{ secrets.DSCI_AZ_DB_PROD_PW_WRITE }}
+      DS_AZ_DB_PROD_NAME: ${{ secrets.DS_AZ_DB_PROD_NAME }}
+      EMAIL_WHO: ${{ inputs.EMAIL_WHO || 'core_developer' }}
+      RUN_YEAR: ${{ inputs.RUN_YEAR || '' }}
+      RUN_MONTH: ${{ inputs.RUN_MONTH || '' }}
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: ${{ secrets.DS_AZ_DB_PROD_UID_WRITE }}
+          POSTGRES_PASSWORD: ${{ secrets.DS_AZ_DB_PROD_PW_WRITE }}
+          POSTGRES_DB: ${{ secrets.DS_AZ_DB_PROD_NAME }}
+          POSTGRES_HOST: localhost
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.x'
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxml2-dev \
+            libgdal-dev \
+            libproj-dev \
+            libgeos-dev \
+            libudunits2-dev \
+            libsodium-dev \
+            libfreetype6-dev \
+            libcurl4-openssl-dev
+
+      - name: Cache R dependencies
+        id: cache-r-deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: R-dependency-cache-2026b-${{ hashFiles('.github/depends_2026b.R') }}
+
+      - name: Install R dependencies
+        if: steps.cache-r-deps.outputs.cache-hit != 'true'
+        run: Rscript .github/depends_2026b.R
+
+      - name: Run 2026 trigger monitoring
+        shell: bash
+        run: Rscript ./src/monitoring_2026/update_activation_status.R

@@ -1,7 +1,7 @@
 #' Email utilities for 2026 CADC drought monitoring
 #'
-#' Bilingual (EN/ES) email text builders, gt table builders, and send helper.
-#' Imports shared utilities (add_ggplot_custom, load_email_recipients) from email_utils.
+#' Bilingual (EN/ES) email text builders, gt table builders, HTML content
+#' assemblers, and listmonk send helper.
 
 box::use(
   dplyr[...],
@@ -9,9 +9,12 @@ box::use(
   stringr,
   gt,
   sf,
-  purrr,
-  blastula[...],
+  ggplot2,
   logger
+)
+
+box::use(
+  lm = ../utils/listmonk
 )
 
 # Constants ---------------------------------------------------------------
@@ -41,10 +44,10 @@ month_name_es <- function(date) {
 status_html <- function(activated, lang = "en") {
   if (activated) {
     label <- if (lang == "es") "Activado" else "Activated"
-    glue("<span style='color: {CHD_TOMATO};'>{label}</span>")
+    glue("<span style='color: {CHD_TOMATO}; font-weight:bold;'>{label}</span>")
   } else {
     label <- if (lang == "es") "No Activado" else "Not Activated"
-    glue("<span style='color: {CHD_GREEN};'>{label}</span>")
+    glue("<span style='color: {CHD_GREEN}; font-weight:bold;'>{label}</span>")
   }
 }
 
@@ -54,6 +57,23 @@ monitored_range_label <- function(season, lang = "en") {
   } else {
     ifelse(season == "Primera", "May-August", "September-November")
   }
+}
+
+
+#' Convert a ggplot to a base64-encoded inline image tag
+#'
+#' @param plot_object ggplot object
+#' @param width plot width in inches
+#' @param height plot height in inches
+#' @param dpi resolution
+#' @return character string: `<img src="data:image/png;base64,..." />`
+#' @export
+ggplot_to_base64 <- function(plot_object, width = 8, height = 5, dpi = 150) {
+  tmp <- tempfile(fileext = ".png")
+  on.exit(unlink(tmp))
+  ggplot2$ggsave(tmp, plot = plot_object, width = width, height = height, dpi = dpi)
+  b64 <- base64enc::base64encode(tmp)
+  glue('<img src="data:image/png;base64,{b64}" alt="plot" style="max-width:100%;height:auto;" />')
 }
 
 
@@ -78,7 +98,7 @@ build_email_text_ocha <- function(df_status, run_date, season, monitored_range) 
   activated <- nrow(df_activated) > 0
 
   subj <- glue(
-    "AA Central America Dry Corridor - Drought Monitoring - {month_en} update - ",
+    "AA Central America Dry Corridor - {season} Drought Monitoring - {month_en} update - ",
     "{ifelse(activated, 'Activated', 'No Activations')} (HND, SLV, GTM)"
   )
 
@@ -121,16 +141,12 @@ build_email_text_ocha <- function(df_status, run_date, season, monitored_range) 
   list(
     subj = subj,
     en = list(
-      title = "Anticipatory Action - Central American Dry Corridor",
-      subtitle = glue("2026 {season} Drought Monitoring - {month_en} Update"),
       date_header = glue("{date_fmt} - Trigger status:"),
       status = status_html(activated, "en"),
       description_title = "Trigger Description",
       description_content = desc_en,
-      contact_info = "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
       data_source = "ECMWF SEAS5",
-      ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor).",
-      tbl_footnote = OCHA_RP_FOOTNOTE_EN
+      ref_github = 'Full documentation and source code can be found in the <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">GitHub repository</a>.'
     ),
     es = list(
       title = "Acci\u00f3n Anticipatoria - Corredor Seco Centroamericano",
@@ -139,10 +155,8 @@ build_email_text_ocha <- function(df_status, run_date, season, monitored_range) 
       status = status_html(activated, "es"),
       description_title = "Descripci\u00f3n del Mecanismo de Activaci\u00f3n",
       description_content = desc_es,
-      contact_info = "Contacte al Centro de Datos Humanitarios de OCHA a trav\u00e9s de Leonardo Milano, Team Lead\nfor Data Science en leonardo.milano@un.org para cualquier pregunta o comentario.",
       data_source = "ECMWF SEAS5",
-      ref_github = "La documentaci\u00f3n completa y el c\u00f3digo fuente se encuentran en el [repositorio de GitHub](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor).",
-      tbl_footnote = OCHA_RP_FOOTNOTE_ES
+      ref_github = 'La documentaci\u00f3n completa y el c\u00f3digo fuente se encuentran en el <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">repositorio de GitHub</a>.'
     )
   )
 }
@@ -169,7 +183,7 @@ build_email_text_sn <- function(df_status, run_date, season, monitored_range) {
   activated <- nrow(df_activated) > 0
 
   subj <- glue(
-    "AA StartNetwork Guatemala - Drought Monitoring - {month_en} update - ",
+    "AA StartNetwork Guatemala - {season} Drought Monitoring - {month_en} update - ",
     "{ifelse(activated, 'Activated', 'No Activations')}"
   )
 
@@ -208,15 +222,12 @@ build_email_text_sn <- function(df_status, run_date, season, monitored_range) {
   list(
     subj = subj,
     en = list(
-      title = "Anticipatory Action - StartNetwork Guatemala",
-      subtitle = glue("2026 {season} Drought Monitoring - {month_en} Update"),
       date_header = glue("{date_fmt} - Trigger status:"),
       status = status_html(activated, "en"),
       description_title = "Trigger Description",
       description_content = desc_en,
-      contact_info = "Contact the OCHA Centre for Humanitarian Data via Leonardo Milano, Team Lead\nfor Data Science at leonardo.milano@un.org with any questions or feedback.",
       data_source = "ECMWF SEAS5",
-      ref_github = "Full documentation and source code can be found in the [GitHub repository](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor)."
+      ref_github = 'Full documentation and source code can be found in the <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">GitHub repository</a>.'
     ),
     es = list(
       title = "Acci\u00f3n Anticipatoria - StartNetwork Guatemala",
@@ -225,9 +236,8 @@ build_email_text_sn <- function(df_status, run_date, season, monitored_range) {
       status = status_html(activated, "es"),
       description_title = "Descripci\u00f3n del Mecanismo de Activaci\u00f3n",
       description_content = desc_es,
-      contact_info = "Contacte al Centro de Datos Humanitarios de OCHA a trav\u00e9s de Leonardo Milano, Team Lead\nfor Data Science en leonardo.milano@un.org para cualquier pregunta o comentario.",
       data_source = "ECMWF SEAS5",
-      ref_github = "La documentaci\u00f3n completa y el c\u00f3digo fuente se encuentran en el [repositorio de GitHub](https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor)."
+      ref_github = 'La documentaci\u00f3n completa y el c\u00f3digo fuente se encuentran en el <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">repositorio de GitHub</a>.'
     )
   )
 }
@@ -253,6 +263,12 @@ build_threshold_gt <- function(df_status, programme, season, lang = "en") {
   }
 
   if (lang == "es") {
+    df_tbl <- df_tbl |>
+      mutate(status = dplyr::recode(
+        as.character(status),
+        "Activation" = "Activaci\u00f3n",
+        "No Activation" = "Sin Activaci\u00f3n"
+      ))
     country_lab <- "Pa\u00eds"
     rainfall_lab <- "Precipitaci\u00f3n (mm)"
     threshold_lab <- "Umbral"
@@ -339,45 +355,207 @@ build_aoi_gt <- function(gdf_adm1, df_aoi, lang = "en") {
 }
 
 
+# HTML content builders ---------------------------------------------------
+
+#' Render a single language section as an HTML fragment
+#'
+#' @param txt named list (one of email_txt$en or email_txt$es)
+#' @param gt_threshold gt object for threshold table
+#' @param gt_aoi gt object for AOI table (NULL to skip)
+#' @param map_b64 character base64 img tag for map (NULL to skip)
+#' @param rainfall_b64 character base64 img tag for rainfall plot (NULL to skip)
+#' @param data_accessed character e.g. "March 2026"
+#' @param include_header logical whether to include title/subtitle (FALSE for
+#'   English where the listmonk banner already shows the subject)
+#' @param lang "en" or "es" — controls static labels
+#' @return character HTML string
+build_section_html <- function(txt, gt_threshold, gt_aoi = NULL,
+                               map_b64 = NULL, rainfall_b64 = NULL,
+                               data_accessed = "",
+                               include_header = TRUE,
+                               lang = "en") {
+  tbl_html <- gt$as_raw_html(gt_threshold)
+  aoi_html <- if (!is.null(gt_aoi)) gt$as_raw_html(gt_aoi) else ""
+
+  map_block <- if (!is.null(map_b64)) glue("{map_b64}<br>") else ""
+  rainfall_block <- if (!is.null(rainfall_b64)) glue("{rainfall_b64}<br>") else ""
+
+  header_block <- if (include_header) {
+    glue('<h1>{txt$title}</h1>\n<h2>{txt$subtitle}</h2>')
+  } else {
+    ""
+  }
+
+  ds_label <- if (lang == "es") "Fuente de datos del pron\u00f3stico:" else "Forecast data source:"
+  da_label <- if (lang == "es") "Datos consultados:" else "Data accessed:"
+
+  glue('
+{header_block}
+<h3>{txt$date_header} {txt$status}</h3>
+{map_block}
+<h2>{txt$description_title}</h2>
+<p>{txt$description_content}</p>
+{rainfall_block}
+{tbl_html}
+<br>
+{aoi_html}
+<br>
+<p><b>{ds_label}</b> {txt$data_source}</p>
+<p>{da_label} {data_accessed}</p>
+<p>{txt$ref_github}</p>
+')
+}
+
+
+#' Build bilingual OCHA email HTML content
+#'
+#' Assembles English and Spanish sections with a visual separator.
+#' Passed as the `content` data field to the listmonk transactional template.
+#'
+#' @param email_txt list from build_email_text_ocha()
+#' @param gt_threshold_en gt object (English)
+#' @param gt_threshold_es gt object (Spanish)
+#' @param gt_aoi_en gt object (English)
+#' @param gt_aoi_es gt object (Spanish)
+#' @param map_b64 character base64 img tag for choropleth map
+#' @param rainfall_b64 character base64 img tag for rainfall plot
+#' @param data_accessed character e.g. "March 2026"
+#' @return character HTML string
+#' @export
+build_email_html_ocha <- function(email_txt,
+                                  gt_threshold_en, gt_threshold_es,
+                                  gt_aoi_en, gt_aoi_es,
+                                  map_b64, rainfall_b64,
+                                  data_accessed) {
+  en_section <- build_section_html(
+    email_txt$en, gt_threshold_en, gt_aoi_en,
+    map_b64, rainfall_b64, data_accessed,
+    include_header = FALSE, lang = "en"
+  )
+
+  es_section <- build_section_html(
+    email_txt$es, gt_threshold_es, gt_aoi_es,
+    map_b64 = NULL, rainfall_b64 = NULL, data_accessed,
+    include_header = TRUE, lang = "es"
+  )
+
+  separator <- '
+<table width="100%" style="margin-top:30px; margin-bottom:5px;">
+<tr><td style="border-bottom:3px solid #3e8f6b;">&nbsp;</td></tr>
+</table>
+<table width="100%" style="margin-bottom:15px;">
+<tr><td style="background-color:#f0faf5; border-left:4px solid #3e8f6b; padding:10px 20px;">
+<p style="font-size:16px; color:#3e8f6b; font-weight:bold; margin:0;">Versi&oacute;n en Espa&ntilde;ol</p>
+</td></tr>
+</table>
+'
+
+  es_wrapper_open <- '
+<table width="100%" style="margin-bottom:20px;">
+<tr><td style="background-color:#f7fbf9; border-left:4px solid #3e8f6b; padding:10px 20px;">
+'
+  es_wrapper_close <- "
+</td></tr>
+</table>
+"
+
+  glue("{en_section}\n{separator}\n{es_wrapper_open}\n{es_section}\n{es_wrapper_close}")
+}
+
+
+#' Build bilingual StartNetwork email HTML content
+#'
+#' @param email_txt list from build_email_text_sn()
+#' @param gt_threshold_en gt object (English)
+#' @param gt_threshold_es gt object (Spanish)
+#' @param data_accessed character e.g. "March 2026"
+#' @return character HTML string
+#' @export
+build_email_html_sn <- function(email_txt,
+                                gt_threshold_en, gt_threshold_es,
+                                data_accessed) {
+  en_section <- build_section_html(
+    email_txt$en, gt_threshold_en,
+    gt_aoi = NULL, map_b64 = NULL, rainfall_b64 = NULL,
+    data_accessed = data_accessed,
+    include_header = FALSE, lang = "en"
+  )
+
+  es_section <- build_section_html(
+    email_txt$es, gt_threshold_es,
+    gt_aoi = NULL, map_b64 = NULL, rainfall_b64 = NULL,
+    data_accessed = data_accessed,
+    include_header = TRUE, lang = "es"
+  )
+
+  separator <- '
+<table width="100%" style="margin-top:30px; margin-bottom:5px;">
+<tr><td style="border-bottom:3px solid #3e8f6b;">&nbsp;</td></tr>
+</table>
+<table width="100%" style="margin-bottom:15px;">
+<tr><td style="background-color:#f0faf5; border-left:4px solid #3e8f6b; padding:10px 20px;">
+<p style="font-size:16px; color:#3e8f6b; font-weight:bold; margin:0;">Versi&oacute;n en Espa&ntilde;ol</p>
+</td></tr>
+</table>
+'
+
+  es_wrapper_open <- '
+<table width="100%" style="margin-bottom:20px;">
+<tr><td style="background-color:#f7fbf9; border-left:4px solid #3e8f6b; padding:10px 20px;">
+'
+  es_wrapper_close <- "
+</td></tr>
+</table>
+"
+
+  glue("{en_section}\n{separator}\n{es_wrapper_open}\n{es_section}\n{es_wrapper_close}")
+}
+
+
 # Send helper -------------------------------------------------------------
 
-#' Render and send a monitoring email
+#' Send a monitoring email via listmonk transactional API
 #'
-#' @param template character path to Rmd template
+#' Converts recipients from blob CSV format to listmonk format and sends.
+#'
 #' @param subject character email subject line
-#' @param render_env environment for render_email (usually parent.frame())
-#' @param recipients data.frame or list of data.frames with $email column
+#' @param body_html character HTML content for the email
+#' @param recipients data.frame with `name` and `email` columns,
+#'   or a list of such data.frames (for full_list group splitting)
 #' @param email_list character email list name (prepends "TEST: " when != "full_list")
-#' @param credentials blastula credentials object
 #' @export
-send_monitoring_email <- function(template, subject, render_env, recipients,
-                                  email_list, credentials) {
-  logger$log_info(glue("Knitting email: {template}"))
-  knitted <- render_email(input = template, envir = render_env)
-
-  final_subject <- if (email_list != "full_list") paste0("TEST: ", subject) else subject
-
-  logger$log_info(glue("Sending email: {template}"))
-  if (email_list == "full_list") {
-    recipients |>
-      purrr$map(\(dfet) {
-        smtp_send(
-          email = knitted,
-          from = "data.science@humdata.org",
-          to = dfet$email,
-          subject = final_subject,
-          credentials = credentials,
-          verbose = TRUE
-        )
-      })
+send_monitoring_email <- function(subject, body_html, recipients, email_list) {
+  final_subject <- if (email_list != "full_list") {
+    paste0("[test] ", subject)
   } else {
-    smtp_send(
-      email = knitted,
-      from = "data.science@humdata.org",
-      to = recipients$email,
+    subject
+  }
+
+  # Convert recipients to listmonk format: list of list(name, email)
+  make_recipient_list <- function(df) {
+    lapply(seq_len(nrow(df)), \(i) {
+      list(name = df$name[i], email = df$email[i])
+    })
+  }
+
+  if (is.data.frame(recipients)) {
+    # Non-full-list: single data.frame
+    to_emails <- make_recipient_list(recipients)
+    lm$send_transactional(
+      to_emails = to_emails,
       subject = final_subject,
-      credentials = credentials,
-      verbose = TRUE
+      data = list(content = body_html)
     )
+  } else {
+    # full_list: list of data.frames (group_a, group_b)
+    for (group_name in names(recipients)) {
+      logger$log_info(glue("Sending to group: {group_name}"))
+      to_emails <- make_recipient_list(recipients[[group_name]])
+      lm$send_transactional(
+        to_emails = to_emails,
+        subject = final_subject,
+        data = list(content = body_html)
+      )
+    }
   }
 }
