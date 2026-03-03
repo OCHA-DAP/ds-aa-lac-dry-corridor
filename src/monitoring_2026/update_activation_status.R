@@ -38,13 +38,14 @@ box::use(
 
 # Configuration -----------------------------------------------------------
 
-EMAIL_WHO_LOCAL_DEFAULT <- c("core_developer", "developers", "internal_chd", "full_list")[1]
-EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = EMAIL_WHO_LOCAL_DEFAULT)
+EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "core_developer")
 
 # Run date: defaults to Sys.Date(), but can be overridden via RUN_YEAR + RUN_MONTH
 # env vars (set in GHA workflow_dispatch or locally for testing).
 run_year <- Sys.getenv("RUN_YEAR", unset = "")
 run_month <- Sys.getenv("RUN_MONTH", unset = "")
+# run_year <- 2014
+# run_month <- 3
 
 if (nzchar(run_year) && nzchar(run_month)) {
   run_date_set <- lubridate$make_date(as.integer(run_year), as.integer(run_month), 1L)
@@ -58,7 +59,31 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 logger$log_info(paste0("Run date set = ", run_date_set))
 logger$log_info(paste0("Current moment = ", current_moment))
 
-df_email_receps <- utils$load_email_recipients(email_list = EMAIL_LIST)
+# Email distribution list: list with $to and $cc data.frames (name, email).
+# TODO: replace test list with final distribution list from blob CSV.
+if (EMAIL_LIST == "full_list") {
+  email_distribution_list <- list(
+    to = tibble(
+      name = c("PLACEHOLDER"),
+      email = c("placeholder@example.com")
+    ),
+    cc = tibble(
+      name = character(0),
+      email = character(0)
+    )
+  )
+} else {
+  email_distribution_list <- list(
+    to = tibble(
+      name = c("Zachary Arno"),
+      email = c("zachary.arno@un.org")
+    ),
+    cc = tibble(
+      name = c("Tristan Downing"),
+      email = c("tristan.downing@un.org")
+    )
+  )
+}
 
 # Loading base data -------------------------------------------------------
 
@@ -347,7 +372,7 @@ p_rainfall <- df_status_ocha |>
     color = "tomato"
   ) +
   scale_y_continuous(
-    limits = c(0, max(df_status_ocha$value)),
+    limits = c(0, max(df_status_ocha$value, df_status_ocha$value_empirical)),
     expand = expansion(mult = c(0, 0.1))
   ) +
   facet_wrap(
@@ -398,7 +423,7 @@ ocha_html <- eu26$build_email_html_ocha(
 eu26$send_monitoring_email(
   subject = email_txt$subj,
   body_html = ocha_html,
-  recipients = df_email_receps,
+  distribution_list = email_distribution_list,
   email_list = EMAIL_LIST
 )
 
@@ -414,7 +439,7 @@ if (nrow(df_status_sn) > 0) {
   eu26$send_monitoring_email(
     subject = email_txt_sn$subj,
     body_html = sn_html,
-    recipients = df_email_receps,
+    distribution_list = email_distribution_list,
     email_list = EMAIL_LIST
   )
 }

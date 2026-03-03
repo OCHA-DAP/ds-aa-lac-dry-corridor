@@ -52,36 +52,3 @@ load_aoi_df <- function(version = c("2026", "2026_startnetwork")) {
   }
   ret
 }
-
-
-#' Load email recipients from blob CSV
-#'
-#' Moved from email_utils.R to avoid transitive blastula dependency.
-#'
-#' @param email_list character one of "core_developer", "developers",
-#'   "internal_chd", "full_list", etc.
-#' @return data.frame or list of data.frames (for full_list)
-#' @export
-load_email_recipients <- function(email_list) {
-  df <- cumulus$blob_read(
-    name = "ds-aa-lac-dry-corridor/framework_update_2025/202507update_email_recepients_cadc_trigger_2025.csv",
-    container = "projects",
-    stage = "dev"
-  ) |>
-    janitor$clean_names()
-
-  ret <- df |>
-    select(
-      all_of(c("name", "organization", "role", "email", "email_group", "remove", email_list))
-    ) |>
-    filter(!is.na(!!sym(email_list)), remove != 1)
-
-  if (email_list == "full_list") {
-    split_raw <- split(ret, ret$email_group)
-    ret <- list(
-      group_a = bind_rows(split_raw$A, split_raw$Both),
-      group_b = bind_rows(split_raw$B, split_raw$Both)
-    )
-  }
-  ret
-}

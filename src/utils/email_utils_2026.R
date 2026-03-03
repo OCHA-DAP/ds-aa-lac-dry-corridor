@@ -516,46 +516,34 @@ build_email_html_sn <- function(email_txt,
 
 #' Send a monitoring email via listmonk transactional API
 #'
-#' Converts recipients from blob CSV format to listmonk format and sends.
-#'
 #' @param subject character email subject line
 #' @param body_html character HTML content for the email
-#' @param recipients data.frame with `name` and `email` columns,
-#'   or a list of such data.frames (for full_list group splitting)
-#' @param email_list character email list name (prepends "TEST: " when != "full_list")
+#' @param distribution_list list with `$to` and `$cc` data.frames,
+#'   each having `name` and `email` columns
+#' @param email_list character — prepends "[test]" to subject when != "full_list"
 #' @export
-send_monitoring_email <- function(subject, body_html, recipients, email_list) {
+send_monitoring_email <- function(subject, body_html, distribution_list, email_list = "core_developer") {
   final_subject <- if (email_list != "full_list") {
     paste0("[test] ", subject)
   } else {
     subject
   }
 
-  # Convert recipients to listmonk format: list of list(name, email)
-  make_recipient_list <- function(df) {
+  # Convert data.frame rows to listmonk format: list of list(name, email)
+  df_to_recipient_list <- function(df) {
+    if (nrow(df) == 0) return(NULL)
     lapply(seq_len(nrow(df)), \(i) {
       list(name = df$name[i], email = df$email[i])
     })
   }
 
-  if (is.data.frame(recipients)) {
-    # Non-full-list: single data.frame
-    to_emails <- make_recipient_list(recipients)
-    lm$send_transactional(
-      to_emails = to_emails,
-      subject = final_subject,
-      data = list(content = body_html)
-    )
-  } else {
-    # full_list: list of data.frames (group_a, group_b)
-    for (group_name in names(recipients)) {
-      logger$log_info(glue("Sending to group: {group_name}"))
-      to_emails <- make_recipient_list(recipients[[group_name]])
-      lm$send_transactional(
-        to_emails = to_emails,
-        subject = final_subject,
-        data = list(content = body_html)
-      )
-    }
-  }
+  to_emails <- df_to_recipient_list(distribution_list$to)
+  cc_emails <- df_to_recipient_list(distribution_list$cc)
+
+  lm$send_transactional(
+    to_emails = to_emails,
+    cc_emails = cc_emails,
+    subject = final_subject,
+    data = list(content = body_html)
+  )
 }
