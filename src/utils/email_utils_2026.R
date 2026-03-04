@@ -61,10 +61,29 @@ load_distribution_list <- function(email_list, framework = c("ocha", "startnetwo
   df_filtered <- df |>
     filter(!is.na(.data[[email_list]]), remove != 1)
 
+  # Validate email addresses
+  validate_emails(df_filtered$email, df_filtered$name)
+
   list(
     to = df_filtered |> filter(to_cc == "to") |> select(name, email),
     cc = df_filtered |> filter(to_cc == "cc") |> select(name, email)
   )
+}
+
+
+#' Validate email addresses — warns on invalid, stops if none are valid
+#' @param emails character vector of email addresses
+#' @param names character vector of corresponding names (for logging)
+validate_emails <- function(emails, names) {
+  pattern <- "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+  invalid <- !grepl(pattern, emails)
+  if (any(invalid)) {
+    bad <- paste(sprintf("  %s <%s>", names[invalid], emails[invalid]), collapse = "\n")
+    logger$log_warn(glue("Invalid email addresses found:\n{bad}"))
+  }
+  if (all(invalid)) {
+    stop("No valid email addresses in distribution list.")
+  }
 }
 
 
