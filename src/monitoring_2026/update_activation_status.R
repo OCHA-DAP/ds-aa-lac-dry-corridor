@@ -37,8 +37,11 @@ box::use(
 
 
 # Configuration -----------------------------------------------------------
-
-EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "core_developer")
+# core_developer
+# developers
+# internal_chd
+# full_list
+EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "developers")
 
 # Run date: defaults to Sys.Date(), but can be overridden via RUN_YEAR + RUN_MONTH
 # env vars (set in GHA workflow_dispatch or locally for testing).
@@ -59,31 +62,8 @@ logger$log_info(paste0("EMAIL_LIST = ", EMAIL_LIST))
 logger$log_info(paste0("Run date set = ", run_date_set))
 logger$log_info(paste0("Current moment = ", current_moment))
 
-# Email distribution list: list with $to and $cc data.frames (name, email).
-# TODO: replace test list with final distribution list from blob CSV.
-if (EMAIL_LIST == "full_list") {
-  email_distribution_list <- list(
-    to = tibble(
-      name = c("PLACEHOLDER"),
-      email = c("placeholder@example.com")
-    ),
-    cc = tibble(
-      name = character(0),
-      email = character(0)
-    )
-  )
-} else {
-  email_distribution_list <- list(
-    to = tibble(
-      name = c("Zachary Arno"),
-      email = c("zachary.arno@un.org")
-    ),
-    cc = tibble(
-      name = c("Tristan Downing"),
-      email = c("tristan.downing@un.org")
-    )
-  )
-}
+email_distribution_list_ocha <- eu26$load_distribution_list(email_list = EMAIL_LIST, framework = "ocha")
+email_distribution_list_sn <- eu26$load_distribution_list(email_list = EMAIL_LIST, framework = "startnetwork")
 
 # Loading base data -------------------------------------------------------
 
@@ -423,7 +403,7 @@ ocha_html <- eu26$build_email_html_ocha(
 eu26$send_monitoring_email(
   subject = email_txt$subj,
   body_html = ocha_html,
-  distribution_list = email_distribution_list,
+  distribution_list = email_distribution_list_ocha,
   email_list = EMAIL_LIST
 )
 
@@ -439,7 +419,7 @@ if (nrow(df_status_sn) > 0) {
   eu26$send_monitoring_email(
     subject = email_txt_sn$subj,
     body_html = sn_html,
-    distribution_list = email_distribution_list,
+    distribution_list = email_distribution_list_sn,
     email_list = EMAIL_LIST
   )
 }

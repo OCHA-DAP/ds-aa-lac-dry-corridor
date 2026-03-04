@@ -10,7 +10,9 @@ box::use(
   gt,
   sf,
   ggplot2,
-  logger
+  logger,
+  cumulus,
+  janitor
 )
 
 box::use(
@@ -28,6 +30,42 @@ OCHA_RP_FOOTNOTE_ES <- "Umbrales calculados a partir de los hindcasts de ECMWF S
 
 SN_RP_FOOTNOTE_EN <- "Thresholds calculated from ECMWF SEAS5 hindcasts (1991-2024) to approximate a ~4.4 year return period drought level."
 SN_RP_FOOTNOTE_ES <- "Umbrales calculados a partir de los hindcasts de ECMWF SEAS5 (1991-2024) para aproximar un nivel de sequ\u00eda con un per\u00edodo de retorno de ~4.4 a\u00f1os."
+
+
+# Distribution list -------------------------------------------------------
+
+#' Load email distribution list from blob CSV
+#'
+#' Reads the distribution list, filters by `email_list` column and `remove`,
+#' then splits into `$to` and `$cc` data.frames based on the `to_cc` column.
+#'
+#' @param email_list character one of "core_developer", "developers",
+#'   "internal_chd", "full_list"
+#' @param framework character "ocha" (default) or "startnetwork"
+#' @return list with `$to` and `$cc` tibbles (columns: name, email)
+#' @export
+load_distribution_list <- function(email_list, framework = c("ocha", "startnetwork")) {
+  framework <- match.arg(framework)
+
+  blob_name <- switch(framework,
+    ocha = "ds-aa-lac-dry-corridor/monitoring/2026/distribution_list.csv",
+    startnetwork = "ds-aa-lac-dry-corridor/monitoring/2026/startnetwork_distribution_list.csv"
+  )
+
+  df <- cumulus$blob_read(
+    name = blob_name,
+    container = "projects"
+  ) |>
+    janitor$clean_names()
+
+  df_filtered <- df |>
+    filter(!is.na(.data[[email_list]]), remove != 1)
+
+  list(
+    to = df_filtered |> filter(to_cc == "to") |> select(name, email),
+    cc = df_filtered |> filter(to_cc == "cc") |> select(name, email)
+  )
+}
 
 
 # Internal helpers --------------------------------------------------------
