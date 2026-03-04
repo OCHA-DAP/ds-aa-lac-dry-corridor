@@ -1,0 +1,147 @@
+# Intro {#sec-journey}
+
+The analyses in this section reflect the state of the anticipatory action framework at the time of writing. The primary focus was on **Guatemala --- specifically Chiquimula** --- and the decision of which seasonal forecast system to adopt for drought prediction. Conclusions here informed early framework design; subsequent refinements to areas of interest and trigger configurations are covered in Part II.
+
+## Abstract (TLDR)
+
+::: {.callout-note collapse="false"}
+This evaluation informs forecast selection for anticipatory action triggers in Chiquimula, Guatemala (2026). We compared ECMWF SEAS5 and INSIVUMEH (CFSv2, CCSM4, CESM1) seasonal precipitation forecasts using 25 years (2000–2024) of hindcasts validated against three independent observation sources (ERA5, ENACTS, CHIRPS). For Primera (May–August), SEAS5 is recommended based on consistently stronger performance across both binary and continuous skill metrics (F1, ROC-AUC, Spearman correlation), with ROC-AUC values of 0.85–0.90 at 1–2 month lead times that remain robust across all observation sources. For Postrera (September–November), INSIVUMEH forecasts are eliminated due to weak internal consistency: near-zero inter-leadtime correlations (r = -0.1 to 0.2) and coefficient of variation 3–7× lower than observations indicate negligible predictive signal. Initial SEAS5 Postrera analysis using the 2000-2024 baseline also showed limited skill. However, expanding the analysis to Honduras and El Salvador (which rely solely on SEAS5) and extending the baseline to 1981-2024 revealed substantially stronger Postrera skill: ROC-AUC of 0.80-0.87 at LT0 and 0.72-0.79 at LT1. We recommend SEAS5 for both seasons, with Postrera forecasts using **LT0-1 and the 1981-2024 baseline** for threshold calculation.
+:::
+
+### Recommendations
+
+| Season | Forecast | Leadtimes | Confidence | Rationale |
+|--------|----------|-----------|------------|-----------|
+| **Primera** | SEAS5 | LT0-2 | High | Clear skill advantage across all metrics and observation sources |
+| **Postrera** | SEAS5 | **LT0-1** | **Moderate** | With 1981-2024 baseline, ROC-AUC 0.72-0.87 at LT0-1 |
+
+::: {.callout-important}
+### Breakthrough: Postrera Skill Revealed with Longer Baseline
+
+Extending from 2000-2024 (n=25) to 1981-2024 (n=44) dramatically improves Postrera skill estimates:
+
+| Leadtime | Issued | ROC-AUC (1981-2024) |
+|:--------:|:------:|:-------------------:|
+| LT0 | September | 0.80-0.87 |
+| LT1 | August | 0.72-0.79 |
+
+**Operational recommendation**: Use **LT1 for planning** (~1 month lead), **LT0 to confirm** as season begins. Use the **1981-2024 baseline** for threshold calculation.
+:::
+
+### Decision Steps
+
+| Step | Question | Finding |
+|------|----------|---------|
+| 1. Binary Metrics | Do forecasts beat random guessing? | Primera yes (SEAS5 wins), Postrera inconclusive |
+| 2. Continuous Metrics | Does skill hold with different metrics? | Primera confirmed (SEAS5 wins), Postrera ambiguous |
+| 3. CHIRPS Tie-Breaker | Is skill robust across observation sources? | Primera robust, Postrera still ambiguous |
+| 4. Temporal Drift | Are trends/drift affecting skill estimates? | Mild drift, unlikely to explain poor Postrera skill |
+| 5. Internal Consistency | Are forecasts internally coherent? | INSIVUMEH Postrera forecasts lack signal |
+| 6. ENSO Stratification | Does skill vary by ENSO phase? | Primera consistent; Postrera El Niño challenging |
+| **7. Regional Comparison** | **Does baseline period matter?** | **Longer baseline reveals strong Postrera skill at LT0-1** |
+
+## The Decision/Question
+
+Which seasonal forecast should Guatemala's anticipatory action framework use for drought prediction in Chiquimula? Two options are available:
+
+- **SEAS5**: ECMWF's global seasonal forecasting system
+- **INSIVUMEH**: Regional forecasts from Guatemala's national meteorological service (CFSv2, CCSM4, and CESM1 models)
+
+This book documents the reserch to answer this question for two agricultural seasons:
+
+| Season | Months | Description |
+|--------|--------|-------------|
+| **Primera** | May-August (MJJA) | First maize planting |
+| **Postrera** | September-November (SON) | Second maize planting |
+
+## Research Progression
+
+### Step 1: Start with Standard Metrics
+
+The analysis began with **binary classification metrics** (Chapter 1) - the traditional approach where forecasts are scored as hits or misses against a drought threshold (return period of 4 years).
+
+**Primera results were encouraging**: SEAS5 showed F1 scores around 50-60%, significantly better than random guessing. Several model-leadtime combinations beat the 90th percentile of bootstrap random simulations.
+
+**Postrera was troubling**: No model showed statistically significant skill. F1 scores hovered near random guessing levels. Different models won at different leadtimes with no clear pattern.
+
+*Remaining question*: Are the Postrera results genuinely inconclusive, or are binary metrics too noisy with only ~6 drought events in 25 years?
+
+### Step 2: Try Continuous Metrics
+
+Chapter 2 introduced **continuous metrics** that don't require threshold choices: Spearman correlation, RMSE, and ROC-AUC. These provide partial credit for near-misses and are more stable with small samples.
+
+**Primera confirmation**: SEAS5 dominated across all continuous metrics. AUC values around 0.88 - meaning 88% probability of correctly ranking a drought year below a non-drought year. The signal was real.
+
+**Postrera remained ambiguous**: Different metrics favored different models:
+
+- Spearman: SEAS5 best at LT1
+- RMSE: CCSM4 best
+- AUC: SEAS5 at LT1, CCSM4 at LT2
+
+No model showed AUC consistently above 0.7 (general threshold for "acceptable" discrimination skill).
+
+*Remaining question*: Are these results sensitive to which observation dataset we validate against? Would a different "ground truth" give the same answer?
+
+### Step 3: Bring in a Third Opinion
+
+Chapter 3 introduced **CHIRPS** as an independent observation source alongside ERA5 and ENACTS. If forecasts perform well against multiple observation sources, the skill assessment is more credible.
+
+**Primera verdict**: Skill was robust across all three observation sources. SEAS5 won most comparisons.
+
+**Postrera raised a red flag**: CCSM4 showed *better* skill at longer leadtimes (LT2-3) than shorter ones (LT1). This is backwards - forecast skill should degrade with increasing leadtime, not improve. The pattern suggested we might be seeing noise rather than genuine skill.
+
+*Remaining question*: What's causing the inverted skill-leadtime relationship for Postrera?
+
+### Step 4: Check for Drift
+
+Chapter 4 investigated whether **temporal trends** in forecasts or observations could explain the strange patterns.
+
+**Findings**:
+
+- ENACTS showed a drying trend for Primera, but other sources showed similar patterns
+- Forecast error drift was modest (~5-8 mm/year)
+- **Split-half stability** was the key finding: Primera correlations were stable between 2000-2012 and 2013-2024, but Postrera correlations were wildly different between periods
+
+The drift analysis didn't explain the inverted skill pattern.
+
+### Step 5: The Decider - Forecast Internal Consistency
+
+Chapter 5 applied **internal consistency diagnostics** - asking not "do forecasts predict observations?" but "do forecasts behave like forecasts?"
+
+**Inter-leadtime correlations**: For a well-behaved forecast, LT1 and LT2 predictions for the same target season should correlate - they're trying to predict the same thing.
+
+- SEAS5: LT1-LT2 correlations of 0.6-0.9 (expected)
+- INSIVUMEH Primera: Moderate correlations of 0.3-0.7 (acceptable)
+- INSIVUMEH Postrera: **Near-zero or negative correlations** - when LT1 predicts wet, LT2 might predict dry for the same season
+
+**Coefficient of Variation (CV)**: Forecasts should show interannual variability approaching observed variability.
+
+- Observed Postrera CV: ~23%
+- SEAS5 Postrera CV: ~15% (reasonable)
+- INSIVUMEH Postrera CV: **3-7%** - forecasts barely varied from climatology
+
+This **eliminated INSIVUMEH** from consideration for Postrera - their forecasts lack predictive signal. But SEAS5 Postrera skill also appeared limited. This raised a concern: Honduras and El Salvador rely solely on SEAS5 without a national forecast alternative.
+
+### Step 6: ENSO Stratification
+
+Chapter 6 examined whether forecast skill varies by ENSO phase. The key finding: Primera skill is consistent across ENSO phases, but **Postrera El Niño years remain challenging** for all models.
+
+### Step 7: The Breakthrough - Regional Comparison & Baseline Extension
+
+The poor Postrera skill had implications beyond Guatemala. Honduras and El Salvador use SEAS5 for their anticipatory action frameworks—if SEAS5 Postrera lacks skill, these frameworks are affected too.
+
+Chapter 7 expanded the analysis across the Dry Corridor (Guatemala, Honduras, El Salvador) and tested different baseline periods. This revealed a **breakthrough finding**:
+
+**The 2000-2024 baseline was masking Postrera skill.**
+
+Extending to 1981-2024 (44 years) dramatically improved apparent Postrera skill:
+
+| Leadtime | ROC-AUC (2000-2024) | ROC-AUC (1981-2024) |
+|:--------:|:-------------------:|:-------------------:|
+| LT0 | 0.66-0.81 | **0.80-0.87** |
+| LT1 | 0.55-0.79 | **0.72-0.79** |
+| LT2 | 0.48-0.62 | 0.63-0.77 |
+
+The longer baseline provides more stable threshold estimates and reveals skill that was obscured by the shorter record.
+
+
