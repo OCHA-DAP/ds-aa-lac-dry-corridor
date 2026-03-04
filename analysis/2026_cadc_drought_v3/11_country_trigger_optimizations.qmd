@@ -1087,6 +1087,7 @@ hnd_era5 <- evaluate_configs(hnd_candidate_combos, trigger_data_hnd, rp_buffer =
 threshold_cols_hnd <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                 names(hnd_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 hnd_combined <- hnd_candidates |>
   select(config_id, all_of(threshold_cols_hnd),
          impact_f1 = mean_f1,
@@ -1134,7 +1135,7 @@ hnd_opt_a <- hnd_all_hl |>
 hnd_opt_b <- hnd_all_hl |>
   anti_join(hnd_opt_a, by = c("annual_rp", threshold_cols_hnd)) |>
   group_by(annual_rp) |>
-  filter(avg_f1 == max(avg_f1)) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -1179,6 +1180,8 @@ The plot below shows each candidate configuration positioned by its ERA5 toleran
 #| label: fig-hnd-tradeoff-static
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
 #| eval: false
+
+# this static version is better for framework doc whereas interactive is better for online book.
 
 hnd_tradeoff$plot
 ```
@@ -1656,6 +1659,7 @@ slv_era5 <- evaluate_configs(slv_candidate_combos, trigger_data_slv, rp_buffer =
 threshold_cols_slv <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                 names(slv_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 slv_combined <- slv_candidates |>
   select(config_id, all_of(threshold_cols_slv),
          impact_f1 = mean_f1,
@@ -1702,7 +1706,7 @@ slv_opt_a <- slv_all_hl |>
 slv_opt_b <- slv_all_hl |>
   anti_join(slv_opt_a, by = c("annual_rp", threshold_cols_slv)) |>
   group_by(annual_rp) |>
-  filter(avg_f1 == max(avg_f1)) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -2150,6 +2154,7 @@ gtm_era5 <- evaluate_configs(gtm_candidate_combos, trigger_data_gtm, rp_buffer =
 threshold_cols_gtm <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                 names(gtm_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtm_combined <- gtm_candidates |>
   select(config_id, all_of(threshold_cols_gtm),
          impact_f1 = mean_f1,
@@ -2196,7 +2201,7 @@ gtm_opt_a <- gtm_all_hl |>
 gtm_opt_b <- gtm_all_hl |>
   anti_join(gtm_opt_a, by = c("annual_rp", threshold_cols_gtm)) |>
   group_by(annual_rp) |>
-  filter(avg_f1 == max(avg_f1)) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -2588,6 +2593,12 @@ The StartNetwork Guatemala AOI covers Quiché (GT14) and Baja Verapaz (GT15). Ba
 #| label: gtmsn-impact-eval
 #| cache: true
 
+
+# note to reviewers: after running this chunk, you can skip down
+# to GTMSN Primera Only section (~ln 3433) which is where the final config for SN
+# is made.... but it does reqire the hybrid GT15 (p2 only) and merged admin
+# trigger_data objects created in this chunk
+
 combos_gtmsn <- generate_combos(length(unique(df_gtm_sn$year)),
                                  primera_lts = primera_lts_gtmsn,
                                  postrera_lts = postrera_lts_gtmsn,
@@ -2609,12 +2620,16 @@ trigger_data_lt2 <- build_trigger_lookup(df_gtm_sn_lt2, min_rp = 2.8, max_rp = M
 
 # Hybrid trigger_data: p2 from GT15-only, everything else from merged GT14+GT15
 trigger_data_gtmsn <- trigger_data_merged
+
+# here we replace trigger lookup for p2 w/ that from GT15 only
 trigger_data_gtmsn$trigger_lookup <- c(
   trigger_data_merged$trigger_lookup[!grepl("^p2_", names(trigger_data_merged$trigger_lookup))],
   trigger_data_lt2$trigger_lookup[grepl("^p2_", names(trigger_data_lt2$trigger_lookup))]
 )
-trigger_data_gtmsn$rp_options$p2 <- trigger_data_lt2$rp_options$p2
 
+# here we replace rp_options for p2 w/ that from GT15 only
+trigger_data_gtmsn$rp_options$p2 <- trigger_data_lt2$rp_options$p2
+  
 all_results_gtmsn <- evaluate_configs_impact(
   combos_gtmsn, trigger_data_gtmsn,
   impact_years = impact_yrs_gtmsn,
@@ -2646,11 +2661,18 @@ After priority filtering, **`r format(nrow(gtmsn_candidates), big.mark = ",")`**
 gtmsn_candidate_combos <- gtmsn_candidates |>
   select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")))
 
+# realize that we are for p2 we evaluating GT15-only trigger/forecast
+# against the merged ERA rainfall for the two admins -- this actually
+# makes sense and is okay considering if this triggers activities can 
+# occur in either (how well does forecat in A generaliaze to rainfall
+# defecits in A + B)
+
 gtmsn_era5 <- evaluate_configs(gtmsn_candidate_combos, trigger_data_gtmsn, rp_buffer = 1)
 
 threshold_cols_gtmsn <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                   names(gtmsn_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtmsn_combined <- gtmsn_candidates |>
   select(config_id, all_of(threshold_cols_gtmsn),
          impact_f1 = mean_f1,
@@ -2697,7 +2719,7 @@ gtmsn_opt_a <- gtmsn_all_hl |>
 gtmsn_opt_b <- gtmsn_all_hl |>
   anti_join(gtmsn_opt_a, by = c("annual_rp", threshold_cols_gtmsn)) |>
   group_by(annual_rp) |>
-  filter(avg_f1 == max(avg_f1)) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -3213,6 +3235,7 @@ gtmsnv2_era5 <- evaluate_configs(gtmsnv2_candidate_combos, trigger_data_gtmsnv2,
 threshold_cols_gtmsnv2 <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2"),
                                      names(gtmsnv2_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtmsnv2_combined <- gtmsnv2_candidates |>
   select(config_id, all_of(threshold_cols_gtmsnv2),
          impact_f1 = mean_f1,
@@ -3258,7 +3281,7 @@ gtmsnv2_opt_a <- gtmsnv2_all_hl |>
 gtmsnv2_opt_b <- gtmsnv2_all_hl |>
   anti_join(gtmsnv2_opt_a, by = c("annual_rp", threshold_cols_gtmsnv2)) |>
   group_by(annual_rp) |>
-  filter(avg_f1 == max(avg_f1)) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -3904,6 +3927,7 @@ gtmsnp_candidate_combos <- gtmsnp_candidates |>
 
 gtmsnp_era5 <- evaluate_primera_era5(gtmsnp_candidate_combos, trigger_data_gtmsn, rp_buffer = 1)
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtmsnp_combined <- gtmsnp_candidates |>
   select(config_id, all_of(threshold_cols_gtmsnp),
          impact_f1 = mean_f1,
@@ -3938,7 +3962,7 @@ gtmsnp_opt_a <- gtmsnp_all_hl |>
 gtmsnp_opt_b <- gtmsnp_all_hl |>
   anti_join(gtmsnp_opt_a, by = c("annual_rp", threshold_cols_gtmsnp)) |>
   group_by(annual_rp) |>
-  filter(avg_f1 == max(avg_f1)) |>
+  filter(era5_tol_f1 == max(era5_tol_f1)) |>
   arrange(all_cv) |>
   slice_head(n = 1) |>
   ungroup() |>
@@ -4390,6 +4414,9 @@ gtmsn_rec <- as.list(
 )
 
 # ── RP → mm conversion ────────────────────────────────────────────────────
+# Drought-only: rank(x) gives rank 1 to the smallest (driest) value,
+# so lowest rainfall → highest RP. Equivalent to calc_rp_threshold(x, direction=-1)
+# in R/country_trigger_optimization.R — no direction param needed here.
 rp_to_mm <- function(df, window_name, lt, rp_val) {
   if (is.null(rp_val) || is.na(rp_val)) return(NA_real_)
   x <- df |> filter(window == window_name, leadtime == lt) |> pull(fcst_mm)
