@@ -100,10 +100,10 @@ month_name_es <- function(date) {
 
 status_html <- function(activated, lang = "en") {
   if (activated) {
-    label <- if (lang == "es") "Activado" else "Activated"
+    label <- if (lang == "es") "Umbral Alcanzado" else "Threshold Met"
     glue("<span style='color: {CHD_TOMATO}; font-weight:bold;'>{label}</span>")
   } else {
-    label <- if (lang == "es") "No Activado" else "Not Activated"
+    label <- if (lang == "es") "Umbral No Alcanzado" else "Threshold Not Met"
     glue("<span style='color: {CHD_GREEN}; font-weight:bold;'>{label}</span>")
   }
 }
@@ -156,51 +156,51 @@ build_email_text_ocha <- function(df_status, run_date, season, monitored_range) 
 
   subj <- glue(
     "AA Central America Dry Corridor - {season} Drought Monitoring - {month_en} update - ",
-    "{ifelse(activated, 'Activated', 'No Activations')} (HND, SLV, GTM)"
+    "{ifelse(activated, 'Threshold Met', 'Thresholds Not Met')} (HND, SLV, GTM)"
   )
 
   # English
   if (activated) {
     countries <- glue_collapse(unique(df_activated$adm0_es), sep = ", ", last = " & ")
     desc_en <- glue(
-      "The AA framework has been triggered in {countries} where the combined ",
-      "rainfall forecast over the 2026 {season} season ({monitored_range}) is predicted ",
-      "to be below drought trigger levels. The trigger status and thresholds are based on ",
+      "The forecast rainfall is below trigger thresholds in {countries}. The combined ",
+      "rainfall forecast over the {season} season ({monitored_range}) is predicted ",
+      "to be below drought trigger levels. The threshold status is based on ",
       "the latest ECMWF SEAS5 forecast and historical ECMWF SEAS5 hindcasts (1991-2024) ",
       "for each country independently."
     )
     desc_es <- glue(
-      "El marco de Acci\u00f3n Anticipatoria se ha activado en {countries} donde el ",
-      "pron\u00f3stico de precipitaci\u00f3n acumulada para la temporada {season} 2026 ",
-      "({monitored_es}) se prev\u00e9 que est\u00e9 por debajo de los niveles de activaci\u00f3n ",
-      "por sequ\u00eda. El estado de activaci\u00f3n y los umbrales se basan en el \u00faltimo ",
-      "pron\u00f3stico ECMWF SEAS5 y los hindcasts hist\u00f3ricos de ECMWF SEAS5 (1991-2024) ",
-      "para cada pa\u00eds de forma independiente."
+      "La precipitaci\u00f3n prevista est\u00e1 por debajo de los umbrales de activaci\u00f3n ",
+      "en {countries}. El pron\u00f3stico de precipitaci\u00f3n acumulada para la temporada ",
+      "{season} ({monitored_es}) se prev\u00e9 que est\u00e9 por debajo de los niveles de ",
+      "sequ\u00eda. El estado de los umbrales se basa en el \u00faltimo pron\u00f3stico ECMWF ",
+      "SEAS5 y los hindcasts hist\u00f3ricos de ECMWF SEAS5 (1991-2024) para cada pa\u00eds ",
+      "de forma independiente."
     )
   } else {
     desc_en <- glue(
-      "The AA framework has not triggered in any country. The total rainfall forecast ",
-      "over the 2026 {season} season ({monitored_range}) is not predicted to be below ",
-      "drought trigger levels. The trigger status and thresholds are based on the latest ",
+      "The forecast rainfall is not below trigger thresholds in any country. The total ",
+      "rainfall forecast over the {season} season ({monitored_range}) is not predicted ",
+      "to be below drought trigger levels. The threshold status is based on the latest ",
       "ECMWF SEAS5 forecast and historical ECMWF SEAS5 hindcasts (1991-2024) for each ",
       "country independently."
     )
     desc_es <- glue(
-      "El marco de Acci\u00f3n Anticipatoria no se ha activado en ning\u00fan pa\u00eds. ",
-      "El pron\u00f3stico de precipitaci\u00f3n total para la temporada {season} 2026 ",
-      "({monitored_es}) no se prev\u00e9 que est\u00e9 por debajo de los niveles de ",
-      "activaci\u00f3n por sequ\u00eda. El estado de activaci\u00f3n y los umbrales se basan ",
-      "en el \u00faltimo pron\u00f3stico ECMWF SEAS5 y los hindcasts hist\u00f3ricos de ",
-      "ECMWF SEAS5 (1991-2024) para cada pa\u00eds de forma independiente."
+      "La precipitaci\u00f3n prevista no est\u00e1 por debajo de los umbrales de activaci\u00f3n ",
+      "en ning\u00fan pa\u00eds. El pron\u00f3stico de precipitaci\u00f3n total para la temporada ",
+      "{season} ({monitored_es}) no se prev\u00e9 que est\u00e9 por debajo de los niveles de ",
+      "sequ\u00eda. El estado de los umbrales se basa en el \u00faltimo pron\u00f3stico ECMWF ",
+      "SEAS5 y los hindcasts hist\u00f3ricos de ECMWF SEAS5 (1991-2024) para cada pa\u00eds ",
+      "de forma independiente."
     )
   }
 
   list(
     subj = subj,
     en = list(
-      date_header = glue("{date_fmt} - Trigger status:"),
+      date_header = glue("{date_fmt} - Threshold status:"),
       status = status_html(activated, "en"),
-      description_title = "Trigger Description",
+      description_title = "Threshold Description",
       description_content = desc_en,
       data_source = "ECMWF SEAS5",
       ref_github = 'Full documentation and source code can be found in the <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">GitHub repository</a>.'
@@ -208,9 +208,9 @@ build_email_text_ocha <- function(df_status, run_date, season, monitored_range) 
     es = list(
       title = "Acci\u00f3n Anticipatoria - Corredor Seco Centroamericano",
       subtitle = glue("Monitoreo de Sequ\u00eda {season} 2026 - Actualizaci\u00f3n de {month_es}"),
-      date_header = glue("{date_fmt_es} - Estado de activaci\u00f3n:"),
+      date_header = glue("{date_fmt_es} - Estado del umbral:"),
       status = status_html(activated, "es"),
-      description_title = "Descripci\u00f3n del Mecanismo de Activaci\u00f3n",
+      description_title = "Descripci\u00f3n del Umbral",
       description_content = desc_es,
       data_source = "ECMWF SEAS5",
       ref_github = 'La documentaci\u00f3n completa y el c\u00f3digo fuente se encuentran en el <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">repositorio de GitHub</a>.'
@@ -241,47 +241,47 @@ build_email_text_sn <- function(df_status, run_date, season, monitored_range) {
 
   subj <- glue(
     "AA StartNetwork Guatemala - {season} Drought Monitoring - {month_en} update - ",
-    "{ifelse(activated, 'Activated', 'No Activations')}"
+    "{ifelse(activated, 'Threshold Met', 'Thresholds Not Met')}"
   )
 
   if (activated) {
     desc_en <- glue(
-      "The StartNetwork AA framework has been triggered. The combined rainfall forecast ",
-      "over the 2026 {season} season ({monitored_range}) for the Quich\u00e9/Baja Verapaz ",
-      "AOI is predicted to be below drought trigger levels. The trigger status and thresholds ",
-      "are based on the latest ECMWF SEAS5 forecast and historical ECMWF SEAS5 hindcasts (1991-2024)."
+      "The forecast rainfall is below trigger thresholds for the StartNetwork AOI. The combined ",
+      "rainfall forecast over the {season} season ({monitored_range}) for the Quich\u00e9/Baja Verapaz ",
+      "AOI is predicted to be below drought trigger levels. The threshold status is based on ",
+      "the latest ECMWF SEAS5 forecast and historical ECMWF SEAS5 hindcasts (1991-2024)."
     )
     desc_es <- glue(
-      "El marco de Acci\u00f3n Anticipatoria de StartNetwork se ha activado. El pron\u00f3stico ",
-      "de precipitaci\u00f3n acumulada para la temporada {season} 2026 ({monitored_es}) para el ",
-      "\u00e1rea de inter\u00e9s de Quich\u00e9/Baja Verapaz se prev\u00e9 que est\u00e9 por debajo ",
-      "de los niveles de activaci\u00f3n por sequ\u00eda. El estado de activaci\u00f3n y los umbrales ",
-      "se basan en el \u00faltimo pron\u00f3stico ECMWF SEAS5 y los hindcasts hist\u00f3ricos de ",
-      "ECMWF SEAS5 (1991-2024)."
+      "La precipitaci\u00f3n prevista est\u00e1 por debajo de los umbrales de activaci\u00f3n para ",
+      "el \u00e1rea de inter\u00e9s de StartNetwork. El pron\u00f3stico de precipitaci\u00f3n acumulada ",
+      "para la temporada {season} ({monitored_es}) para el \u00e1rea de inter\u00e9s de ",
+      "Quich\u00e9/Baja Verapaz se prev\u00e9 que est\u00e9 por debajo de los niveles de sequ\u00eda. ",
+      "El estado de los umbrales se basa en el \u00faltimo pron\u00f3stico ECMWF SEAS5 y los ",
+      "hindcasts hist\u00f3ricos de ECMWF SEAS5 (1991-2024)."
     )
   } else {
     desc_en <- glue(
-      "The StartNetwork AA framework has not triggered. The total rainfall forecast ",
-      "over the 2026 {season} season ({monitored_range}) for the Quich\u00e9/Baja Verapaz ",
-      "AOI is not predicted to be below drought trigger levels. The trigger status and thresholds ",
-      "are based on the latest ECMWF SEAS5 forecast and historical ECMWF SEAS5 hindcasts (1991-2024)."
+      "The forecast rainfall is not below trigger thresholds for the StartNetwork AOI. The total ",
+      "rainfall forecast over the {season} season ({monitored_range}) for the Quich\u00e9/Baja Verapaz ",
+      "AOI is not predicted to be below drought trigger levels. The threshold status is based on ",
+      "the latest ECMWF SEAS5 forecast and historical ECMWF SEAS5 hindcasts (1991-2024)."
     )
     desc_es <- glue(
-      "El marco de Acci\u00f3n Anticipatoria de StartNetwork no se ha activado. El pron\u00f3stico ",
-      "de precipitaci\u00f3n total para la temporada {season} 2026 ({monitored_es}) para el ",
-      "\u00e1rea de inter\u00e9s de Quich\u00e9/Baja Verapaz no se prev\u00e9 que est\u00e9 por debajo ",
-      "de los niveles de activaci\u00f3n por sequ\u00eda. El estado de activaci\u00f3n y los umbrales ",
-      "se basan en el \u00faltimo pron\u00f3stico ECMWF SEAS5 y los hindcasts hist\u00f3ricos de ",
-      "ECMWF SEAS5 (1991-2024)."
+      "La precipitaci\u00f3n prevista no est\u00e1 por debajo de los umbrales de activaci\u00f3n para ",
+      "el \u00e1rea de inter\u00e9s de StartNetwork. El pron\u00f3stico de precipitaci\u00f3n total ",
+      "para la temporada {season} ({monitored_es}) para el \u00e1rea de inter\u00e9s de ",
+      "Quich\u00e9/Baja Verapaz no se prev\u00e9 que est\u00e9 por debajo de los niveles de sequ\u00eda. ",
+      "El estado de los umbrales se basa en el \u00faltimo pron\u00f3stico ECMWF SEAS5 y los ",
+      "hindcasts hist\u00f3ricos de ECMWF SEAS5 (1991-2024)."
     )
   }
 
   list(
     subj = subj,
     en = list(
-      date_header = glue("{date_fmt} - Trigger status:"),
+      date_header = glue("{date_fmt} - Threshold status:"),
       status = status_html(activated, "en"),
-      description_title = "Trigger Description",
+      description_title = "Threshold Description",
       description_content = desc_en,
       data_source = "ECMWF SEAS5",
       ref_github = 'Full documentation and source code can be found in the <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">GitHub repository</a>.'
@@ -289,9 +289,9 @@ build_email_text_sn <- function(df_status, run_date, season, monitored_range) {
     es = list(
       title = "Acci\u00f3n Anticipatoria - StartNetwork Guatemala",
       subtitle = glue("Monitoreo de Sequ\u00eda {season} 2026 - Actualizaci\u00f3n de {month_es}"),
-      date_header = glue("{date_fmt_es} - Estado de activaci\u00f3n:"),
+      date_header = glue("{date_fmt_es} - Estado del umbral:"),
       status = status_html(activated, "es"),
-      description_title = "Descripci\u00f3n del Mecanismo de Activaci\u00f3n",
+      description_title = "Descripci\u00f3n del Umbral",
       description_content = desc_es,
       data_source = "ECMWF SEAS5",
       ref_github = 'La documentaci\u00f3n completa y el c\u00f3digo fuente se encuentran en el <a href="https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor">repositorio de GitHub</a>.'
@@ -323,8 +323,8 @@ build_threshold_gt <- function(df_status, programme, season, lang = "en") {
     df_tbl <- df_tbl |>
       mutate(status = dplyr::recode(
         as.character(status),
-        "Activation" = "Activaci\u00f3n",
-        "No Activation" = "Sin Activaci\u00f3n"
+        "Threshold Met" = "Umbral Alcanzado",
+        "Threshold Not Met" = "Umbral No Alcanzado"
       ))
     country_lab <- "Pa\u00eds"
     rainfall_lab <- "Precipitaci\u00f3n (mm)"
@@ -332,7 +332,7 @@ build_threshold_gt <- function(df_status, programme, season, lang = "en") {
     status_lab <- "Estado"
     aoi_lab <- "\u00c1rea de Inter\u00e9s"
     title_prefix <- if (is_sn) "StartNetwork: " else ""
-    title <- glue("{title_prefix}Precipitaci\u00f3n Prevista para {season} y Umbrales de Activaci\u00f3n")
+    title <- glue("{title_prefix}Precipitaci\u00f3n Prevista para {season} y Umbrales")
     footnote <- if (is_sn) SN_RP_FOOTNOTE_ES else OCHA_RP_FOOTNOTE_ES
   } else {
     country_lab <- "Country"

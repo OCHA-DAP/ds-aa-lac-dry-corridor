@@ -41,7 +41,7 @@ box::use(
 # developers
 # internal_chd
 # full_list
-EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "developers")
+EMAIL_LIST <- Sys.getenv("EMAIL_WHO", unset = "core_developer")
 
 # Run date: defaults to Sys.Date(), but can be overridden via RUN_YEAR + RUN_MONTH
 # env vars (set in GHA workflow_dispatch or locally for testing).
@@ -53,7 +53,7 @@ run_month <- Sys.getenv("RUN_MONTH", unset = "")
 if (nzchar(run_year) && nzchar(run_month)) {
   run_date_set <- lubridate$make_date(as.integer(run_year), as.integer(run_month), 1L)
 } else {
-  run_date_set <- Sys.Date()
+  run_date_set <- as.Date(lubridate$now("UTC"))
 }
 
 current_moment <- lubridate$floor_date(run_date_set, "month")
@@ -243,8 +243,8 @@ df_forecast_status <- df_forecast |>
   ) |>
   mutate(
     status_lgl = value <= value_empirical,
-    status = if_else(status_lgl, "Activation", "No Activation"),
-    status = fct_expand(factor(status), "Activation", "No Activation")
+    status = if_else(status_lgl, "Threshold Met", "Threshold Not Met"),
+    status = fct_expand(factor(status), "Threshold Met", "Threshold Not Met")
   )
 
 df_forecast_status |> glimpse()
@@ -266,7 +266,7 @@ df_activations_ocha <- df_status_ocha |> filter(status_lgl)
 df_activations_sn <- df_status_sn |> filter(status_lgl)
 
 logger$log_info(sprintf(
-  "OCHA activations: %s | StartNetwork activations: %s",
+  "OCHA thresholds met: %s | StartNetwork thresholds met: %s",
   if (nrow(df_activations_ocha) > 0) paste(unique(df_activations_ocha$adm0_es), collapse = ", ") else "None",
   if (nrow(df_activations_sn) > 0) "Guatemala (StartNetwork)" else "None"
 ))
@@ -341,8 +341,8 @@ p_rainfall <- df_status_ocha |>
   ) +
   scale_color_manual(
     values = c(
-      `No Activation` = "#55b284ff",
-      `Activation` = "#F2645A"
+      `Threshold Not Met` = "#55b284ff",
+      `Threshold Met` = "#F2645A"
     ),
     drop = FALSE
   ) +
