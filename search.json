@@ -817,7 +817,7 @@
     "href": "12_rolac_mission_support.html",
     "title": "10  2026 Primera Situation & Priorities",
     "section": "",
-    "text": "10.1 Purpose\nROLAC missions to El Salvador, Honduras, and Guatemala (July 2026) are supporting country-level analysis of El Niño humanitarian impacts. This chapter is CHD’s contribution to the preliminary desk review: where is the 2026 primera season under stress, and which sub-national areas warrant priority attention. It reuses the anticipatory-action data pipeline but takes a whole-country, admin-1 view rather than the framework’s dry-corridor AOI.",
+    "text": "10.1 Purpose\nROLAC missions to El Salvador, Honduras, and Guatemala (July 2026) are supporting country-level analysis of El Niño humanitarian impacts. This chapter is CHD’s contribution to the preliminary desk review. It first establishes where the 2026 primera season stands now and where the forecast points, then develops the question that matters for the mission: given a region-wide hazard, which sub-national areas warrant priority attention.",
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
@@ -828,29 +828,7 @@
     "href": "12_rolac_mission_support.html#purpose",
     "title": "10  2026 Primera Situation & Priorities",
     "section": "",
-    "text": "NoteBottom line\n\n\n\nThe 2026 primera has started broadly dry across all three countries — three independent rainfall products agree (May rainfall roughly two-thirds of normal), and the seasonal forecast shows no relief through August. Because the rainfall deficit is region-wide, it does not by itself localize priorities; targeting comes from where the drought is already translating into agricultural stress and which areas are structurally most El Niño-sensitive. On that basis, seven admin-1 units already show material crop stress and are the immediate focus: Olancho, El Paraíso, Choluteca (Honduras); San Vicente, La Unión, Morazán (El Salvador); Zacapa (Guatemala).",
-    "crumbs": [
-      "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
-    ]
-  },
-  {
-    "objectID": "12_rolac_mission_support.html#sec-priority",
-    "href": "12_rolac_mission_support.html#sec-priority",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "10.2 Priority synthesis",
-    "text": "10.2 Priority synthesis\nThe regional rainfall hazard is confirmed everywhere (below), so the tiers key on current agricultural impact and structural El Niño risk, not rainfall (which is uniformly poor):\n\nAct — ≥15% of crop area already in severe stress (FAO ASI), i.e. the drought is materially biting now.\nWatch — not yet materially stressed, but historically ≥15% drier in past El Niño years (statistically significant), so most likely to deteriorate as the El Niño develops.\nMonitor — dry like everywhere else, but no material impact yet and not highly sensitive.\n\n\n\n\n\n\n\n\n\nFigure 10.1: Admin-1 priority tiers for the 2026 primera. Act = crops already materially stressed; Watch = strongly El Niño-sensitive; Monitor = remainder.\n\n\n\n\n\n\n\n\n\nTable 10.1: Act units — where the 2026 drought is already materially stressing agriculture.\n\n\n\n\n\n\n\n\n\nPriority: Act\n\n\nMaterially stressed crop area, 2026 primera to date\n\n\nCountry\nAdmin-1\nASI (% crop area stressed)\nObs. rainfall pctile\nEl Niño anomaly\n\n\n\n\nHND\nOlancho\n52\n4%\n-4%\n\n\nHND\nEl Paraiso\n37\n2%\n-8%\n\n\nHND\nCholuteca\n25\n4%\n-23%\n\n\nSLV\nSan Vicente\n22\n9%\n-17%\n\n\nSLV\nLa Unión\n18\n28%\n-31%\n\n\nSLV\nMorazán\n16\n17%\n-23%\n\n\nGTM\nZacapa\n16\n6%\n-11%",
-    "crumbs": [
-      "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
-    ]
-  },
-  {
-    "objectID": "12_rolac_mission_support.html#sec-current",
-    "href": "12_rolac_mission_support.html#sec-current",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "10.3 Current conditions: the 2026 primera so far",
-    "text": "10.3 Current conditions: the 2026 primera so far\nObserved rainfall (ERA5, May–June). Every admin-1 unit is in the driest third of its own 1981–2025 record; the map shows the empirical return period of the deficit.\n\n\n\n\n\n\n\n\nFigure 10.2: Return period of the observed May–June 2026 rainfall deficit (ERA5, Weibull). Darker = rarer/drier.\n\n\n\n\n\nThree independent products agree it is dry. ERA5 (reanalysis), IMERG (satellite), and CHIRPS (the FEWS NET standard) each put May 2026 well below normal in all three countries. They agree on the regional signal; they differ on severity (ERA5 is consistently the most severe), so we report the regional deficit with confidence but avoid over-precise per-unit “record” claims.\n\n\n\n\n\n\n\n\nFigure 10.3: May 2026 median admin-1 rainfall as a percentage of each product’s own normal.",
+    "text": "NoteBottom line\n\n\n\nThe 2026 primera has started broadly dry across all three countries (three independent rainfall products agree — May rainfall roughly two-thirds of normal), and the seasonal forecast shows no relief — the rest of primera and the postrera are both forecast dry, so there is no “second-harvest” fallback this year. Because the deficit is region-wide, rainfall does not by itself localize priorities; targeting comes from where the drought is already stressing agriculture and which areas are structurally most El Niño-sensitive. On that basis, seven admin-1 units already show material crop stress and are the immediate focus: Olancho, El Paraíso, Choluteca (Honduras); San Vicente, La Unión, Morazán (El Salvador); Zacapa (Guatemala).",
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
@@ -860,8 +838,8 @@
     "objectID": "12_rolac_mission_support.html#sec-asi",
     "href": "12_rolac_mission_support.html#sec-asi",
     "title": "10  2026 Primera Situation & Priorities",
-    "section": "10.4 Agricultural impact (FAO ASI)",
-    "text": "10.4 Agricultural impact (FAO ASI)\nThe rainfall deficit is region-wide, but agricultural stress is concentrated. FAO’s Agricultural Stress Index (share of crop area in severe stress, cumulative to late June) is well above normal in Honduras (11% vs 7%), near normal in El Salvador, and below normal in Guatemala — so despite dry rainfall, Guatemala’s crops are not (yet) unusually stressed.\n\n\n\n\n\n\n\n\nFigure 10.4: FAO ASI (% of crop area in severe stress), cumulative to late June 2026. Grey = no ASI (negligible cropland).",
+    "section": "13.1 Agricultural impact (FAO ASI)",
+    "text": "13.1 Agricultural impact (FAO ASI)\nFAO’s Agricultural Stress Index (share of crop area in severe stress, cumulative to late June) is well above normal in Honduras (11% vs 7%), near normal in El Salvador, and below normal in Guatemala — so despite dry rainfall, Guatemala’s crops are not (yet) unusually stressed, while the impact is concentrating in Honduras and eastern El Salvador.\n\n\n\n\n\n\n\n\nFigure 13.1: FAO ASI (% of crop area in severe stress), cumulative to late June 2026. Grey = no ASI (negligible cropland).",
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
@@ -871,30 +849,19 @@
     "objectID": "12_rolac_mission_support.html#sec-enso",
     "href": "12_rolac_mission_support.html#sec-enso",
     "title": "10  2026 Primera Situation & Priorities",
-    "section": "10.5 El Niño context",
-    "text": "10.5 El Niño context\nA rapidly developing El Niño (ONI anomaly rose from −0.4 in January to +1.5 by June 2026) frames the season. Historically, El Niño depresses primera rainfall across the region — but not evenly. The map below shows each unit’s mean primera rainfall anomaly in past El Niño years (1981–2025); the eastern/southern dry corridor dries out most, and 83% of admin-1 units show a statistically significant El Niño drying signal.\n\n\n\n\n\n\n\n\nFigure 10.5: Mean primera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Darker red = drier under El Niño. Outlined = statistically significant (Wilcoxon p&lt;0.10).",
+    "section": "13.2 El Niño structural sensitivity",
+    "text": "13.2 El Niño structural sensitivity\nA rapidly developing El Niño (ONI anomaly rose from −0.4 in January to +1.5 by June 2026) frames the season. Historically, El Niño depresses primera rainfall across the region — but not evenly. The map shows each unit’s mean primera rainfall anomaly in past El Niño years (1981–2025); the eastern/southern dry corridor dries out most, and 83% of admin-1 units show a statistically significant El Niño drying signal.\n\n\n\n\n\n\n\n\nFigure 13.2: Mean primera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Darker red = drier under El Niño. Outlined = statistically significant (Wilcoxon p&lt;0.10).",
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html#sec-forecast",
-    "href": "12_rolac_mission_support.html#sec-forecast",
+    "objectID": "12_rolac_mission_support.html#sec-priority",
+    "href": "12_rolac_mission_support.html#sec-priority",
     "title": "10  2026 Primera Situation & Priorities",
-    "section": "10.6 Forecast outlook: does the rest of primera recover?",
-    "text": "10.6 Forecast outlook: does the rest of primera recover?\nCombining observed May–June (ERA5) with the SEAS5 July-issuance forecast for July–August gives a complete primera estimate. The forecast offers essentially no relief: almost every unit is dry in both halves (bottom-left below). Only Izabal (Guatemala) has a near-normal forecast despite a dry start.\n\n\n\n\n\n\n\n\nFigure 10.6: 2026 primera: observed May–June anomaly (x) vs forecast July–August anomaly (y), z-scores. Bottom-left = dry start AND dry forecast.",
-    "crumbs": [
-      "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
-    ]
-  },
-  {
-    "objectID": "12_rolac_mission_support.html#sec-caveats",
-    "href": "12_rolac_mission_support.html#sec-caveats",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "10.7 Caveats & data sources",
-    "text": "10.7 Caveats & data sources\n\nProduct disagreement on severity. ERA5, IMERG, and CHIRPS agree the region is dry but differ on magnitude (ERA5 most severe; recent ERA5 months are provisional). Treat the regional signal as robust and per-unit “driest on record” claims as product-dependent.\nCropland exposure is soft context. MODIS 500m cropland underestimates smallholder / hillside agriculture — e.g. Olancho (the most-stressed unit) reads only ~2% cropland in MODIS. It is therefore not used to filter units; FAO ASI (built on FAO’s own crop mask) is the impact signal.\nCHIRPS latency. CHIRPS final lags ~5 weeks, so it corroborates May only; ERA5 (to June) and IMERG (to July) carry the more current read.\nASI is cumulative. We use the final June dekad (season-to-date), compared to the same dekad historically — not a multi-dekad mean.\nResolution honesty. Forecast products are admin-1 (GTM/HND) / admin-0 (SLV); SEAS5’s ~36 km pixels do not support finer forecast breakdowns. Observational products (CHIRPS 5 km, ASI) can resolve admin-2.\n\n\n10.7.1 Data provenance (pull scripts — shown, not executed here)\nThe heavy pulls run against the team database and Google Earth Engine outside this document; their outputs are the committed CSVs read above. Representative CHIRPS pull (rgee):\n\n\nCode\n# artefacts/mission_support_2026/_shared/pull_chirps_gee.R (abridged)\nchirps &lt;- ee$ImageCollection(\"UCSB-CHG/CHIRPS/DAILY\")\nfc &lt;- ee$FeatureCollection(\"FAO/GAUL_SIMPLIFIED_500m/2015/level1\")$\n  filter(ee$Filter$inList(\"ADM0_NAME\", ee$List(list(\"Guatemala\",\"Honduras\",\"El Salvador\"))))\n# monthly sum per year -&gt; zonal mean over GAUL admin units (via getInfo, no Drive scope needed)\nee_extract(x = year_image(yr, months), y = fc, fun = ee$Reducer$mean(), scale = 5566, via = \"getInfo\")\n\n\nSEAS5 / ERA5 / IMERG are read from the team Postgres database (cumulus::pg_con()), FAO ASI via cumulus::fao_asi_adm1_tabular(), and ONI via cumulus::load_oni().",
+    "section": "13.3 Priority synthesis",
+    "text": "13.3 Priority synthesis\nBringing it together: the rainfall hazard is confirmed everywhere, so the tiers key on current agricultural impact and structural El Niño risk, not rainfall (uniformly poor):\n\nAct — ≥15% of crop area already in severe stress (FAO ASI): the drought is materially biting now.\nWatch — not yet materially stressed, but historically ≥15% drier in past El Niño years (statistically significant), so most likely to deteriorate as the El Niño develops.\nMonitor — dry like everywhere else, but no material impact yet and not highly sensitive.\n\n\n\n\n\n\n\n\n\nFigure 13.3: Admin-1 priority tiers for the 2026 primera. Act = crops already materially stressed; Watch = strongly El Niño-sensitive; Monitor = remainder.\n\n\n\n\n\n\n\n\n\nTable 13.1: Act units — where the 2026 drought is already materially stressing agriculture.\n\n\n\n\n\n\n\n\n\nPriority: Act\n\n\nMaterially stressed crop area, 2026 primera to date\n\n\nCountry\nAdmin-1\nASI (% crop area stressed)\nObs. rainfall pctile\nEl Niño anomaly\n\n\n\n\nHND\nOlancho\n52\n4%\n-4%\n\n\nHND\nEl Paraiso\n37\n2%\n-8%\n\n\nHND\nCholuteca\n25\n4%\n-23%\n\n\nSLV\nSan Vicente\n22\n9%\n-17%\n\n\nSLV\nLa Unión\n18\n28%\n-31%\n\n\nSLV\nMorazán\n16\n17%\n-23%\n\n\nGTM\nZacapa\n16\n6%\n-11%",
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
