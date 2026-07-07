@@ -274,7 +274,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">10.1</span> Purpose</a></li>
   <li><a href="#sec-current" id="toc-sec-current" class="nav-link" data-scroll-target="#sec-current"><span class="header-section-number">11</span> The current situation</a></li>
-  <li><a href="#sec-forecast" id="toc-sec-forecast" class="nav-link" data-scroll-target="#sec-forecast"><span class="header-section-number">12</span> The forecast: does the season recover?</a></li>
+  <li><a href="#sec-forecast" id="toc-sec-forecast" class="nav-link" data-scroll-target="#sec-forecast"><span class="header-section-number">12</span> The forecast: does the season recover?</a>
+  <ul class="collapse">
+  <li><a href="#sec-skill" id="toc-sec-skill" class="nav-link" data-scroll-target="#sec-skill"><span class="header-section-number">12.1</span> How much can we trust the forecast?</a></li>
+  </ul></li>
   <li><a href="#sec-targeting" id="toc-sec-targeting" class="nav-link" data-scroll-target="#sec-targeting"><span class="header-section-number">13</span> Targeting: beyond the regional hazard</a>
   <ul class="collapse">
   <li><a href="#sec-asi" id="toc-sec-asi" class="nav-link" data-scroll-target="#sec-asi"><span class="header-section-number">13.1</span> Agricultural impact (FAO ASI)</a></li>
@@ -337,7 +340,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The 2026 primera has started <strong>broadly dry across all three countries</strong> (three independent rainfall products agree — May rainfall roughly two-thirds of normal), and the seasonal forecast shows <strong>no relief</strong> — the rest of primera <em>and</em> the postrera are both forecast dry, so there is no “second-harvest” fallback this year. Because the deficit is region-wide, rainfall does not by itself localize priorities; targeting comes from <strong>where the drought is already stressing agriculture</strong> and <strong>which areas are structurally most El Niño-sensitive</strong>. On that basis, <strong>seven admin-1 units already show material crop stress</strong> and are the immediate focus: <strong>Olancho, El Paraíso, Choluteca</strong> (Honduras); <strong>San Vicente, La Unión, Morazán</strong> (El Salvador); <strong>Zacapa</strong> (Guatemala).</p>
+<p>The 2026 primera has started <strong>broadly dry across all three countries</strong> (three independent rainfall products agree — May rainfall roughly two-thirds of normal), and the near-term forecast shows <strong>no relief</strong> for the rest of primera. The postrera is <em>also</em> forecast dry — pointing to no “second-harvest” fallback — but SEAS5’s postrera skill is weak (see <a href="#sec-skill" class="quarto-xref"><span>Section 12.1</span></a>), so that is a low-confidence outlook to watch, not a firm prediction. Because the deficit is region-wide, rainfall does not by itself localize priorities; targeting comes from <strong>where the drought is already stressing agriculture</strong> and <strong>which areas are structurally most El Niño-sensitive</strong>. On that basis, <strong>seven admin-1 units already show material crop stress</strong> and are the immediate focus: <strong>Olancho, El Paraíso, Choluteca</strong> (Honduras); <strong>San Vicente, La Unión, Morazán</strong> (El Salvador); <strong>Zacapa</strong> (Guatemala).</p>
 </div>
 </div>
 </section>
@@ -421,6 +424,25 @@ Figure&nbsp;12.3: Return-period version: complete primera dry RP (x) vs postrera
 </div>
 </div>
 </div>
+<section id="sec-skill" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="sec-skill"><span class="header-section-number">12.1</span> How much can we trust the forecast?</h2>
+<p>The “no second chance” conclusion rests on the SEAS5 postrera forecast — so its skill matters. Validating each admin-1 unit’s SEAS5 forecast against observed drought (ROC-AUC, following the book’s forecast-skill method; AUC &gt; 0.7 = acceptable, 0.5 = no better than chance), <strong>the two seasons are very different</strong>. Primera skill is reasonable (median AUC 0.73; acceptable in 36 of 54 units), consistent with the firm, mostly-observed primera picture. <strong>Postrera skill is weak (median AUC 0.65; acceptable in only 11 of 54 units)</strong> — barely better than chance across much of Guatemala.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-skill-map" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-skill-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-skill-map-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skill-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.4: SEAS5 postrera (SON) forecast skill by admin-1 unit (ROC-AUC vs observed drought, 1981–2025). Blue = acceptable (≥0.7); orange/grey = low skill; ~0.5 = no better than chance.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The primera picture (dry start plus a skillful short-lead forecast) is firm. The <strong>postrera “no relief” signal should be read as a low-confidence outlook, not a prediction</strong>: it is consistent with the developing El Niño and the historical tendency for both seasons to fail together (chapters here and the drought literature), but SEAS5 alone cannot reliably call the postrera at admin scale. It is a reason to <em>watch</em> the postrera closely, not to bank on it failing.</p>
+</section>
 </section>
 <section id="sec-targeting" class="level1" data-number="13">
 <h1 data-number="13"><span class="header-section-number">13</span> Targeting: beyond the regional hazard</h1>

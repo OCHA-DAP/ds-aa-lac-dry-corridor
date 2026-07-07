@@ -828,7 +828,18 @@
     "href": "12_rolac_mission_support.html#purpose",
     "title": "10  2026 Primera Situation & Priorities",
     "section": "",
-    "text": "NoteBottom line\n\n\n\nThe 2026 primera has started broadly dry across all three countries (three independent rainfall products agree — May rainfall roughly two-thirds of normal), and the seasonal forecast shows no relief — the rest of primera and the postrera are both forecast dry, so there is no “second-harvest” fallback this year. Because the deficit is region-wide, rainfall does not by itself localize priorities; targeting comes from where the drought is already stressing agriculture and which areas are structurally most El Niño-sensitive. On that basis, seven admin-1 units already show material crop stress and are the immediate focus: Olancho, El Paraíso, Choluteca (Honduras); San Vicente, La Unión, Morazán (El Salvador); Zacapa (Guatemala).",
+    "text": "NoteBottom line\n\n\n\nThe 2026 primera has started broadly dry across all three countries (three independent rainfall products agree — May rainfall roughly two-thirds of normal), and the near-term forecast shows no relief for the rest of primera. The postrera is also forecast dry — pointing to no “second-harvest” fallback — but SEAS5’s postrera skill is weak (see Section 12.1), so that is a low-confidence outlook to watch, not a firm prediction. Because the deficit is region-wide, rainfall does not by itself localize priorities; targeting comes from where the drought is already stressing agriculture and which areas are structurally most El Niño-sensitive. On that basis, seven admin-1 units already show material crop stress and are the immediate focus: Olancho, El Paraíso, Choluteca (Honduras); San Vicente, La Unión, Morazán (El Salvador); Zacapa (Guatemala).",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+    ]
+  },
+  {
+    "objectID": "12_rolac_mission_support.html#sec-skill",
+    "href": "12_rolac_mission_support.html#sec-skill",
+    "title": "10  2026 Primera Situation & Priorities",
+    "section": "12.1 How much can we trust the forecast?",
+    "text": "12.1 How much can we trust the forecast?\nThe “no second chance” conclusion rests on the SEAS5 postrera forecast — so its skill matters. Validating each admin-1 unit’s SEAS5 forecast against observed drought (ROC-AUC, following the book’s forecast-skill method; AUC &gt; 0.7 = acceptable, 0.5 = no better than chance), the two seasons are very different. Primera skill is reasonable (median AUC 0.73; acceptable in 36 of 54 units), consistent with the firm, mostly-observed primera picture. Postrera skill is weak (median AUC 0.65; acceptable in only 11 of 54 units) — barely better than chance across much of Guatemala.\n\n\n\n\n\n\n\n\nFigure 12.4: SEAS5 postrera (SON) forecast skill by admin-1 unit (ROC-AUC vs observed drought, 1981–2025). Blue = acceptable (≥0.7); orange/grey = low skill; ~0.5 = no better than chance.\n\n\n\n\n\nInterpretation. The primera picture (dry start plus a skillful short-lead forecast) is firm. The postrera “no relief” signal should be read as a low-confidence outlook, not a prediction: it is consistent with the developing El Niño and the historical tendency for both seasons to fail together (chapters here and the drought literature), but SEAS5 alone cannot reliably call the postrera at admin scale. It is a reason to watch the postrera closely, not to bank on it failing.",
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
