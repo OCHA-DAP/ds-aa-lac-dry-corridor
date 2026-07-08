@@ -282,12 +282,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#sec-asi" id="toc-sec-asi" class="nav-link" data-scroll-target="#sec-asi"><span class="header-section-number">13.1</span> Agricultural impact (FAO ASI)</a></li>
   <li><a href="#sec-enso" id="toc-sec-enso" class="nav-link" data-scroll-target="#sec-enso"><span class="header-section-number">13.2</span> El Niño structural sensitivity</a></li>
-  <li><a href="#sec-priority" id="toc-sec-priority" class="nav-link" data-scroll-target="#sec-priority"><span class="header-section-number">13.3</span> Priority synthesis</a></li>
+  <li><a href="#sec-cropcalendar" id="toc-sec-cropcalendar" class="nav-link" data-scroll-target="#sec-cropcalendar"><span class="header-section-number">13.3</span> Is this cropland, and is it the right season?</a></li>
+  <li><a href="#sec-season-risk" id="toc-sec-season-risk" class="nav-link" data-scroll-target="#sec-season-risk"><span class="header-section-number">13.4</span> Season-specific agricultural drought risk</a></li>
   </ul></li>
   <li><a href="#sec-caveats" id="toc-sec-caveats" class="nav-link" data-scroll-target="#sec-caveats"><span class="header-section-number">14</span> Caveats &amp; data sources</a>
   <ul class="collapse">
   <li><a href="#data-provenance-pull-scripts-shown-not-executed-here" id="toc-data-provenance-pull-scripts-shown-not-executed-here" class="nav-link" data-scroll-target="#data-provenance-pull-scripts-shown-not-executed-here"><span class="header-section-number">14.0.1</span> Data provenance (pull scripts — shown, not executed here)</a></li>
   </ul></li>
+  <li><a href="#sec-appendix-priority" id="toc-sec-appendix-priority" class="nav-link" data-scroll-target="#sec-appendix-priority"><span class="header-section-number">15</span> Appendix — impact &amp; structure priority tiers (exploratory)</a></li>
   </ul>
 </nav>
     </div>
@@ -343,7 +345,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ol type="1">
 <li><strong>A dry start, confirmed and region-wide.</strong> Two independent rainfall products put the May–June primera at roughly two-thirds of normal in every admin-1 unit of all three countries.</li>
 <li><strong>The season is unlikely to recover.</strong> The forecast keeps the rest of primera dry, and points to a dry postrera as well — so the usual “second harvest” fallback looks compromised. (That postrera signal is low-confidence: SEAS5’s postrera skill is weak, so it is a flag to watch, not a firm prediction — see <a href="#sec-skill" class="quarto-xref"><span>Section 12.1</span></a>.)</li>
-<li><strong>So the question is where to act.</strong> A region-wide deficit does not localize priorities; targeting comes from where the drought is <em>already</em> stressing agriculture and which areas are <em>structurally</em> most El Niño-sensitive. On that basis, <strong>seven admin-1 units already show material crop stress</strong> and are the immediate focus: <strong>Olancho, El Paraíso, Choluteca</strong> (Honduras); <strong>San Vicente, La Unión, Morazán</strong> (El Salvador); <strong>Zacapa</strong> (Guatemala).</li>
+<li><strong>So the question is where to act — and in which season.</strong> A region-wide deficit does not localize priorities; that comes from where the drought meets active, rain-sensitive cropland (JRC/FAO ASAP). Split by season: <strong>primera crop stress is already realized</strong> in Olancho, El Paraíso, Choluteca (Honduras), La Unión (El Salvador), and Zacapa (Guatemala) — <em>act now</em>; a <strong>dry postrera is forecast</strong> (low confidence) for Guatemala’s Pacific belt and central El Salvador — <em>watch</em>; San Vicente and Morazán face <strong>both</strong>; and the <strong>western highlands sit off this seasonal calendar</strong> — a vulnerability question, not a seasonal-drought one.</li>
 </ol>
 </div>
 </div>
@@ -503,35 +505,40 @@ Figure&nbsp;13.2: Mean primera rainfall anomaly in past El Niño years (ERA5, 19
 </div>
 </div>
 </section>
-<section id="sec-priority" class="level2" data-number="13.3">
-<h2 data-number="13.3" class="anchored" data-anchor-id="sec-priority"><span class="header-section-number">13.3</span> Priority synthesis</h2>
-<p>The two lenses converge into a single ranking. Because the rainfall hazard is region-wide, the tiers are set by <strong>current agricultural impact</strong> and <strong>structural El Niño risk</strong>, not by rainfall (which is uniformly poor):</p>
+<section id="sec-cropcalendar" class="level2" data-number="13.3">
+<h2 data-number="13.3" class="anchored" data-anchor-id="sec-cropcalendar"><span class="header-section-number">13.3</span> Is this cropland, and is it the right season?</h2>
+<p>Two checks turn the hazard into <em>agricultural</em> risk. <strong>Is it cropland?</strong> The JRC/FAO ASAP crop mask shows the dry corridor is heavily agricultural — 42–65% cropland by country. (The MODIS layer we first tried badly underestimated smallholder farming — it put Olancho, the most-stressed unit, at ~2% — so ASAP is the exposure layer to trust.) <strong>Is our drought hitting the rain-critical part of the season?</strong> ASAP’s precipitation-sensitive-period (PSP) layer marks May–November as the rain-critical window across essentially all of that cropland — <em>except</em> the western highlands (Honduras: Lempira, Intibucá, Copán, Ocotepeque, La Paz; Guatemala: Huehuetenango) and the Caribbean fringe (Izabal, Islas de la Bahía), whose crops run on a different calendar. For those <strong>off-calendar</strong> zones a primera/postrera deficit is the wrong lens — they belong to the broader food-security / vulnerability question, not the seasonal-drought one.</p>
+</section>
+<section id="sec-season-risk" class="level2" data-number="13.4">
+<h2 data-number="13.4" class="anchored" data-anchor-id="sec-season-risk"><span class="header-section-number">13.4</span> Season-specific agricultural drought risk</h2>
+<p>For the crop-relevant, in-season zones, the risk splits cleanly by season. <strong>Primera risk is realized</strong> — read from the crop stress already on the ground (FAO ASI). <strong>Postrera risk is forecast</strong> — read from the SEAS5 September–November outlook, and therefore low-confidence (weak forecast skill, <a href="#sec-skill" class="quarto-xref"><span>Section 12.1</span></a>). This is the desk-review headline:</p>
 <ul>
-<li><strong>Act</strong> — ≥15% of crop area already in severe stress (FAO ASI): the drought is materially biting now.</li>
-<li><strong>Watch</strong> — not yet materially stressed, but historically ≥15% drier in past El Niño years (statistically significant), so most likely to deteriorate as the El Niño develops.</li>
-<li><strong>Monitor</strong> — dry like everywhere else, but no material impact yet and not highly sensitive.</li>
+<li><strong>Primera — biting now:</strong> Olancho, El Paraíso, Choluteca (Honduras); La Unión (El Salvador); Zacapa (Guatemala). Crops materially stressed today.</li>
+<li><strong>Postrera — forecast, watch:</strong> Guatemala’s Pacific belt (Escuintla, Suchitepéquez, San Marcos, Quetzaltenango, Retalhuleu, Santa Rosa) + central El Salvador (San Miguel, Usulután, Cabañas, Cuscatlán) + Honduras’s Valle. Driest in the SON forecast, not yet stressed.</li>
+<li><strong>Both:</strong> San Vicente and Morazán (eastern El Salvador) — already stressed <em>and</em> driest postrera forecast.</li>
+<li><strong>Off-calendar:</strong> western highlands + Caribbean — assessed through vulnerability data, not this.</li>
 </ul>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-priority-map" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-season-risk" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-priority-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="12_rolac_mission_support_files/figure-html/fig-priority-map-1.png" class="img-fluid figure-img" width="975">
+<div aria-describedby="fig-season-risk-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-season-risk-1.png" class="img-fluid figure-img" width="975">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-priority-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13.3: Admin-1 priority tiers for the 2026 primera. Act = crops already materially stressed; Watch = strongly El Niño-sensitive; Monitor = remainder.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-season-risk-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;13.3: Season-specific agricultural drought risk. Primera = realized crop stress now (ASI); Postrera = SEAS5 SON forecast (low confidence); Both; Off-calendar = crops on a different rain calendar (highlands/Caribbean).
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
 <div class="cell">
-<div id="tbl-act" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<div id="tbl-season" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-act-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;13.1: Act units — where the 2026 drought is already materially stressing agriculture.
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-season-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera is forecast-driven and lower-confidence.
 </figcaption>
-<div aria-describedby="tbl-act-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="tbl-season-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
 <div id="wknrsauujv" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>#wknrsauujv table {
@@ -977,68 +984,76 @@ Table&nbsp;13.1: Act units — where the 2026 drought is already materially stre
 <table class="gt_table cell caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
 <thead>
 <tr class="gt_heading header">
-<td colspan="5" class="gt_heading gt_title gt_font_normal">Priority: Act</td>
+<td colspan="6" class="gt_heading gt_title gt_font_normal">Where the drought is already agricultural</td>
 </tr>
 <tr class="gt_heading even">
-<td colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Materially stressed crop area, 2026 primera to date</td>
+<td colspan="6" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Primera = realized (ASI); Both adds a dry postrera forecast</td>
 </tr>
 <tr class="gt_col_headings header">
+<th id="Risk" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Risk</th>
 <th id="Country" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Country</th>
 <th id="Admin-1" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Admin-1</th>
-<th id="ASI (% crop area stressed)" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">ASI (% crop area stressed)</th>
-<th id="Obs. rainfall pctile" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Obs. rainfall pctile</th>
-<th id="El Niño anomaly" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">El Niño anomaly</th>
+<th id="ASI (% crop area)" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">ASI (% crop area)</th>
+<th id="Cropland frac" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Cropland frac</th>
+<th id="Postrera fcst (σ below normal)" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera fcst (σ below normal)</th>
 </tr>
 </thead>
 <tbody class="gt_table_body">
 <tr class="odd">
-<td class="gt_row gt_left" headers="Country">HND</td>
-<td class="gt_row gt_left" headers="Admin-1">Olancho</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #A50F15; color: #FFFFFF">52</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">4%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-4%</td>
-</tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="Country">HND</td>
-<td class="gt_row gt_left" headers="Admin-1">El Paraiso</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #D57A69; color: #FFFFFF">37</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">2%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-8%</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="Country">HND</td>
-<td class="gt_row gt_left" headers="Admin-1">Choluteca</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #F1C0B4; color: #000000">25</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">4%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-23%</td>
-</tr>
-<tr class="even">
+<td class="gt_row gt_left" headers="Risk">Both</td>
 <td class="gt_row gt_left" headers="Country">SLV</td>
 <td class="gt_row gt_left" headers="Admin-1">San Vicente</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #F6D1C8; color: #000000">22</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">9%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-17%</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="Country">SLV</td>
-<td class="gt_row gt_left" headers="Admin-1">La Unión</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #FCE9E2; color: #000000">18</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">28%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-31%</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #F6D1C8; color: #000000">22</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.71</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.1</td>
 </tr>
 <tr class="even">
+<td class="gt_row gt_left" headers="Risk">Both</td>
 <td class="gt_row gt_left" headers="Country">SLV</td>
 <td class="gt_row gt_left" headers="Admin-1">Morazán</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #FFF5F0; color: #000000">16</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">17%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-23%</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #FFF5F0; color: #000000">16</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.62</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.1</td>
 </tr>
 <tr class="odd">
+<td class="gt_row gt_left" headers="Risk">Primera</td>
+<td class="gt_row gt_left" headers="Country">HND</td>
+<td class="gt_row gt_left" headers="Admin-1">Olancho</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #A50F15; color: #FFFFFF">52</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.51</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">1.8</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="Risk">Primera</td>
+<td class="gt_row gt_left" headers="Country">HND</td>
+<td class="gt_row gt_left" headers="Admin-1">El Paraiso</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #D57A69; color: #FFFFFF">37</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.56</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">1.8</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="Risk">Primera</td>
+<td class="gt_row gt_left" headers="Country">HND</td>
+<td class="gt_row gt_left" headers="Admin-1">Choluteca</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #F1C0B4; color: #000000">25</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.67</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="Risk">Primera</td>
+<td class="gt_row gt_left" headers="Country">SLV</td>
+<td class="gt_row gt_left" headers="Admin-1">La Unión</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #FCE9E2; color: #000000">18</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.77</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.0</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="Risk">Primera</td>
 <td class="gt_row gt_left" headers="Country">GTM</td>
 <td class="gt_row gt_left" headers="Admin-1">Zacapa</td>
-<td class="gt_row gt_right" headers="ASI (% crop area stressed)" style="background-color: #FFF5F0; color: #000000">16</td>
-<td class="gt_row gt_right" headers="Obs. rainfall pctile">6%</td>
-<td class="gt_row gt_right" headers="El Niño anomaly">-11%</td>
+<td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #FFF5F0; color: #000000">16</td>
+<td class="gt_row gt_right" headers="Cropland frac">0.35</td>
+<td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">1.6</td>
 </tr>
 </tbody>
 </table>
@@ -1049,14 +1064,15 @@ Table&nbsp;13.1: Act units — where the 2026 drought is already materially stre
 </figure>
 </div>
 </div>
-<p><strong>In short.</strong> The 2026 primera is a real, region-wide drought that is unlikely to relent this season. Rainfall alone cannot tell the mission where to concentrate — but impact and structure can, and they agree: the <strong>seven Act units</strong> (Olancho, El Paraíso, Choluteca; San Vicente, La Unión, Morazán; Zacapa) are where the drought is <em>already</em> damaging agriculture and warrant immediate attention; the <strong>Watch units</strong> are where an intensifying El Niño is most likely to push next; and the <strong>postrera</strong> should be watched closely rather than assumed, given its weak forecast skill. That is the desk-review basis for prioritising the in-country discussions.</p>
+<p><strong>In short.</strong> The 2026 primera is a real, region-wide drought unlikely to relent this season. Where it meets active, rain-sensitive cropland it becomes agricultural drought risk — and that splits cleanly: <strong>primera crop stress is already realized</strong> in southern/eastern Honduras, eastern El Salvador, and Zacapa (act now); a <strong>dry postrera is forecast</strong> for Guatemala’s Pacific belt and central El Salvador (watch, low confidence); and the <strong>western highlands sit off this seasonal calendar</strong>, better assessed through vulnerability / food-security data. That is the desk-review basis for the in-country discussions.</p>
 </section>
 </section>
 <section id="sec-caveats" class="level1" data-number="14">
 <h1 data-number="14"><span class="header-section-number">14</span> Caveats &amp; data sources</h1>
 <ul>
 <li><strong>Product disagreement on severity.</strong> ERA5, IMERG, and CHIRPS agree the region is dry but differ on magnitude (ERA5 most severe; recent ERA5 months are provisional). Treat the regional signal as robust and per-unit “driest on record” claims as product-dependent.</li>
-<li><strong>Cropland exposure is soft context.</strong> MODIS 500m cropland underestimates smallholder / hillside agriculture — e.g.&nbsp;Olancho (the most-stressed unit) reads only ~2% cropland in MODIS. It is therefore <strong>not</strong> used to filter units; FAO ASI (built on FAO’s own crop mask) is the impact signal.</li>
+<li><strong>Crop exposure &amp; season = JRC/FAO ASAP.</strong> Cropland fraction, growing-season timing, and the precipitation-sensitive period all come from ASAP (crop mask + in-season + PSP layers). An earlier MODIS 500 m cropland layer badly underestimated smallholder agriculture here (Olancho ~2%) and is not used. ASAP’s PSP treats the bimodal season as one continuous May–November rain-critical window, so it gates <em>whether</em> a zone is in-season but does not itself split primera vs postrera — that split comes from the season-specific hazard (ASI vs SEAS5 SON).</li>
+<li><strong>Season-specific confidence differs.</strong> The <strong>primera</strong> risk is <em>realized</em> (observed rainfall + current ASI stress) — high confidence. The <strong>postrera</strong> risk is <em>forecast</em> (SEAS5 SON) with weak skill — treat as a watch signal, not a prediction.</li>
 <li><strong>CHIRPS latency.</strong> CHIRPS final lags ~5 weeks, so it corroborates May only; ERA5 (to June) and IMERG (to July) carry the more current read.</li>
 <li><strong>ASI is cumulative.</strong> We use the final June dekad (season-to-date), compared to the same dekad historically — not a multi-dekad mean.</li>
 <li><strong>Forecast resolution.</strong> SEAS5’s ~36 km pixels are coarse relative to small admin units, especially in El Salvador (mostly sub-pixel at admin-1). The complete-primera map is shown at admin-1 for all three countries because its observed half (ERA5 May–June) resolves admin-1 fine; within-El-Salvador <em>forecast</em> detail (the July–August half) should be read as indicative, not precise. Observational products (CHIRPS 5 km, ASI) genuinely resolve admin-1/2.</li>
@@ -1076,9 +1092,32 @@ Table&nbsp;13.1: Act units — where the 2026 drought is already materially stre
 </details>
 </div>
 <p>SEAS5 / ERA5 / IMERG are read from the team Postgres database (<code>cumulus::pg_con()</code>), FAO ASI via <code>cumulus::fao_asi_adm1_tabular()</code>, and ONI via <code>cumulus::load_oni()</code>.</p>
-
-
 </section>
+</section>
+<section id="sec-appendix-priority" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Appendix — impact &amp; structure priority tiers (exploratory)</h1>
+<p>Before layering in the ASAP crop calendar, an earlier synthesis ranked units into <strong>Act / Watch / Monitor</strong> purely from <em>current agricultural impact</em> (ASI) and <em>structural El Niño sensitivity</em>. The season-specific view in <a href="#sec-season-risk" class="quarto-xref"><span>Section 13.4</span></a> supersedes it (it adds crop exposure, the precipitation-sensitive-period gate, and the primera/postrera split), but the tiers are kept here for reference — the Act set is identical to the realized primera-risk units.</p>
+<ul>
+<li><strong>Act</strong> — ≥15% of crop area already in severe stress (FAO ASI).</li>
+<li><strong>Watch</strong> — not yet materially stressed, but historically ≥15% drier in past El Niño years.</li>
+<li><strong>Monitor</strong> — dry like everywhere else, no material impact yet, not highly sensitive.</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-priority-map" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-priority-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-priority-map-1.png" class="img-fluid figure-img" width="975">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-priority-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.1: (Exploratory) Admin-1 impact-and-structure priority tiers, superseded by the season-specific view.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+
+
 </section>
 
 </main> <!-- /main -->
