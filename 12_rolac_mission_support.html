@@ -274,10 +274,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">10.1</span> Purpose</a></li>
   <li><a href="#sec-current" id="toc-sec-current" class="nav-link" data-scroll-target="#sec-current"><span class="header-section-number">11</span> The current situation</a></li>
-  <li><a href="#sec-forecast" id="toc-sec-forecast" class="nav-link" data-scroll-target="#sec-forecast"><span class="header-section-number">12</span> The season is unlikely to recover</a>
-  <ul class="collapse">
-  <li><a href="#sec-skill" id="toc-sec-skill" class="nav-link" data-scroll-target="#sec-skill"><span class="header-section-number">12.1</span> How much can we trust the forecast?</a></li>
-  </ul></li>
+  <li><a href="#sec-forecast" id="toc-sec-forecast" class="nav-link" data-scroll-target="#sec-forecast"><span class="header-section-number">12</span> The season is unlikely to recover</a></li>
   <li><a href="#sec-targeting" id="toc-sec-targeting" class="nav-link" data-scroll-target="#sec-targeting"><span class="header-section-number">13</span> Targeting: beyond the regional hazard</a>
   <ul class="collapse">
   <li><a href="#sec-asi" id="toc-sec-asi" class="nav-link" data-scroll-target="#sec-asi"><span class="header-section-number">13.1</span> Agricultural impact (FAO ASI)</a></li>
@@ -290,6 +287,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#data-provenance-pull-scripts-shown-not-executed-here" id="toc-data-provenance-pull-scripts-shown-not-executed-here" class="nav-link" data-scroll-target="#data-provenance-pull-scripts-shown-not-executed-here"><span class="header-section-number">14.0.1</span> Data provenance (pull scripts — shown, not executed here)</a></li>
   </ul></li>
   <li><a href="#sec-appendix-priority" id="toc-sec-appendix-priority" class="nav-link" data-scroll-target="#sec-appendix-priority"><span class="header-section-number">15</span> Appendix — impact &amp; structure priority tiers (exploratory)</a></li>
+  <li><a href="#sec-appendix-skill" id="toc-sec-appendix-skill" class="nav-link" data-scroll-target="#sec-appendix-skill"><span class="header-section-number">16</span> Appendix — SEAS5 forecast skill</a></li>
+  <li><a href="#sec-appendix-enso" id="toc-sec-appendix-enso" class="nav-link" data-scroll-target="#sec-appendix-enso"><span class="header-section-number">17</span> Appendix — El Niño sensitivity, postrera</a></li>
   </ul>
 </nav>
     </div>
@@ -344,7 +343,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><strong>A dry start, confirmed and region-wide.</strong> Two independent rainfall products put the May–June primera at roughly two-thirds of normal in every admin-1 unit of all three countries.</li>
-<li><strong>The season is unlikely to recover.</strong> The forecast keeps the rest of primera dry, and points to a dry postrera as well — so the usual “second harvest” fallback looks compromised. (That postrera signal is low-confidence: SEAS5’s postrera skill is weak, so it is a flag to watch, not a firm prediction — see <a href="#sec-skill" class="quarto-xref"><span>Section 12.1</span></a>.)</li>
+<li><strong>The season is unlikely to recover.</strong> The forecast keeps the rest of primera dry, and points to a dry postrera as well — so the usual “second harvest” fallback looks compromised. (That postrera signal is low-confidence: SEAS5’s postrera skill is weak, so it is a flag to watch, not a firm prediction — see <a href="#sec-appendix-skill" class="quarto-xref"><span>Chapter 16</span></a>.)</li>
 <li><strong>So the question is where to act — and in which season.</strong> A region-wide deficit does not localize priorities; that comes from where the drought meets active, rain-sensitive cropland (JRC/FAO ASAP). Split by season: <strong>primera crop stress is already realized</strong> in Olancho, El Paraíso, Choluteca (Honduras), La Unión (El Salvador), and Zacapa (Guatemala) — <em>act now</em>; a <strong>dry postrera is forecast</strong> (low confidence) for Guatemala’s Pacific belt and central El Salvador — <em>watch</em>; San Vicente and Morazán face <strong>both</strong>; and the <strong>western highlands sit off this seasonal calendar</strong> — a vulnerability question, not a seasonal-drought one.</li>
 </ol>
 </div>
@@ -445,32 +444,14 @@ Figure&nbsp;12.4: Return-period version: complete primera dry RP (x) vs postrera
 </div>
 </div>
 </div>
-<section id="sec-skill" class="level2" data-number="12.1">
-<h2 data-number="12.1" class="anchored" data-anchor-id="sec-skill"><span class="header-section-number">12.1</span> How much can we trust the forecast?</h2>
-<p>The “no second chance” conclusion rests on the SEAS5 postrera forecast — so its skill matters. Validating each admin-1 unit’s SEAS5 forecast against observed drought (ROC-AUC, following the book’s forecast-skill method; AUC &gt; 0.7 = acceptable, 0.5 = no better than chance), <strong>the two seasons are very different</strong>. Primera skill is reasonable (median AUC 0.73; acceptable in 36 of 54 units), consistent with the firm, mostly-observed primera picture. <strong>Postrera skill is weak (median AUC 0.65; acceptable in only 11 of 54 units)</strong> — barely better than chance across much of Guatemala.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div id="fig-skill-map" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-skill-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="12_rolac_mission_support_files/figure-html/fig-skill-map-1.png" class="img-fluid figure-img" width="975">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skill-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12.5: SEAS5 postrera (SON) forecast skill by admin-1 unit (ROC-AUC vs observed drought, 1981–2025). Green = skill (AUC&gt;0.5); pale ≈ chance; red = worse than chance. AUC&gt;0.7 = acceptable.
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-<p><strong>Interpretation.</strong> The primera picture (dry start plus a skillful short-lead forecast) is firm. The <strong>postrera “no relief” signal should be read as a low-confidence outlook, not a prediction</strong>: it is consistent with the developing El Niño and the historical tendency for both seasons to fail together (chapters here and the drought literature), but SEAS5 alone cannot reliably call the postrera at admin scale. It is a reason to <em>watch</em> the postrera closely, not to bank on it failing.</p>
-</section>
+<p>One caveat governs how much weight to put on the postrera half. Validating SEAS5 against 45 years of observed drought (ROC-AUC), <strong>primera skill is reasonable but postrera skill is weak</strong> (median AUC 0.65; acceptable in only 11 of 54 admin-1 units — see <a href="#sec-appendix-skill" class="quarto-xref"><span>Chapter 16</span></a>). So the complete <em>primera</em> picture is firm (mostly observed), but the <em>postrera</em> “no relief” signal is a <strong>low-confidence outlook to watch, not a prediction</strong> — a point carried through the targeting below.</p>
 </section>
 <section id="sec-targeting" class="level1" data-number="13">
 <h1 data-number="13"><span class="header-section-number">13</span> Targeting: beyond the regional hazard</h1>
 <p>The rainfall picture is unambiguous but <strong>uniform</strong> — dry everywhere, both seasons — so it does not tell the mission <em>where</em> to concentrate. Two further layers do: where the drought is already translating into <strong>agricultural stress</strong>, and which areas are <strong>structurally most sensitive</strong> to El Niño and so most likely to deteriorate.</p>
 <section id="sec-asi" class="level2" data-number="13.1">
 <h2 data-number="13.1" class="anchored" data-anchor-id="sec-asi"><span class="header-section-number">13.1</span> Agricultural impact (FAO ASI)</h2>
-<p>FAO’s Agricultural Stress Index (share of crop area in severe stress, cumulative to late June) is well above normal in Honduras (11% vs 7%), near normal in El Salvador, and <strong>below</strong> normal in Guatemala — so despite dry rainfall, Guatemala’s crops are not (yet) unusually stressed, while the impact is concentrating in Honduras and eastern El Salvador.</p>
+<p>FAO’s Agricultural Stress Index (share of crop area in severe stress, cumulative to late June) is well above normal in Honduras (11% vs 7%), near normal in El Salvador, and <strong>below</strong> normal in Guatemala — so despite dry rainfall, Guatemala’s crops are not (yet) unusually stressed, while the impact is concentrating in Honduras and eastern El Salvador. Read as a <strong>return period</strong> — how unusual each unit’s current stress is against its own 1984–2025 history (Weibull, the same basis as the rainfall maps) — the leading units are rare events: Olancho and San Vicente near 1-in-15-year stress, Morazán ~1-in-11, Choluteca ~1-in-9, and El Paraíso and La Unión ~1-in-7. The table in <a href="#sec-season-risk" class="quarto-xref"><span>Section 13.4</span></a> carries this return period per unit.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-asi-map" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -489,7 +470,7 @@ Figure&nbsp;13.1: FAO ASI (% of crop area in severe stress), cumulative to late 
 </section>
 <section id="sec-enso" class="level2" data-number="13.2">
 <h2 data-number="13.2" class="anchored" data-anchor-id="sec-enso"><span class="header-section-number">13.2</span> El Niño structural sensitivity</h2>
-<p>A rapidly developing El Niño (the ONI anomaly rose from −0.4 in January to +1.5 by June 2026) frames the season. Historically, El Niño depresses primera rainfall across the region — but not evenly. The map shows each unit’s mean primera rainfall anomaly in past El Niño years (1981–2025); the eastern/southern dry corridor dries out most, and 83% of admin-1 units show a statistically significant El Niño drying signal. Reassuringly, these historical “El Niño losers” are largely the same eastern-Honduras and eastern-El-Salvador units where stress is already building today — current impact and structural risk point to the same places.</p>
+<p>A rapidly developing El Niño (the ONI anomaly rose from −0.4 in January to +1.5 by June 2026) frames the season. El Niño depresses <strong>both</strong> seasons here, but the <strong>primera</strong> signal is the stronger of the two (a mean primera deficit of up to ~−31% in past El Niño years versus ~−18% for the postrera), so we show primera as the structural indicator; the postrera map is similar in pattern but weaker (in <a href="#sec-appendix-enso" class="quarto-xref"><span>Chapter 17</span></a>). The map shows each unit’s mean primera rainfall anomaly in past El Niño years (1981–2025); the eastern/southern dry corridor dries out most, and 83% of admin-1 units show a statistically significant El Niño drying signal. Reassuringly, these historical “El Niño losers” are largely the same eastern-Honduras and eastern-El-Salvador units where stress is already building today — current impact and structural risk point to the same places.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-enso-map" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -511,7 +492,7 @@ Figure&nbsp;13.2: Mean primera rainfall anomaly in past El Niño years (ERA5, 19
 </section>
 <section id="sec-season-risk" class="level2" data-number="13.4">
 <h2 data-number="13.4" class="anchored" data-anchor-id="sec-season-risk"><span class="header-section-number">13.4</span> Season-specific agricultural drought risk</h2>
-<p>For the crop-relevant, in-season zones, the risk splits cleanly by season. <strong>Primera risk is realized</strong> — read from the crop stress already on the ground (FAO ASI). <strong>Postrera risk is forecast</strong> — read from the SEAS5 September–November outlook, and therefore low-confidence (weak forecast skill, <a href="#sec-skill" class="quarto-xref"><span>Section 12.1</span></a>). This is the desk-review headline:</p>
+<p>For the crop-relevant, in-season zones, the risk splits cleanly by season. <strong>Primera risk is realized</strong> — read from the crop stress already on the ground (FAO ASI). <strong>Postrera risk is forecast</strong> — read from the SEAS5 September–November outlook, and therefore low-confidence (weak forecast skill, <a href="#sec-appendix-skill" class="quarto-xref"><span>Chapter 16</span></a>). This is the desk-review headline:</p>
 <ul>
 <li><strong>Primera — biting now:</strong> Olancho, El Paraíso, Choluteca (Honduras); La Unión (El Salvador); Zacapa (Guatemala). Crops materially stressed today.</li>
 <li><strong>Postrera — forecast, watch:</strong> Guatemala’s Pacific belt (Escuintla, Suchitepéquez, San Marcos, Quetzaltenango, Retalhuleu, Santa Rosa) + central El Salvador (San Miguel, Usulután, Cabañas, Cuscatlán) + Honduras’s Valle. Driest in the SON forecast, not yet stressed.</li>
@@ -984,16 +965,17 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <table class="gt_table cell caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
 <thead>
 <tr class="gt_heading header">
-<td colspan="6" class="gt_heading gt_title gt_font_normal">Where the drought is already agricultural</td>
+<td colspan="7" class="gt_heading gt_title gt_font_normal">Where the drought is already agricultural</td>
 </tr>
 <tr class="gt_heading even">
-<td colspan="6" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Primera = realized (ASI); Both adds a dry postrera forecast</td>
+<td colspan="7" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Primera = realized (ASI, with return period); Both adds a dry postrera forecast</td>
 </tr>
 <tr class="gt_col_headings header">
 <th id="Risk" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Risk</th>
 <th id="Country" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Country</th>
 <th id="Admin-1" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Admin-1</th>
 <th id="ASI (% crop area)" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">ASI (% crop area)</th>
+<th id="ASI return period (yr)" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">ASI return period (yr)</th>
 <th id="Cropland frac" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Cropland frac</th>
 <th id="Postrera fcst (σ below normal)" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Postrera fcst (σ below normal)</th>
 </tr>
@@ -1004,6 +986,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">SLV</td>
 <td class="gt_row gt_left" headers="Admin-1">San Vicente</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #F6D1C8; color: #000000">22</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-15</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.71</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.1</td>
 </tr>
@@ -1012,6 +995,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">SLV</td>
 <td class="gt_row gt_left" headers="Admin-1">Morazán</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #FFF5F0; color: #000000">16</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-11</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.62</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.1</td>
 </tr>
@@ -1020,6 +1004,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">HND</td>
 <td class="gt_row gt_left" headers="Admin-1">Olancho</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #A50F15; color: #FFFFFF">52</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-15</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.51</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">1.8</td>
 </tr>
@@ -1028,6 +1013,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">HND</td>
 <td class="gt_row gt_left" headers="Admin-1">El Paraiso</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #D57A69; color: #FFFFFF">37</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-7</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.56</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">1.8</td>
 </tr>
@@ -1036,6 +1022,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">HND</td>
 <td class="gt_row gt_left" headers="Admin-1">Choluteca</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #F1C0B4; color: #000000">25</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-9</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.67</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.0</td>
 </tr>
@@ -1044,6 +1031,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">SLV</td>
 <td class="gt_row gt_left" headers="Admin-1">La Unión</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #FCE9E2; color: #000000">18</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-7</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.77</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">2.0</td>
 </tr>
@@ -1052,6 +1040,7 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 <td class="gt_row gt_left" headers="Country">GTM</td>
 <td class="gt_row gt_left" headers="Admin-1">Zacapa</td>
 <td class="gt_row gt_right" headers="ASI (% crop area)" style="background-color: #FFF5F0; color: #000000">16</td>
+<td class="gt_row gt_left" headers="ASI return period (yr)">1-in-4</td>
 <td class="gt_row gt_right" headers="Cropland frac">0.35</td>
 <td class="gt_row gt_right" headers="Postrera fcst (σ below normal)">1.6</td>
 </tr>
@@ -1111,6 +1100,42 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-priority-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;15.1: (Exploratory) Admin-1 impact-and-structure priority tiers, superseded by the season-specific view.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-appendix-skill" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Appendix — SEAS5 forecast skill</h1>
+<p>The “no relief” postrera signal rests on the SEAS5 September–November forecast, so its skill sets how much weight it can bear. Validating each admin-1 unit’s SEAS5 forecast against 45 years of observed drought (ROC-AUC, following the book’s forecast-skill method; AUC &gt; 0.7 = acceptable, 0.5 = no better than chance), <strong>the two seasons differ sharply</strong>. Primera skill is reasonable (median AUC 0.73; acceptable in 36 of 54 units), consistent with the firm, mostly-observed primera picture. <strong>Postrera skill is weak (median AUC 0.65; acceptable in only 11 of 54 units)</strong> — barely better than chance across much of Guatemala. That is why the primera picture is treated as firm and the postrera as a low-confidence watch signal throughout.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-skill-map" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-skill-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-skill-map-1.png" class="img-fluid figure-img" width="975">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skill-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;16.1: SEAS5 postrera (SON) forecast skill by admin-1 unit (ROC-AUC vs observed drought, 1981–2025). Green = skill (AUC&gt;0.5); pale ≈ chance; red = worse than chance. AUC&gt;0.7 = acceptable.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-appendix-enso" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> Appendix — El Niño sensitivity, postrera</h1>
+<p>Companion to the primera El Niño map in <a href="#sec-enso" class="quarto-xref"><span>Section 13.2</span></a>. El Niño also depresses the postrera, but the signal is weaker (regional mean deficit ~−18% vs ~−31% for primera) — the spatial pattern is similar, concentrating in the eastern/southern dry corridor.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-enso-postrera" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-enso-postrera-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-enso-postrera-1.png" class="img-fluid figure-img" width="975">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-enso-postrera-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;17.1: Mean postrera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Weaker than the primera signal but a similar pattern.
 </figcaption>
 </figure>
 </div>
