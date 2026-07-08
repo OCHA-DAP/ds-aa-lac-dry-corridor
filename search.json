@@ -813,69 +813,124 @@
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html",
-    "href": "12_rolac_mission_support.html",
-    "title": "10  2026 Primera Situation & Priorities",
+    "objectID": "13_rolac_summary.html",
+    "href": "13_rolac_summary.html",
+    "title": "10  2026 Situation Summary",
     "section": "",
-    "text": "10.1 Purpose\nROLAC missions to El Salvador, Honduras, and Guatemala (July 2026) are supporting country-level analysis of El Niño humanitarian impacts. This chapter is CHD’s contribution to the preliminary desk review, and it follows one line of reasoning: a drought is already underway, it is unlikely to relent this season, and because it is region-wide the useful question is not whether but where to concentrate attention. Each section builds toward that answer — first the current situation, then the forecast, then the sub-national targeting.",
+    "text": "Purpose\nThis chapter summarizes CHD’s desk review for the July 2026 ROLAC missions to El Salvador, Honduras, and Guatemala. It sets out the evidence behind our recommendations on where and how to act. Supporting detail is in the companion chapter.",
     "crumbs": [
       "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html#purpose",
-    "href": "12_rolac_mission_support.html#purpose",
-    "title": "10  2026 Primera Situation & Priorities",
+    "objectID": "13_rolac_summary.html#purpose",
+    "href": "13_rolac_summary.html#purpose",
+    "title": "10  2026 Situation Summary",
     "section": "",
-    "text": "NoteBottom line\n\n\n\n\nA dry start, confirmed and region-wide. Two independent rainfall products put the May–June primera at roughly two-thirds of normal in every admin-1 unit of all three countries.\nThe season is unlikely to recover. The forecast keeps the rest of primera dry, and points to a dry postrera as well — so the usual “second harvest” fallback looks compromised. (That postrera signal is low-confidence: SEAS5’s postrera skill is weak, so it is a flag to watch, not a firm prediction — see Chapter 16.)\nSo the question is where to act — and in which season. A region-wide deficit does not localize priorities; that comes from where the drought meets active, rain-sensitive cropland (JRC/FAO ASAP). Split by season: primera crop stress is already realized in Olancho, El Paraíso, Choluteca (Honduras), La Unión (El Salvador), and Zacapa (Guatemala) — act now; a dry postrera is forecast (low confidence) for Guatemala’s Pacific belt and central El Salvador — watch; San Vicente and Morazán face both; and the western highlands sit off this seasonal calendar — a vulnerability question, not a seasonal-drought one.",
+    "text": "NoteBottom line\n\n\n\nThis analysis characterizes the drought and its agricultural impact to inform in-country, cross-agency planning. It is not intended to set operational priorities on its own.\nAnticipatory Action for the 2026 primera was activated in March 2026 on the seasonal forecast. The severe, regional drought now developing indicates that the forecast identified the signal correctly and that the framework acted ahead of the impact now being observed.\n\nThe drought is regional and largely undifferentiated. Rainfall is well below normal across nearly all admin-1 units in the three countries.\nBecause the hazard is largely undifferentiated, the drought signal in this analysis is not a sound basis for ranking where to act. Prioritization is better anchored in operational capacity and local vulnerability, assembled by pooling in-country, cross-agency expertise.\nCrops are already stressed and the season is unlikely to recover. The postrera harvest is also likely to be affected, though that outlook is less certain.\nSeasonal timing constrains the options available. The primera is already underway, so the window for additional agricultural-based anticipatory action there has closed and mitigation is what remains, whereas the postrera retains lead time for anticipatory measures. Areas whose crops fall outside the primera and postrera calendar are better considered through a separate and additional vulnerability lens than the rest. These distinctions are offered to inform in-country decisions, not to prescribe them.",
     "crumbs": [
       "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html#sec-asi",
-    "href": "12_rolac_mission_support.html#sec-asi",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "13.1 Agricultural impact (FAO ASI)",
-    "text": "13.1 Agricultural impact (FAO ASI)\nFAO’s Agricultural Stress Index (share of crop area in severe stress, cumulative to late June) is well above normal in Honduras (11% vs 7%), near normal in El Salvador, and below normal in Guatemala — so despite dry rainfall, Guatemala’s crops are not (yet) unusually stressed, while the impact is concentrating in Honduras and eastern El Salvador. Read as a return period — how unusual each unit’s current stress is against its own 1984–2025 history (Weibull, the same basis as the rainfall maps) — the leading units are rare events: Olancho and San Vicente near 1-in-15-year stress, Morazán ~1-in-11, Choluteca ~1-in-9, and El Paraíso and La Unión ~1-in-7. The table in Section 13.4 carries this return period per unit.\n\n\n\n\n\n\n\n\nFigure 13.1: FAO ASI (% of crop area in severe stress), cumulative to late June 2026. Grey = no ASI (negligible cropland).\n\n\n\n\n\nThe same, as a return period — how rare 2026’s end-June stress is for each unit against its own 1984–2025 record (darker = rarer). Units whose crops run on a different rain calendar (the western highlands and Caribbean, Section 13.3) are hatched, since an end-June ASI reading is not the right lens for them.\n\n\n\n\n\n\n\n\nFigure 13.2: End-June agricultural-stress return period (Weibull, vs each unit’s 1984–2025 record). Darker = rarer. Hatched = crops off this seasonal calendar (highlands/Caribbean). Grey = no ASI / near-normal.\n\n\n\n\n\nCurrent stress, though, is a lagging signal — it marks where damage has already begun. To anticipate where an intensifying El Niño will bite hardest over the rest of the season, we add a second, structural lens.",
+    "objectID": "13_rolac_summary.html#observed-rainfall",
+    "href": "13_rolac_summary.html#observed-rainfall",
+    "title": "10  2026 Situation Summary",
+    "section": "11.1 Observed rainfall",
+    "text": "11.1 Observed rainfall\nObserved May–June rainfall (ERA5) was well below normal in every admin-1 unit of all three countries, with the largest deficits in Honduras and eastern Guatemala. The dryness is broad rather than confined to isolated pockets.\n\n\n\n\n\n\n\n\nFigure 11.1: Observed May–June 2026 rainfall anomaly (ERA5, standard deviations from normal). Red = drier than normal, blue = wetter.",
     "crumbs": [
       "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html#sec-enso",
-    "href": "12_rolac_mission_support.html#sec-enso",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "13.2 El Niño structural sensitivity",
-    "text": "13.2 El Niño structural sensitivity\nA rapidly developing El Niño (the ONI anomaly rose from −0.4 in January to +1.5 by June 2026) frames the season. The maps below show each unit’s mean rainfall anomaly in past El Niño years (1981–2025) for both seasons. El Niño depresses both, but the primera signal is the stronger (a mean deficit of up to ~−31% versus ~−18% for the postrera); in both, the eastern/southern dry corridor dries out most, and for primera 83% of admin-1 units show a statistically significant El Niño drying signal. Reassuringly, these historical “El Niño losers” are largely the same eastern-Honduras and eastern-El-Salvador units where stress is already building today — current impact and structural risk point to the same places.\n\n\n\n\n\n\n\n\nFigure 13.3: Mean primera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Darker red = drier under El Niño. Outlined = statistically significant (Wilcoxon p&lt;0.10).\n\n\n\n\n\n\n\n\n\n\n\n\n\nFigure 13.4: Mean postrera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Weaker than the primera signal but a similar pattern, concentrating in the eastern/southern dry corridor.",
+    "objectID": "13_rolac_summary.html#agricultural-stress",
+    "href": "13_rolac_summary.html#agricultural-stress",
+    "title": "10  2026 Situation Summary",
+    "section": "11.2 Agricultural stress",
+    "text": "11.2 Agricultural stress\nThe FAO Agricultural Stress Index (ASI), the share of a unit’s crop area in severe stress, shows that impact is already occurring. Stress is concentrated in Honduras (Olancho 52%, El Paraíso 37%, Choluteca 25%) and eastern El Salvador (San Vicente 22%, La Unión 18%, Morazán 16%). Guatemala remains mostly low, with Zacapa (16%) the main exception.\nThe same stress can also be expressed as a return period, measured against each unit’s own 1984–2025 record. On that basis the current stress is rare in the most affected units, on the order of one in fifteen years in Olancho and San Vicente. The magnitude and return-period maps are shown together for comparison.\n\n\n\n\n\n\n\n\nFigure 11.2: ASI magnitude — % of crop area in severe stress, late June 2026. Green = low, red = high. Grey = no ASI / insufficient cropland.\n\n\n\n\n\n\n\n\n\n\n\n\n\nFigure 11.3: ASI rarity — return period of 2026’s stress vs each unit’s own 1984–2025 record (Weibull). Green = ordinary, red = rare. Black outline = units whose 2026 stress is in the worst (lower) tercile of their own record. Grey = no ASI.",
     "crumbs": [
       "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html#sec-cropcalendar",
-    "href": "12_rolac_mission_support.html#sec-cropcalendar",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "13.3 Is this cropland, and is it the right season?",
-    "text": "13.3 Is this cropland, and is it the right season?\nTwo checks turn the hazard into agricultural risk. Is it cropland? The JRC/FAO ASAP crop mask shows the dry corridor is heavily agricultural — 42–65% cropland by country. (The MODIS layer we first tried badly underestimated smallholder farming — it put Olancho, the most-stressed unit, at ~2% — so ASAP is the exposure layer to trust.) Is our drought hitting the rain-critical part of the season? ASAP’s precipitation-sensitive-period (PSP) layer marks May–November as the rain-critical window across essentially all of that cropland — except the western highlands (Honduras: Lempira, Intibucá, Copán, Ocotepeque, La Paz; Guatemala: Huehuetenango) and the Caribbean fringe (Izabal, Islas de la Bahía), whose crops run on a different calendar. For those off-calendar zones a primera/postrera deficit is the wrong lens — they belong to the broader food-security / vulnerability question, not the seasonal-drought one.",
+    "objectID": "13_rolac_summary.html#complete-season-outlook-observed-forecast",
+    "href": "13_rolac_summary.html#complete-season-outlook-observed-forecast",
+    "title": "10  2026 Situation Summary",
+    "section": "12.1 Complete-season outlook (observed + forecast)",
+    "text": "12.1 Complete-season outlook (observed + forecast)\nCombining the observed May–June rainfall with the July–August forecast gives the complete primera. On that basis the season remains a rare deficit across the region, and no unit shows a wet signal that would offset the current shortfall.\n\n\n\n\n\n\n\n\nFigure 12.1: Combined observed (May–June) and forecast (July–August) primera. Left: rainfall as percent-anomaly (σ from normal; red drier, blue wetter). Right: the corresponding empirical return period (pale to dark red = rarer).",
     "crumbs": [
       "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
     ]
   },
   {
-    "objectID": "12_rolac_mission_support.html#sec-season-risk",
-    "href": "12_rolac_mission_support.html#sec-season-risk",
-    "title": "10  2026 Primera Situation & Priorities",
-    "section": "13.4 Season-specific agricultural drought risk",
-    "text": "13.4 Season-specific agricultural drought risk\nFor the crop-relevant, in-season zones, the risk splits cleanly by season. Primera risk is realized — read from the crop stress already on the ground (FAO ASI). Postrera risk is forecast — read from the SEAS5 September–November outlook, and therefore low-confidence (weak forecast skill, Chapter 16). This is the desk-review headline:\n\nPrimera — biting now: Olancho, El Paraíso, Choluteca (Honduras); La Unión (El Salvador); Zacapa (Guatemala). Crops materially stressed today.\nPostrera — forecast, watch: Guatemala’s Pacific belt (Escuintla, Suchitepéquez, San Marcos, Quetzaltenango, Retalhuleu, Santa Rosa) + central El Salvador (San Miguel, Usulután, Cabañas, Cuscatlán) + Honduras’s Valle. Driest in the SON forecast, not yet stressed.\nBoth: San Vicente and Morazán (eastern El Salvador) — already stressed and driest postrera forecast.\nOff-calendar: western highlands + Caribbean — assessed through vulnerability data, not this.\n\n\n\n\n\n\n\n\n\nFigure 13.5: Season-specific agricultural drought risk. Both = realized primera stress AND dry postrera forecast; Primera = realized crop stress now (ASI); Postrera = SEAS5 SON forecast, low confidence; Lower = crop-relevant and dry but no strong single-season signal yet; Off-calendar = crops on a different rain calendar (highlands/Caribbean), assessed via vulnerability data.\n\n\n\n\n\n\n\n\n\nTable 13.1: Realized primera risk (crops stressed now) and Both. Postrera is forecast-driven and lower-confidence.\n\n\n\n\n\n\n\n\n\nWhere the drought is already agricultural\n\n\nPrimera = realized (ASI, with return period); Both adds a dry postrera forecast\n\n\nRisk\nCountry\nAdmin-1\nASI (% crop area)\nASI return period (yr)\nCropland frac\nPostrera fcst (σ below normal)\n\n\n\n\nBoth\nSLV\nSan Vicente\n22\n1-in-15\n0.71\n2.1\n\n\nBoth\nSLV\nMorazán\n16\n1-in-11\n0.62\n2.1\n\n\nPrimera\nHND\nOlancho\n52\n1-in-15\n0.51\n1.8\n\n\nPrimera\nHND\nEl Paraiso\n37\n1-in-7\n0.56\n1.8\n\n\nPrimera\nHND\nCholuteca\n25\n1-in-9\n0.67\n2.0\n\n\nPrimera\nSLV\nLa Unión\n18\n1-in-7\n0.77\n2.0\n\n\nPrimera\nGTM\nZacapa\n16\n1-in-4\n0.35\n1.6\n\n\n\n\n\n\n\n\n\n\n\n13.4.1 Is the early signal reliable?\nThe primera call rests on end-June agricultural stress — early in the season — so two checks matter: how unusual is 2026’s stress, and does an end-June reading actually forecast the season’s outcome. First, placing 2026 in each unit’s full 1984–2025 history. For most of the region 2026’s end-June stress is unremarkable, but for the units flagged above it is near the worst on record — shown below for the fifteen highest-stress units, each unit’s own 43-year distribution in grey and 2026 in red (with 2026’s rank, 1 = worst). Olancho and San Vicente sit 3rd-worst of 43, Morazán 4th, Choluteca and Valle 5th; the comparable historical years are the known El Niño droughts (1985, 1987, 2001, 2015).\n\n\n\n\n\n\n\n\nFigure 13.6: End-June ASI for the 15 highest-stress admin-1 units: each unit’s 1984–2025 distribution (grey) with 2026 in red and 2026’s rank (1 = worst on record). For these units 2026 is among the driest years observed.\n\n\n\n\n\nSecond — and more important — does end-June stress predict the rest of the season? Across 40 years of admin-1 data it does: end-June ASI correlates with the eventual Jul–Oct peak at r = 0.75, and a unit whose end-June stress is in its own top third goes on to a top-third season 72% of the time (versus a 36% base rate — a 2× lift). So the units flagged above are not just a snapshot: their end-June position historically leads to a failed season about seven times in ten. (The relationship is asymmetric — high stress now reliably signals a bad season, but low stress now does not guarantee a good one, since droughts can still develop later; that is why the other dry units remain a watch.)\n\n\n\n\n\n\n\n\nFigure 13.7: End-June ASI (early signal) vs the eventual Jul–Oct peak ASI, each admin-1 × year 1984–2025. Strong positive relationship (r = 0.75) validates acting on the late-June reading.\n\n\n\n\n\nIn short. The 2026 primera is a real, region-wide drought unlikely to relent this season. Where it meets active, rain-sensitive cropland it becomes agricultural drought risk — and that splits cleanly: primera crop stress is already realized in southern/eastern Honduras, eastern El Salvador, and Zacapa (act now); a dry postrera is forecast for Guatemala’s Pacific belt and central El Salvador (watch, low confidence); and the western highlands sit off this seasonal calendar, better assessed through vulnerability / food-security data. That is the desk-review basis for the in-country discussions.",
+    "objectID": "13_rolac_summary.html#early-stress-as-a-predictor",
+    "href": "13_rolac_summary.html#early-stress-as-a-predictor",
+    "title": "10  2026 Situation Summary",
+    "section": "12.2 Early stress as a predictor",
+    "text": "12.2 Early stress as a predictor\nEnd-June stress is a leading indicator, not only a current reading. Across the 1984–2025 record, end-June ASI is correlated with the eventual season (r = 0.75), and a unit in its own worst tercile at end-June goes on to a worst-tercile season about 72% of the time, against a 33% base rate. Where crops are stressed now, the primera is therefore likely to fail.\n\n\n\n\n\n\n\n\nFigure 12.2: End-June ASI vs the eventual Jul–Oct peak, each admin-1 × year 1984–2025. Strong positive relationship (r = 0.75).",
     "crumbs": [
       "2026 Situation & Mission Support",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Primera Situation & Priorities</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
+    ]
+  },
+  {
+    "objectID": "13_rolac_summary.html#sec-postrera-outlook",
+    "href": "13_rolac_summary.html#sec-postrera-outlook",
+    "title": "10  2026 Situation Summary",
+    "section": "12.3 Postrera also looks unfavourable",
+    "text": "12.3 Postrera also looks unfavourable\nThe September–November (postrera) forecast is also poor across the region, so the second harvest is unlikely to compensate for primera losses. Forecast skill for the postrera is weak, so this is best read as an outlook rather than a firm prediction.\n\n\n\n\n\n\n\n\nFigure 12.3: SEAS5 postrera (Sep–Nov) forecast. Left: rainfall as percent-anomaly (σ from normal; red drier, blue wetter). Right: the corresponding empirical return period (pale to dark red = rarer). Forecast skill is weak, so this is an outlook.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
+    ]
+  },
+  {
+    "objectID": "13_rolac_summary.html#all-indicators-by-admin-1",
+    "href": "13_rolac_summary.html#all-indicators-by-admin-1",
+    "title": "10  2026 Situation Summary",
+    "section": "12.4 All indicators by admin-1",
+    "text": "12.4 All indicators by admin-1\nThe table below compiles the indicators for each admin-1 unit, grouped by country. Rainfall is given as percent of the 1991–2024 normal alongside its empirical return period, and agricultural stress as ASI alongside its return period. Cell colours follow the maps: rainfall from red (drier) through white to blue (wetter), return periods from pale to dark red, and ASI from green to red.\n\n\n\n\nTable 12.1: 2026 primera and postrera indicators by admin-1. % norm = percent of the 1991–2024 normal (below 100 = drier); RP = empirical return period in years; ASI = % of crop area in severe stress.\n\n\n\n\n\n\n\n\n\n\nPrimera\nPostrera\n\n\nObs rain (% norm)\nObs RP\nOutlook (% norm)\nOutlook RP\nASI %\nASI RP\nFcst (% norm)\nFcst RP\n\n\n\n\nEl Salvador\n\n\nSan Vicente\n65%\n12\n57%\n47\n22%\n15\n71%\n47\n\n\nLa Unión\n66%\n4\n50%\n16\n18%\n7\n63%\n16\n\n\nMorazán\n69%\n6\n55%\n24\n16%\n11\n62%\n24\n\n\nLa Paz\n62%\n12\n57%\n47\n7%\n4\n74%\n16\n\n\nSan Miguel\n66%\n7\n51%\n16\n5%\n6\n65%\n47\n\n\nSan Salvador\n73%\n7\n66%\n16\n4%\n6\n75%\n16\n\n\nCabañas\n69%\n9\n58%\n47\n4%\n6\n72%\n47\n\n\nUsulután\n64%\n8\n50%\n47\n1%\n3\n71%\n16\n\n\nCuscatlán\n72%\n9\n64%\n16\n1%\n4\n73%\n47\n\n\nSanta Ana\n65%\n12\n58%\n24\n1%\n2\n70%\n16\n\n\nLa Libertad\n70%\n9\n64%\n47\n0%\n3\n74%\n16\n\n\nAhuachapán\n60%\n24\n57%\n24\n0%\n2\n73%\n24\n\n\nChalatenango\n74%\n6\n63%\n16\n0%\n1\n73%\n47\n\n\nSonsonate\n63%\n47\n58%\n47\n0%\n1\n74%\n24\n\n\nGuatemala\n\n\nZacapa\n76%\n16\n77%\n47\n16%\n4\n81%\n12\n\n\nPetén\n74%\n9\n73%\n16\n12%\n3\n84%\n24\n\n\nAlta Verapaz\n70%\n12\n77%\n16\n10%\n3\n83%\n12\n\n\nEl Progreso\n63%\n24\n59%\n47\n9%\n6\n76%\n9\n\n\nChiquimula\n82%\n5\n69%\n24\n8%\n4\n76%\n24\n\n\nSanta Rosa\n54%\n47\n51%\n47\n5%\n4\n71%\n47\n\n\nBaja Verapaz\n67%\n16\n65%\n47\n4%\n2\n79%\n24\n\n\nEscuintla\n46%\n47\n47%\n47\n4%\n4\n70%\n47\n\n\nRetalhuleu\n61%\n24\n57%\n47\n3%\n3\n66%\n47\n\n\nJalapa\n62%\n47\n55%\n47\n3%\n3\n72%\n9\n\n\nSacatepéquez\n59%\n47\n51%\n47\n2%\n2\n71%\n47\n\n\nQuiché\n67%\n9\n67%\n24\n2%\n2\n85%\n8\n\n\nGuatemala\n61%\n24\n53%\n47\n1%\n2\n74%\n9\n\n\nChimaltenango\n62%\n47\n54%\n47\n0%\n2\n74%\n24\n\n\nHuehuetenango †\n79%\n4\n71%\n24\n0%\n2\n88%\n5\n\n\nJutiapa\n60%\n24\n56%\n24\n0%\n2\n74%\n12\n\n\nSololá\n68%\n24\n60%\n47\n0%\n1\n77%\n12\n\n\nTotonicapán\n71%\n9\n64%\n47\n0%\n1\n84%\n6\n\n\nQuetzaltenango\n69%\n47\n64%\n47\n0%\n1\n78%\n47\n\n\nSuchitepéquez\n58%\n47\n56%\n47\n0%\n1\n70%\n47\n\n\nSan Marcos\n73%\n16\n72%\n47\n0%\n1\n82%\n47\n\n\nIzabal †\n76%\n8\n89%\n4\n0%\n1\n89%\n7\n\n\nHonduras\n\n\nOlancho\n63%\n24\n70%\n47\n52%\n15\n75%\n47\n\n\nEl Paraiso\n54%\n47\n62%\n47\n37%\n7\n69%\n24\n\n\nCholuteca\n48%\n24\n38%\n47\n25%\n9\n55%\n47\n\n\nValle\n57%\n8\n44%\n47\n14%\n9\n58%\n47\n\n\nYoro\n66%\n16\n70%\n24\n14%\n6\n85%\n7\n\n\nFrancisco Morazan\n57%\n24\n54%\n24\n11%\n4\n68%\n12\n\n\nColon\n50%\n47\n65%\n47\n11%\n11\n83%\n8\n\n\nGracias a Dios †\n68%\n16\n76%\n47\n11%\n2\n82%\n47\n\n\nLa Paz †\n65%\n12\n55%\n47\n5%\n6\n67%\n16\n\n\nAtlantida\n66%\n24\n71%\n47\n4%\n6\n87%\n7\n\n\nComayagua\n71%\n12\n67%\n24\n3%\n3\n78%\n8\n\n\nCopan †\n73%\n16\n74%\n47\n3%\n4\n82%\n24\n\n\nCortes\n69%\n12\n72%\n16\n2%\n2\n85%\n6\n\n\nIntibuca †\n61%\n47\n56%\n47\n1%\n2\n73%\n16\n\n\nOcotepeque †\n79%\n9\n67%\n24\n0%\n2\n73%\n47\n\n\nLempira †\n65%\n47\n58%\n47\n0%\n2\n74%\n24\n\n\nSanta Barbara\n68%\n24\n72%\n47\n0%\n1\n83%\n8\n\n\nIslas de La Bahia\n37%\n24\n60%\n47\n—\n—\n77%\n12\n\n\n\n† Off-calendar — the drought window falls outside the crop’s rain-critical period; the seasonal-drought lens does not apply, so these rows are set aside (read with caution). Blank ASI = no cropland (Islas de la Bahía).",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
+    ]
+  },
+  {
+    "objectID": "13_rolac_summary.html#primera",
+    "href": "13_rolac_summary.html#primera",
+    "title": "10  2026 Situation Summary",
+    "section": "13.1 Primera",
+    "text": "13.1 Primera\nBecause the primera is already underway, the window for additional agricultural-based anticipatory action has closed and mitigation is the response that remains available. The map below shows current stress (ASI) and outlines two groups: units already very stressed, where continued decline is likely, and units not yet stressed but likely to decline given the dry outlook. Grey units have no ASI or fall off the seasonal calendar.\n\n\n\n\n\n\n\n\nFigure 13.1: Primera situation and outlook. Fill = ASI (green to red). Red outline = already very stressed (ASI ≥ 15%, continued decline likely); blue outline = not yet stressed but likely to decline. Grey = off-calendar or non-crop units, set aside because the seasonal-drought lens does not apply there (they are not predicted to be spared).",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
+    ]
+  },
+  {
+    "objectID": "13_rolac_summary.html#postrera",
+    "href": "13_rolac_summary.html#postrera",
+    "title": "10  2026 Situation Summary",
+    "section": "13.2 Postrera",
+    "text": "13.2 Postrera\nBecause the postrera has not yet started, lead time remains for anticipatory measures, independent of whether the AA framework was triggered earlier this season. Forecast skill is weak, so this supports acting ahead of an elevated but uncertain risk rather than a firm prediction of failure. The postrera outlook is described in Section 12.3 and mapped in Figure 12.3.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
+    ]
+  },
+  {
+    "objectID": "13_rolac_summary.html#areas-off-the-seasonal-calendar",
+    "href": "13_rolac_summary.html#areas-off-the-seasonal-calendar",
+    "title": "10  2026 Situation Summary",
+    "section": "13.3 Areas off the seasonal calendar",
+    "text": "13.3 Areas off the seasonal calendar\nA small number of units fall outside the drought’s rain-critical calendar. In the western highlands and along the Caribbean fringe, the crop’s precipitation-sensitive period (ASAP PSP) does not coincide with the primera and postrera windows. A seasonal-rainfall deficit is not the relevant measure of risk in these areas; they are better addressed through vulnerability and food-security assessment than through agricultural drought response. That layer has not yet been built here.\n\n\n\n\n\n\n\n\nFigure 13.2: Overlap of the drought windows with the crop’s rain-critical period (ASAP PSP). Green = drought hits the rain-sensitive months (seasonal lens applies); pale = off-calendar (highlands / Caribbean).",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
     ]
   },
   {
