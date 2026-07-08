@@ -280,7 +280,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#sec-asi" id="toc-sec-asi" class="nav-link" data-scroll-target="#sec-asi"><span class="header-section-number">13.1</span> Agricultural impact (FAO ASI)</a></li>
   <li><a href="#sec-enso" id="toc-sec-enso" class="nav-link" data-scroll-target="#sec-enso"><span class="header-section-number">13.2</span> El Niño structural sensitivity</a></li>
   <li><a href="#sec-cropcalendar" id="toc-sec-cropcalendar" class="nav-link" data-scroll-target="#sec-cropcalendar"><span class="header-section-number">13.3</span> Is this cropland, and is it the right season?</a></li>
-  <li><a href="#sec-season-risk" id="toc-sec-season-risk" class="nav-link" data-scroll-target="#sec-season-risk"><span class="header-section-number">13.4</span> Season-specific agricultural drought risk</a></li>
+  <li><a href="#sec-season-risk" id="toc-sec-season-risk" class="nav-link" data-scroll-target="#sec-season-risk"><span class="header-section-number">13.4</span> Season-specific agricultural drought risk</a>
+  <ul class="collapse">
+  <li><a href="#sec-asi-validation" id="toc-sec-asi-validation" class="nav-link" data-scroll-target="#sec-asi-validation"><span class="header-section-number">13.4.1</span> Is the early signal reliable?</a></li>
+  </ul></li>
   </ul></li>
   <li><a href="#sec-caveats" id="toc-sec-caveats" class="nav-link" data-scroll-target="#sec-caveats"><span class="header-section-number">14</span> Caveats &amp; data sources</a>
   <ul class="collapse">
@@ -1053,7 +1056,40 @@ Table&nbsp;13.1: Realized primera risk (crops stressed now) and Both. Postrera i
 </figure>
 </div>
 </div>
+<section id="sec-asi-validation" class="level3" data-number="13.4.1">
+<h3 data-number="13.4.1" class="anchored" data-anchor-id="sec-asi-validation"><span class="header-section-number">13.4.1</span> Is the early signal reliable?</h3>
+<p>The primera call rests on <strong>end-June</strong> agricultural stress — early in the season — so two checks matter: how unusual is 2026’s stress, and does an end-June reading actually forecast the season’s outcome. First, placing 2026 in each unit’s full 1984–2025 history: for most units it sits low, but for the priority units it is among the <strong>worst years on record</strong> (Olancho, San Vicente ~3rd worst of 43; Choluteca, El Paraíso, La Unión, Morazán 4th–6th), and the comparable years are the known El Niño droughts (1985, 1987, 2001, 2015).</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-asi-jitter" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-asi-jitter-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-asi-jitter-1.png" class="img-fluid figure-img" width="1800">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-asi-jitter-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;13.4: End-June ASI by admin-1, every year 1984–2025 (grey) with 2026 (red) and the worst 5 years labelled (2-digit). For the priority units 2026 sits near the top of the record.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Second — and more important — <strong>does end-June stress predict the rest of the season?</strong> Across 40 years of admin-1 data it does: end-June ASI correlates with the eventual Jul–Oct peak at <strong>r = 0.75</strong>, and a unit whose end-June stress is in its own top third goes on to a top-third season <strong>72% of the time (versus a 36% base rate — a 2× lift)</strong>. So the units flagged above are not just a snapshot: their end-June position historically leads to a failed season about seven times in ten. (The relationship is asymmetric — high stress now reliably signals a bad season, but <em>low</em> stress now does not guarantee a good one, since droughts can still develop later; that is why the other dry units remain a <em>watch</em>.)</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-asi-predict" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-asi-predict-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12_rolac_mission_support_files/figure-html/fig-asi-predict-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-asi-predict-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;13.5: End-June ASI (early signal) vs the eventual Jul–Oct peak ASI, each admin-1 × year 1984–2025. Strong positive relationship (r = 0.75) validates acting on the late-June reading.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
 <p><strong>In short.</strong> The 2026 primera is a real, region-wide drought unlikely to relent this season. Where it meets active, rain-sensitive cropland it becomes agricultural drought risk — and that splits cleanly: <strong>primera crop stress is already realized</strong> in southern/eastern Honduras, eastern El Salvador, and Zacapa (act now); a <strong>dry postrera is forecast</strong> for Guatemala’s Pacific belt and central El Salvador (watch, low confidence); and the <strong>western highlands sit off this seasonal calendar</strong>, better assessed through vulnerability / food-security data. That is the desk-review basis for the in-country discussions.</p>
+</section>
 </section>
 </section>
 <section id="sec-caveats" class="level1" data-number="14">
