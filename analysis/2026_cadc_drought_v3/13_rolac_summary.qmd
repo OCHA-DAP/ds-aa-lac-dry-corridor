@@ -3,21 +3,24 @@
 ```{r}
 #| label: setup-summary
 #| include: false
-library(tidyverse); library(sf); library(patchwork); library(gghdx); library(scales)
+library(tidyverse); library(sf); library(patchwork); library(gghdx); library(scales); library(cumulus)
 gghdx(); sf::sf_use_s2(FALSE)
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
-# self-contained: committed CSVs only (pulls live in the gitignored artefacts/ tree)
-dd <- "data/mission_support"
-obs    <- readr::read_csv(file.path(dd, "primera_observed_2026.csv"),     show_col_types = FALSE) # rp_dry
-mixed  <- readr::read_csv(file.path(dd, "mixed_primera_2026.csv"),        show_col_types = FALSE) # z_obs, z_mixed
-joint  <- readr::read_csv(file.path(dd, "primera_vs_postrera_2026.csv"),  show_col_types = FALSE) # z_post
-asi    <- readr::read_csv(file.path(dd, "asi_primera_2026.csv"),          show_col_types = FALSE) # asi_mean_2026, asi_pctile
-season <- readr::read_csv(file.path(dd, "season_specific_risk_adm1.csv"), show_col_types = FALSE) # asi_2026, psp, crop/psp gates
-asi_ef <- readr::read_csv(file.path(dd, "early_vs_final_asi.csv"),        show_col_types = FALSE) # early vs final ASI
-pnorm  <- readr::read_csv(file.path(dd, "pct_normal_2026.csv"),           show_col_types = FALSE) # % of normal
-xwalk  <- readr::read_csv(file.path(dd, "priority_synthesis_adm1.csv"),   show_col_types = FALSE) |> select(pcode, gaul_code)
-gaul   <- sf::st_read(file.path(dd, "gaul_adm1_gtm_hnd_slv.geojson"), quiet = TRUE) |> janitor::clean_names() |>
+# Derived inputs are read from blob (projects / ds-aa-lac-dry-corridor/book/static/). The scripts
+# that produce them are tracked in data-raw/mission_support_2026/. Re-rendering needs the read SAS
+# (DSCI_AZ_BLOB_DEV_SAS); the committed _freeze/ output lets the book be viewed without credentials.
+rd <- function(f) cumulus::blob_read(paste0("ds-aa-lac-dry-corridor/book/static/", f),
+                                     stage = "dev", container = "projects", progress_show = FALSE)
+obs    <- rd("primera_observed_2026.csv")        # rp_dry
+mixed  <- rd("mixed_primera_2026.csv")           # z_obs, z_mixed, rp_emp
+joint  <- rd("primera_vs_postrera_2026.csv")     # z_post, rp_post
+asi    <- rd("asi_primera_2026.csv")             # asi_mean_2026, asi_pctile
+season <- rd("season_specific_risk_adm1.csv")    # asi_2026, psp, crop/psp gates, season_class
+asi_ef <- rd("early_vs_final_asi.csv")           # early vs final ASI
+pnorm  <- rd("pct_normal_2026.csv")              # % of normal
+xwalk  <- rd("priority_synthesis_adm1.csv") |> select(pcode, gaul_code)
+gaul   <- rd("gaul_adm1_gtm_hnd_slv.geojson") |> janitor::clean_names() |>
   sf::st_make_valid() |> (\(g) sf::st_collection_extract(g, "POLYGON"))()
 
 iso_lab <- c(GTM = "Guatemala", HND = "Honduras", SLV = "El Salvador")
@@ -101,8 +104,8 @@ and that the framework acted ahead of the impact now being observed.
 
 1. The drought is regional and largely undifferentiated. Rainfall is well below normal across
    nearly all admin-1 units in the three countries.
-2. Because the hazard is largely undifferentiated, the drought signal in this analysis is not a
-   sound basis for ranking where to act. Prioritization is better anchored in operational capacity
+2. Because the hazard is largely undifferentiated, the drought signal alone in this analysis is not
+   a sound basis for ranking where to act. Prioritization is better anchored in operational capacity
    and local vulnerability, assembled by pooling in-country, cross-agency expertise.
 3. Crops are already stressed and the season is unlikely to recover. The postrera harvest is also
    likely to be affected, though that outlook is less certain.
@@ -395,4 +398,8 @@ same regional assessment.
 - **Off-calendar**: the drought window falls outside the crop's rain-critical period (ASAP PSP).
   These units are better served by a vulnerability and food-security assessment than a
   seasonal-drought one.
+- **Data and reproducibility**: the maps and table are built from derived files hosted on the team
+  blob (`projects` container, `ds-aa-lac-dry-corridor/book/static/`), read at render time. The scripts
+  that produce them — the database, Earth Engine, and raster pulls and the downstream transforms — are
+  tracked in `data-raw/mission_support_2026/`.
 - The vulnerability and food-security layer for the off-calendar areas has not yet been built.
