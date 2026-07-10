@@ -70,18 +70,22 @@ land3 <- function(df, layers, title = NULL, outline_sf = NULL, outline_map = NUL
 }
 
 # Two metrics side by side (left | right), 3 countries stacked. Country labels on the left column.
-pair3 <- function(df, left_layers, right_layers, title = NULL) {
+pair3 <- function(df, left_layers, right_layers, title = NULL, right_outline = NULL) {
   df <- filter(df, !is.na(iso3c))
-  cell <- function(cc, layers, show_country) {
+  cell <- function(cc, layers, show_country, outline = NULL) {
     cd <- filter(df, iso3c == cc); b <- st_bbox(cd)
-    ggplot(cd) + layers +
-      coord_sf(xlim = c(b["xmin"], b["xmax"]), ylim = c(b["ymin"], b["ymax"])) +
+    p <- ggplot(cd) + layers
+    if (!is.null(outline)) {
+      oc <- filter(outline, iso3c == cc)
+      if (nrow(oc) > 0) p <- p + geom_sf(data = oc, fill = NA, color = "black", linewidth = 0.45)
+    }
+    p + coord_sf(xlim = c(b["xmin"], b["xmax"]), ylim = c(b["ymin"], b["ymax"])) +
       labs(subtitle = if (show_country) iso_lab[cc] else NULL) +
       theme(axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank(),
             plot.subtitle = element_text(face = "bold", size = 12), legend.position = "bottom")
   }
   plots <- unlist(lapply(c("GTM","HND","SLV"),
-    function(cc) list(cell(cc, left_layers, TRUE), cell(cc, right_layers, FALSE))), recursive = FALSE)
+    function(cc) list(cell(cc, left_layers, TRUE), cell(cc, right_layers, FALSE, right_outline))), recursive = FALSE)
   wrap_plots(plots, ncol = 2, byrow = TRUE, guides = "collect") +
     plot_annotation(title = title, theme = theme(plot.title = element_text(face = "bold", size = 14)))
 }
@@ -144,30 +148,24 @@ remains mostly low, with Zacapa (16%) the main exception.
 The same stress can also be expressed as a return period, measured against each unit's own
 1984–2025 record. On that basis the current stress is rare in the most affected units, on the order
 of one in fifteen years in Olancho and San Vicente. The magnitude and return-period maps are shown
-together for comparison.
+side by side below.
 
 ```{r}
-#| label: fig-asi-pct
-#| fig-cap: "ASI magnitude — % of crop area in severe stress, late June 2026. Green = low, red = high. Grey = no ASI / insufficient cropland."
-#| fig-width: 7.5
-#| fig-height: 11
+#| label: fig-asi-pair
+#| fig-cap: "Agricultural Stress Index, late June 2026. Left: magnitude — % of crop area in severe stress (green = low, red = high). Right: rarity — return period of 2026's stress vs each unit's own 1984–2025 record, Weibull (green = ordinary, red = rare); black outline = units whose 2026 stress is in the worst (lower) tercile of their own record. Grey = no ASI / insufficient cropland."
+#| fig-width: 10
+#| fig-height: 12
 a <- asi |> transmute(gaul_code = adm1_code, asi = asi_mean_2026, asi_pctile, asi_rp = 1 / (1 - asi_pctile)) |> join_gaul()
 amax <- max(a$asi, na.rm = TRUE)
-land3(a, list(geom_sf(aes(fill = asi), color = "grey80", linewidth = 0.08),
-              asi_scale(c(0, 3, 8, 20, amax), "ASI (% crop area stressed)")),
-      "ASI — current magnitude")
-```
-
-```{r}
-#| label: fig-asi-rp
-#| fig-cap: "ASI rarity — return period of 2026's stress vs each unit's own 1984–2025 record (Weibull). Green = ordinary, red = rare. Black outline = units whose 2026 stress is in the worst (lower) tercile of their own record. Grey = no ASI."
-#| fig-width: 7.5
-#| fig-height: 11
 rpmax <- min(max(a$asi_rp, na.rm = TRUE), 30)
 worst_tercile <- filter(a, asi_pctile >= 2/3)   # 2026 in the unit's own worst third
-land3(a, list(geom_sf(aes(fill = pmin(asi_rp, 30)), color = "grey80", linewidth = 0.08),
-              asi_scale(c(1, 1.5, 2.5, 8, rpmax), "ASI return period (yr)")),
-      "ASI — return period (worst-tercile units outlined)", outline_sf = worst_tercile)
+pair3(a,
+      left_layers  = list(geom_sf(aes(fill = asi), color = "grey80", linewidth = 0.08),
+                          asi_scale(c(0, 3, 8, 20, amax), "ASI (% crop area stressed)")),
+      right_layers = list(geom_sf(aes(fill = pmin(asi_rp, 30)), color = "grey80", linewidth = 0.08),
+                          asi_scale(c(1, 1.5, 2.5, 8, rpmax), "ASI return period (yr)")),
+      title = "ASI — magnitude (left) and return period (right)",
+      right_outline = worst_tercile)
 ```
 
 # Primera recovery unlikely
