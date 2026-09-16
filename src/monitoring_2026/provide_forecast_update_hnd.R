@@ -3,7 +3,7 @@
 #' Honduras-only version of the OCHA jitter plot in
 #' provide_informational_update.R, requested by Honduras. Same data and style
 #' (current SEAS5 seasonal forecast vs 1991-2024 hindcast distribution at the
-#' same leadtime, with the would-be trigger threshold), but a single facet.
+#' same leadtime), but a single facet and without the trigger threshold line.
 #' Companion to the observed ERA5 version in provide_observed_update_hnd.R.
 #'
 #' Code is borrowed from provide_informational_update.R and trimmed to the
@@ -55,7 +55,6 @@ hnd_cfg <- list(
   label     = "Honduras",
   pcodes    = c("HN07", "HN08"),
   iso3      = "HND",
-  programme = "ocha",
   admin1    = "El Paraíso, Francisco Morazán"
 )
 
@@ -148,39 +147,7 @@ cat(glue(
 ), "\n")
 
 
-# 4. Would-be trigger threshold -------------------------------------------
-# Same source/keys as update_activation_status.R: one threshold row (one
-# leadtime) per AOI at a given issue month; `value_empirical` is the threshold.
-
-cat("Loading would-be trigger threshold...\n")
-df_thresholds <- cumulus::blob_read(
-  container = "projects",
-  name = "ds-aa-lac-dry-corridor/monitoring/2026/df_thresholds_2026.parquet"
-)
-
-current_month_abbr <- as.character(month(current_moment, label = TRUE, abbr = TRUE))
-
-df_thresh <- df_thresholds |>
-  filter(
-    window == season,
-    as.character(issued_month_label) == current_month_abbr,
-    iso3 == hnd_cfg$iso3,
-    programme == hnd_cfg$programme
-  ) |>
-  transmute(aoi_label = hnd_cfg$label, leadtime, thresh_mm = value_empirical)
-
-if (nrow(df_thresh) != 1) {
-  stop("Expected one HND threshold row for ", season, " / ", current_month_abbr,
-       ", got ", nrow(df_thresh))
-}
-if (df_thresh$leadtime != current_lt) {
-  stop("Threshold leadtime (", df_thresh$leadtime, ") != forecast leadtime (", current_lt, ")")
-}
-
-
-# 5. Plot -----------------------------------------------------------------
-
-THRESH_COLOR <- "#7E3F98"
+# 4. Plot -----------------------------------------------------------------
 
 df_plot <- bind_rows(
   df_hindcast |> mutate(point_type = "hist"),
@@ -206,19 +173,6 @@ p_hnd <- ggplot(df_plot, aes(x = aoi_label, y = fcst_mm)) +
     hjust = -0.15, vjust = -0.8, size = 3.2, color = "#1EBFB3", fontface = "italic",
     inherit.aes = FALSE
   ) +
-  # Would-be trigger threshold crossbar + label
-  geom_crossbar(
-    data = df_thresh,
-    aes(x = aoi_label, y = thresh_mm, ymin = thresh_mm, ymax = thresh_mm),
-    width = 0.35, color = THRESH_COLOR, linewidth = 0.6, fatten = 2,
-    inherit.aes = FALSE
-  ) +
-  geom_text(
-    data = df_thresh,
-    aes(x = aoi_label, y = thresh_mm, label = paste0("threshold: ", round(thresh_mm, 0), " mm")),
-    hjust = -0.15, vjust = 1.6, size = 3.2, color = THRESH_COLOR, fontface = "italic",
-    inherit.aes = FALSE
-  ) +
   # Current forecast point + label
   geom_point(
     data = \(d) filter(d, point_type == "current"),
@@ -242,7 +196,7 @@ p_hnd <- ggplot(df_plot, aes(x = aoi_label, y = fcst_mm)) +
     caption = glue(
       "All forecasted {season_months_abbr} rainfall values from historical forecasts (same leadtime) ",
       "{BASELINE_START}–{BASELINE_END} shown as points.\n",
-      "Teal line: historical average. Purple line: would-be trigger threshold."
+      "Teal line: historical average."
     )
   ) +
   theme(
