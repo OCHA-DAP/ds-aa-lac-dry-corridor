@@ -1,0 +1,614 @@
+# CHIRPS Tie-Breaker {#sec-chirps}
+
+## The Need for a Third Opinion
+
+Chapters [-@sec-binary] and [-@sec-continuous] evaluated forecasts against two observation sources:
+
+- **ERA5**: Global reanalysis (SEAS5's "native" validation)
+- **ENACTS**: Station-blended satellite product (operational standard for Guatemala)
+
+These showed consistent results: SEAS5 performs well for Primera, all models struggle with Postrera. But what if both observation sources happen to favor SEAS5? To break potential ties and increase confidence, we introduce a third independent observation source: **CHIRPS**.
+
+## Observational Data Sets
+
+This analysis uses three independent observation sources:
+
+**CHIRPS** (Climate Hazards Group InfraRed Precipitation with Station data) is a quasi-global rainfall dataset that blends satellite imagery with station data. Key characteristics:
+
+| Feature | CHIRPS | ENACTS | ERA5 |
+|---------|--------|--------|------|
+| Resolution | 0.05° (~5km) | 0.05° (~5km) | 0.25° (~25km) |
+| Source | Satellite + stations | Satellite + stations | Model reanalysis |
+| Coverage | 50°S-50°N | Regional | Global |
+| Temporal | 1981-present | Varies | 1940-present |
+
+CHIRPS and ENACTS both blend satellite and station data, but use different algorithms and station networks. This makes CHIRPS a useful independent check - if forecasts perform well against multiple observation sources, we can be more confident in the skill assessment.
+
+```{r}
+#| label: setup
+#| code-summary: "Setup: Libraries and data loading"
+
+library(tidyverse)
+library(lubridate)
+library(cumulus)
+library(yardstick)
+library(gghdx)
+gghdx()
+
+box::use(../../R/enacts)
+box::use(../../R/seas5)
+
+set.seed(42)
+
+# Configuration
+BASELINE_START <- 2000
+BASELINE_END <- 2024
+PRIMERA_MONTHS <- 5:8
+POSTRERA_MONTHS <- 9:11
+PRIMERA_ISSUED_MONTHS <- c(3, 4, 5)
+POSTRERA_ISSUED_MONTHS <- c(6, 7, 8, 9)
+
+# Helper function
+calc_rp_threshold <- function(x, rp_target = 4, direction = -1) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n < 3) return(NA_real_)
+  ranks <- rank(x * -direction, ties.method = "average")
+  rp <- (n + 1) / ranks
+  approx(rp, x, xout = rp_target, rule = 2)$y
+}
+```
+
+```{r}
+#| label: load-data
+#| code-summary: "Load forecast and CHIRPS data"
+
+# Load forecasts
+df_insiv <- cumulus::blob_read(
+  name = "ds-aa-lac-dry-corridor/data/processed/insivumeh_special/insivumeh_special_models_zonal_seasonal_chiquimula.parquet",
+  container = "projects"
+)
+df_seas5 <- seas5$load_seas5_seasonal()
+
+# Load CHIRPS - extracted via GEE script
+df_chirps_raw <- cumulus::blob_read(
+  name = "ds-aa-lac-dry-corridor/raw/chirps/2026_cadc_drought_v3_aoi_chirps_monthly_historical.parquet",
+  container = "projects"
+)
+
+# Wrangle CHIRPS to seasonal totals
+df_chirps <- df_chirps_raw |>
+  filter(ADM1_NAME == "Chiquimula") |>
+  mutate(
+    year = year(date),
+    month = month(date),
+    window = case_when(
+      month %in% PRIMERA_MONTHS ~ "primera",
+      month %in% POSTRERA_MONTHS ~ "postrera",
+      TRUE ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(window), year >= BASELINE_START, year <= BASELINE_END) |>
+  group_by(year, window) |>
+  summarise(obs_mm = sum(value, na.rm = TRUE), .groups = "drop")
+
+# Combine forecasts
+df_fcst_all <- bind_rows(df_insiv, df_seas5) |>
+  filter(year >= BASELINE_START, year <= BASELINE_END)
+
+# Filter to operational leadtimes
+df_fcst_filtered <- df_fcst_all |>
+  mutate(issued_month = month(issued_date)) |>
+  filter(
+    (window == "primera" & issued_month %in% PRIMERA_ISSUED_MONTHS) |
+    (window == "postrera" & issued_month %in% POSTRERA_ISSUED_MONTHS)
+  )
+
+# Join forecasts with CHIRPS
+df_joined <- df_fcst_filtered |>
+  left_join(df_chirps, by = c("year", "window")) |>
+  filter(!is.na(obs_mm)) # there are not any NA - any ways
+```
+
+## Metrics Against CHIRPS
+
+::: {.callout-note}
+## Why Rank-Based Metrics Work Across Different Observation Sources
+
+Because CHIRPS and ENACTS have different climatologies (CHIRPS shows ~300mm higher Primera totals), comparing raw mm errors across sources would be misleading. Instead, we focus on **rank-based metrics**:
+
+- **Spearman correlation**: Evaluates the full ranking across all years. If observations rank years as [driest, 2nd, 3rd, ... wettest], how well does the forecast reproduce that ordering? Larger rank errors are penalized more heavily.
+
+- **ROC-AUC**: Evaluates separation between drought and non-drought years only. Do drought years consistently get lower forecasts than non-drought years? It ignores ranking *within* each group—scrambling the order of non-drought years doesn't affect AUC.
+
+**When they diverge**: A forecast could perfectly separate drought from non-drought (AUC=1) but scramble rankings within each group (moderate Spearman). Or it could track the overall wet-dry gradient well (high Spearman) but fail to place drought years at the bottom (low AUC).
+
+These metrics allow fair comparison of forecast skill across observation sources with different absolute values.
+:::
+
+Spearman & ROC-AUC continue to tell a similar story. Models are skillful in primera with SEAS5 as the dominant competitor. Postrera skill remains low, dubious, and messy. Different models win at different leadtimes with some surprising results of INSIVUMEH provided models showing stronger predictive power at greater leadtimes. SEAS5 remains competitive, but less dominant
+
+```{r}
+#| label: calc-metrics
+#| code-summary: "Calculate thresholds and metrics"
+
+# Forecast thresholds
+df_fcst_thresh <- df_joined |>
+  group_by(forecast_source, window, leadtime) |>
+  summarise(fcst_thresh = calc_rp_threshold(value), .groups = "drop")
+
+# CHIRPS observation thresholds
+df_obs_thresh <- df_chirps |>
+  group_by(window) |>
+  summarise(obs_thresh = calc_rp_threshold(obs_mm), .groups = "drop")
+
+# Join thresholds
+df_analysis <- df_joined |>
+  left_join(df_fcst_thresh, by = c("forecast_source", "window", "leadtime")) |>
+  left_join(df_obs_thresh, by = "window") |>
+  mutate(
+    fcst_drought = value < fcst_thresh,
+    obs_drought = obs_mm < obs_thresh
+  )
+
+# Continuous metrics
+df_metrics <- df_analysis |>
+  group_by(forecast_source, window, leadtime) |>
+  summarise(
+    spearman = cor(value, obs_mm, method = "spearman", use = "complete.obs"),
+    bias_mm = mean(value - obs_mm, na.rm = TRUE),
+    .groups = "drop"
+  ) |> 
+     mutate(
+      window = fct_relevel(window, "primera", "postrera")
+    )
+
+
+# vectorized calc AUC
+calc_auc <- function(truth, drought_score) {                                                                                                                                           
+  if (length(unique(truth)) < 2) return(NA_real_)                                                                                                                           
+  roc_auc_vec(truth, drought_score, event_level = "first")                                                                                                                            
+}                                                                                                                                                                                                 
+
+df_roc <- df_analysis |>
+  mutate(
+    truth = factor(
+      obs_drought,
+      levels = c(TRUE, FALSE),
+      labels = c("drought", "no_drought")
+      ),
+    # roc_auc is just rank based, magnitude doesnt matter just invert to +drought +score
+    drought_score = -value
+  )
+
+df_auc <- df_roc |>                                                                                 
+  group_by(forecast_source, window, leadtime) |>                                                                                                                                      
+  summarise(auc = calc_auc(truth, drought_score), .groups = "drop")   
+
+```
+
+### Spearman Correlation
+
+```{r}
+#| label: spearman-heatmap
+#| fig-height: 5
+
+create_metric_heatmap <- function(df, metric_col, metric_name, title, caption, midpoint = 0) {
+  df_plot <- df |>
+    group_by(window, leadtime) |>
+    mutate(is_best = !!sym(metric_col) == max(!!sym(metric_col), na.rm = TRUE)) |>
+    ungroup() 
+ 
+
+  ggplot(df_plot, aes(x = factor(leadtime), y = forecast_source)) +
+    geom_tile(aes(fill = !!sym(metric_col)), color = "white", linewidth = 0.5) +
+    geom_tile(
+      data = df_plot |> filter(is_best),
+      fill = NA, color = "black", linewidth = 1.5
+    ) +
+    geom_text(aes(label = sprintf("%.2f", !!sym(metric_col))), size = 4, fontface = "bold", color = "black") +
+    facet_wrap(~window) +
+    scale_fill_gradient2(
+      low = "#D73027", mid = "#FFFFBF", high = "#1A9850",
+      midpoint = midpoint, name = metric_name
+    ) +
+    labs(title = title, x = "Leadtime (months)", y = NULL, caption = caption) +
+    theme_minimal() +
+    theme(legend.position = "right", panel.grid = element_blank(),
+          plot.caption = element_text(hjust = 0))
+}
+
+create_metric_heatmap(
+  df = df_metrics,
+  metric_col = "spearman",
+  metric_name ="Spearman ρ",
+  title = "Spearman Correlation - CHIRPS",
+  caption = "All forecasts validated against CHIRPS. Black border = best per leadtime/season."
+)
+```
+
+**Surprise finding**: INSIVUMEH_CESM1 shows the strongest Spearman correlation for Primera at LT1 (0.72) and LT2 (0.52), outperforming SEAS5. This is the opposite of what we saw with ERA5 and ENACTS.
+
+### ROC-AUC
+
+```{r}
+#| label: auc-heatmap
+#| fig-height: 5
+
+create_metric_heatmap(
+  df= df_auc, 
+  metric_col = "auc",
+  metric_name = "AUC",
+  title = "ROC-AUC - CHIRPS",
+  caption = "All forecasts validated against CHIRPS. AUC > 0.7 = acceptable skill. Black border = best.",
+  midpoint = 0.5
+)
+```
+
+
+
+### F1 Score (Binary)
+
+For completeness, here's the binary F1 score against CHIRPS - the same metric used in @sec-binary. Story remains consistent.
+
+```{r}
+#| label: f1-heatmap
+#| fig-height: 5
+
+# Calculate F1
+df_f1 <- df_analysis |>
+  mutate(
+    truth = factor(obs_drought, levels = c(TRUE, FALSE), labels = c("drought", "no_drought")),
+    estimate = factor(fcst_drought, levels = c(TRUE, FALSE), labels = c("drought", "no_drought"))
+  ) |>
+  group_by(forecast_source, window, leadtime) |>
+  summarise(
+    f1 = f_meas_vec(truth, estimate, event_level = "first"),
+    precision = precision_vec(truth, estimate, event_level = "first"),
+    recall = recall_vec(truth, estimate, event_level = "first"),
+    .groups = "drop"
+  )
+
+# F1 heatmap
+df_plot <- df_f1 |>
+  group_by(window, leadtime) |>
+  mutate(is_best = f1 == max(f1, na.rm = TRUE)) |>
+  ungroup() |> 
+  mutate(
+    window = fct_relevel(window, "primera","postrera")
+  )
+
+ggplot(df_plot, aes(x = factor(leadtime), y = forecast_source)) +
+  geom_tile(aes(fill = f1), color = "white", linewidth = 0.5) +
+  geom_tile(
+    data = df_plot |> filter(is_best),
+    fill = NA, color = "black", linewidth = 1.5
+  ) +
+  geom_text(aes(label = sprintf("%.0f%%", f1 * 100)), size = 4, fontface = "bold", color = "black") +
+  facet_wrap(~window) +
+  scale_fill_gradientn(
+    colors = c("#D73027", "#FC8D59", "#FEE08B", "#D9EF8B", "#91CF60", "#1A9850"),
+    limits = c(0, 1), labels = scales::percent, name = "F1"
+  ) +
+  labs(
+    title = "F1 Score - CHIRPS",
+    x = "Leadtime (months)", y = NULL,
+    caption = "All forecasts validated against CHIRPS. Black border = best per leadtime/season."
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right", panel.grid = element_blank(),
+        plot.caption = element_text(hjust = 0))
+```
+
+
+<!--
+================================================================================
+ARCHIVED: Synthesis section - hidden but preserved
+This cross-validation across observation sources was exploratory but the
+"winner" framing is misleading given the noise in Postrera results.
+Key takeaway integrated into conclusions: Primera skill is robust across
+observation sources; Postrera remains unresolved with suspicious patterns.
+================================================================================
+-->
+
+```{r}
+#| label: synthesis-table
+#| eval: false
+#| echo: false
+
+# Load metrics from previous chapters (recalculate for consistency)
+df_enacts_obs <- enacts$load_enacts_seasonal("chiquimula")
+
+# ERA5
+con <- pg_con()
+df_era5_raw <- tbl(con, "era5") |>
+  filter(pcode == "GT20") |>
+  collect() |>
+  mutate(
+    year = year(valid_date),
+    month = month(valid_date),
+    mean = mean * days_in_month(valid_date)
+  )
+DBI::dbDisconnect(con)
+
+df_era5 <- bind_rows(
+  df_era5_raw |> rename(value = mean) |>
+    filter(month %in% PRIMERA_MONTHS) |>
+    group_by(year) |>
+    summarise(obs_mm = sum(value, na.rm = TRUE), .groups = "drop") |>
+    mutate(window = "primera"),
+  df_era5_raw |> rename(value = mean) |>
+    filter(month %in% POSTRERA_MONTHS) |>
+    group_by(year) |>
+    summarise(obs_mm = sum(value, na.rm = TRUE), .groups = "drop") |>
+    mutate(window = "postrera")
+)
+
+# Function to calculate metrics for an obs source
+calc_obs_metrics <- function(df_obs, obs_name) {
+  df_joined <- df_fcst_filtered |>
+    left_join(df_obs, by = c("year", "window")) |>
+    filter(!is.na(obs_mm))
+
+  # Thresholds
+  obs_thresh <- df_obs |>
+    filter(year >= BASELINE_START, year <= BASELINE_END) |>
+    group_by(window) |>
+    summarise(obs_thresh = calc_rp_threshold(obs_mm), .groups = "drop")
+
+  df_analysis <- df_joined |>
+    left_join(obs_thresh, by = "window") |>
+    mutate(obs_drought = obs_mm < obs_thresh)
+
+  # Spearman
+  df_spearman <- df_analysis |>
+    group_by(forecast_source, window, leadtime) |>
+    summarise(spearman = cor(value, obs_mm, method = "spearman", use = "complete.obs"), .groups = "drop")
+
+  # AUC
+  df_auc <- df_analysis |>
+    mutate(
+      truth = factor(obs_drought, levels = c(TRUE, FALSE), labels = c("drought", "no_drought")),
+      drought_score = -value
+    ) |>
+    group_by(forecast_source, window, leadtime) |>
+    summarise(auc = calc_auc(truth, drought_score), .groups = "drop")
+
+  df_spearman |>
+    left_join(df_auc, by = c("forecast_source", "window", "leadtime")) |>
+    mutate(obs_source = obs_name)
+}
+
+# Calculate for all three
+df_all_metrics <- bind_rows(
+  calc_obs_metrics(df_era5, "ERA5"),
+  calc_obs_metrics(df_enacts_obs, "ENACTS"),
+  calc_obs_metrics(df_chirps, "CHIRPS")
+)
+```
+
+```{r}
+#| label: primera-synthesis
+#| eval: false
+#| echo: false
+
+df_primera <- df_all_metrics |>
+  filter(window == "primera", leadtime %in% c(1, 2)) |>
+  select(forecast_source, leadtime, obs_source, auc) |>
+  mutate(
+    model = str_remove(forecast_source, "INSIVUMEH_"),
+    obs_source = factor(obs_source, levels = c("ERA5", "ENACTS", "CHIRPS"))
+  )
+
+df_primera |>
+  ggplot(aes(x = obs_source, y = auc, fill = model)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50") +
+  geom_hline(yintercept = 0.7, linetype = "dotted", color = "grey30") +
+  facet_wrap(~paste0("Leadtime ", leadtime)) +
+  scale_fill_manual(values = c("SEAS5" = "#007CE1", "CFSv2" = "#F2645A",
+                               "CCSM4" = "#1EBFB3", "CESM1" = "#FFC627")) +
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+  labs(
+    title = "Primera AUC: Three Observation Sources",
+    subtitle = "Dashed = random (0.5), Dotted = acceptable skill (0.7)",
+    x = "Observation Source", y = "ROC-AUC", fill = "Model"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: primera-winner-table
+#| eval: false
+#| echo: false
+
+df_primera_summary <- df_all_metrics |>
+  filter(window == "primera") |>
+  group_by(obs_source, leadtime) |>
+  slice_max(auc, n = 1) |>
+  select(obs_source, leadtime, winner = forecast_source, auc) |>
+  mutate(winner = str_remove(winner, "INSIVUMEH_"))
+
+df_primera_summary |>
+  pivot_wider(names_from = obs_source, values_from = c(winner, auc)) |>
+  arrange(leadtime) |>
+  knitr::kable(
+    col.names = c("LT", "ERA5 Winner", "ENACTS Winner", "CHIRPS Winner",
+                  "ERA5 AUC", "ENACTS AUC", "CHIRPS AUC"),
+    digits = 2,
+    caption = "Primera: Best model by observation source"
+  )
+
+# Primera verdict:
+# - LT0: SEAS5 (only option at this leadtime)
+# - LT1: Split decision - SEAS5 wins on ERA5/ENACTS, CESM1 wins on CHIRPS
+# - LT2: SEAS5 wins 2 of 3 (ERA5, CHIRPS); CESM1 wins ENACTS
+# SEAS5 is the safer choice, but CESM1 shows surprisingly strong performance against CHIRPS.
+```
+
+```{r}
+#| label: postrera-synthesis
+#| eval: false
+#| echo: false
+
+df_postrera <- df_all_metrics |>
+  filter(window == "postrera", leadtime %in% c(1, 2, 3)) |>
+  select(forecast_source, leadtime, obs_source, auc) |>
+  mutate(
+    model = str_remove(forecast_source, "INSIVUMEH_"),
+    obs_source = factor(obs_source, levels = c("ERA5", "ENACTS", "CHIRPS"))
+  )
+
+df_postrera |>
+  filter(leadtime %in% c(1, 2)) |>
+  ggplot(aes(x = obs_source, y = auc, fill = model)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50") +
+  geom_hline(yintercept = 0.7, linetype = "dotted", color = "grey30") +
+  facet_wrap(~paste0("Leadtime ", leadtime)) +
+  scale_fill_manual(values = c("SEAS5" = "#007CE1", "CFSv2" = "#F2645A",
+                               "CCSM4" = "#1EBFB3", "CESM1" = "#FFC627")) +
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+  labs(
+    title = "Postrera AUC: Three Observation Sources",
+    subtitle = "Dashed = random (0.5), Dotted = acceptable skill (0.7)",
+    x = "Observation Source", y = "ROC-AUC", fill = "Model"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: postrera-winner-count
+#| eval: false
+#| echo: false
+
+# Count wins across all obs sources and leadtimes
+df_postrera_wins <- df_all_metrics |>
+  filter(window == "postrera") |>
+  group_by(obs_source, leadtime) |>
+  slice_max(auc, n = 1) |>
+  ungroup() |>
+  count(forecast_source, name = "wins") |>
+  mutate(model = str_remove(forecast_source, "INSIVUMEH_")) |>
+  arrange(desc(wins))
+
+df_postrera_wins |>
+  knitr::kable(
+    col.names = c("Model", "Wins (of 12)", "Short Name"),
+    caption = "Postrera: Win count across all observation sources and leadtimes"
+  )
+
+# Postrera verdict: No model shows reliable skill. While CCSM4 wins 6 of 12
+# obs/leadtime combinations, the pattern is suspicious:
+# - CCSM4 shows *worse* skill at LT1 than at LT2-3
+# - This is backwards - forecast skill should degrade with leadtime, not improve
+# - This inverted pattern suggests we may be seeing noise rather than genuine skill
+# - At LT1 (most actionable), all models hover near AUC 0.5-0.7 - barely above random
+# The tie-breaker does not resolve Postrera. No model can be recommended with confidence.
+```
+
+## Conclusions
+
+### What We've Learned So Far
+
+1. **Primera skill is robust**: Multiple models show genuine skill (AUC > 0.7) across all three observation sources. This isn't an artifact of one particular dataset.
+
+2. **Postrera remains unresolved**: No model shows reliable, consistent skill. CCSM4's apparent better performance at longer leadtimes is suspicious - skill should not improve with leadtime. This inverted pattern is likely noise from the small sample (only ~6 drought events in 25 years).
+
+### Open Questions
+
+The tie-breaker analysis raises more questions than it answers for Postrera:
+
+- **Why the inverted skill pattern?** CCSM4 showing better skill at LT2-3 than LT1 is backwards - forecast skill should degrade with leadtime. Is this genuine or noise?
+- **Which model is actually better?** With different metrics favoring different models at different leadtimes, we cannot make a confident recommendation.
+- **Is the poor skill a data artifact?** Could temporal trends in the observation sources be affecting our skill estimates?
+
+### Next Steps
+
+To better understand the poor Postrera skill and the contradictory patterns across models, the next chapter examines **temporal drift** - whether systematic trends in forecasts or observations might explain some of what we're seeing.
+
+::: {.callout-tip collapse="true"}
+## Technical Details
+
+### CHIRPS vs ENACTS Comparison
+
+How different are CHIRPS and ENACTS for Chiquimula? Understanding this helps interpret why forecast skill might differ across observation sources.
+
+```{r}
+#| label: chirps-vs-enacts-appendix
+#| fig-height: 5
+#| code-summary: "Compare CHIRPS and ENACTS observations"
+
+# Load ENACTS for comparison
+df_enacts_compare <- enacts$load_enacts_seasonal("chiquimula")
+
+df_compare <- df_chirps |>
+  rename(chirps = obs_mm) |>
+  left_join(
+    df_enacts_compare |> select(year, window, enacts = obs_mm),
+    by = c("year", "window")
+  ) |>
+  filter(!is.na(enacts))
+
+# Correlation
+corr_primera <- df_compare |> filter(window == "primera") |>
+  summarise(r = cor(chirps, enacts)) |> pull(r)
+corr_postrera <- df_compare |> filter(window == "postrera") |>
+  summarise(r = cor(chirps, enacts)) |> pull(r)
+
+df_compare |>
+  ggplot(aes(x = enacts, y = chirps)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "#007CE1", fill = "#007CE1", alpha = 0.2) +
+  facet_wrap(~str_to_title(window), scales = "free") +
+  labs(
+    title = "CHIRPS vs ENACTS: Same Region, Different Estimates",
+    subtitle = sprintf("Primera r = %.2f, Postrera r = %.2f", corr_primera, corr_postrera),
+    x = "ENACTS (mm)",
+    y = "CHIRPS (mm)",
+    caption = "Dashed line = 1:1 agreement. CHIRPS consistently higher for Primera."
+  )
+```
+
+CHIRPS and ENACTS are correlated but not identical. CHIRPS tends to estimate higher rainfall for Primera (~300mm more on average). This means a forecast calibrated to one source may not match the other perfectly - making the three-source comparison a meaningful robustness check.
+
+### Forecast Bias
+
+Bias (mean forecast - observed) is shown for completeness, but is not consequential for our framework since we use rank-based metrics and model-specific thresholds rather than raw precipitation values.
+
+```{r}
+#| label: bias-heatmap
+#| fig-height: 5
+
+df_plot <- df_metrics |>
+  group_by(window, leadtime) |>
+  mutate(is_best = abs(bias_mm) == min(abs(bias_mm), na.rm = TRUE)) |>
+  ungroup()
+
+bias_max <- max(abs(df_plot$bias_mm), na.rm = TRUE)
+
+ggplot(df_plot, aes(x = factor(leadtime), y = forecast_source)) +
+  geom_tile(aes(fill = bias_mm), color = "white", linewidth = 0.5) +
+  geom_tile(
+    data = df_plot |> filter(is_best),
+    fill = NA, color = "black", linewidth = 1.5
+  ) +
+  geom_text(aes(label = sprintf("%.0f", bias_mm)), size = 4, fontface = "bold", color = "black") +
+  facet_wrap(~window) +
+  scale_fill_gradient2(
+    low = "#D73027", mid = "#FFFFBF", high = "#1A9850",
+    midpoint = 0, limits = c(-bias_max, bias_max), name = "Bias (mm)"
+  ) +
+  labs(
+    title = "Forecast Bias - CHIRPS",
+    x = "Leadtime (months)", y = NULL,
+    caption = "Units: millimeters. Bias = mean(forecast - observed). Negative = dry bias."
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right", panel.grid = element_blank(),
+        plot.caption = element_text(hjust = 0))
+```
+
+Against CHIRPS, **all models have dry bias for Primera** and **wet bias for Postrera**. SEAS5 has the largest dry bias for Primera (~280mm under), while INSIVUMEH models are closer (~120mm under).
+:::

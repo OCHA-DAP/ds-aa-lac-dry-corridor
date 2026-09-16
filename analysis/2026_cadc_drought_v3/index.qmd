@@ -1,0 +1,11 @@
+# Overview {.unnumbered}
+
+This book documents the forecast evaluation and trigger design process for drought anticipatory action in the **Central American Dry Corridor** (Guatemala, Honduras, El Salvador) for the 2026 season.
+
+### Part I: Forecast Skill Evaluations
+
+These analyses were conducted based on the framework as it stood at the time of writing, with a primary focus on **Guatemala (Chiquimula)** and the central question of which seasonal forecast system --- ECMWF SEAS5 or INSIVUMEH --- to use for drought prediction. The evaluation spans binary and continuous metrics, multiple observation sources, temporal stability, and internal consistency diagnostics.
+
+### Part II: 2026 Trigger Design & Tuning
+
+Building on the forecast evaluation findings, this section presents a more detailed analysis to refine the operational trigger configurations for 2026. A common methodology was developed --- systematic exploration of areas of interest, leadtime selection, and threshold optimization, grounded in both historical rainfall skill (ERA5) and humanitarian impact records (EM-DAT, CERF) --- and applied consistently across all three countries. This process led to updated AOI definitions and forecast skill benchmarks that differ from the initial framework assumptions. Country-specific trigger configurations are recommended for Honduras, El Salvador, and Guatemala. For Guatemala, a parallel analysis was conducted for the StartNetwork programme, covering distinct AOIs and exploring multiple trigger variants to accommodate different operational scenarios and partner priorities.
