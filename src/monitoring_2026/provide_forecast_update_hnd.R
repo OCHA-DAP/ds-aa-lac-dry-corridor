@@ -30,19 +30,23 @@ current_moment <- floor_date(Sys.Date(), "month")
 current_month <- month(current_moment)
 current_year  <- year(current_moment)
 
-# Auto-detect season from issue month (same rules as the shared script)
+# Auto-detect season from issue month. `issued_months` are the issue months
+# Honduras actually monitors under the endorsed 2026 framework (3 leadtimes per
+# season; June is NOT a Postrera issue month for HND, unlike the shared script's
+# 3-country config). Running outside these months stops rather than plotting.
 if (current_month %in% 3:5) {
   season             <- "primera"
   valid_months       <- 5:8
   issued_months      <- c(3, 4, 5)
   season_months_abbr <- "MJJA"
-} else if (current_month %in% 6:9) {
+} else if (current_month %in% 7:9) {
   season             <- "postrera"
   valid_months       <- 9:11
-  issued_months      <- c(6, 7, 8, 9)
+  issued_months      <- c(7, 8, 9)
   season_months_abbr <- "SON"
 } else {
-  stop("Current month (", current_month, ") is outside the monitoring window (March-September).")
+  stop("Current month (", current_month, ") is not a Honduras monitoring issue month ",
+       "(Primera: Mar-May; Postrera: Jul-Sep).")
 }
 
 season_label   <- tools::toTitleCase(season)
@@ -66,7 +70,6 @@ cat(glue("Season: {season_label} | Issued: {month_label_en} {current_year}"), "\
 # 1. Load SEAS5 + weights -------------------------------------------------
 
 con <- pg_con()
-on.exit(DBI::dbDisconnect(con))
 
 cat("Loading SEAS5 admin-1 data (HND)...\n")
 df_seas5 <- tbl(con, "seas5") |>
@@ -86,6 +89,8 @@ df_weights <- tbl(con, "polygon") |>
 if (nrow(df_weights) != length(hnd_cfg$pcodes) || any(is.na(df_weights$seas5_n_upsampled_pixels))) {
   stop("Missing SEAS5 pixel weights for one or more HND pcodes.")
 }
+
+DBI::dbDisconnect(con)   # top-level on.exit() would not fire; disconnect explicitly
 
 
 # 2. Seasonal aggregation + area weighting --------------------------------
