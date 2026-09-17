@@ -47,7 +47,6 @@ OUT_PNG <- "src/monitoring_2026/png"
 # 1. Load ERA5 monthly + weights ------------------------------------------
 
 con <- pg_con()
-on.exit(DBI::dbDisconnect(con))
 
 cat("Loading ERA5 admin-1 monthly data (HND)...\n")
 # `mean` is stored as a rate (mm/day); convert to a monthly total.
@@ -73,6 +72,8 @@ df_weights <- tbl(con, "polygon") |>
 if (nrow(df_weights) != length(hnd_cfg$pcodes) || any(is.na(df_weights$era5_n_upsampled_pixels))) {
   stop("Missing ERA5 pixel weights for one or more HND pcodes.")
 }
+
+DBI::dbDisconnect(con)   # top-level on.exit() would not fire; disconnect explicitly
 
 latest_date <- max(df_era5$valid_date)
 cat(glue("ERA5 available through {format(latest_date, '%B %Y')}"), "\n")
