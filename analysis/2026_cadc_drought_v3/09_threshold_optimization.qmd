@@ -1,0 +1,681 @@
+# Threshold Optimization {#sec-threshold-optimization}
+
+```{r}
+#| label: setup-optimization
+#| include: false
+
+library(tidyverse)
+library(lubridate)
+library(cumulus)
+library(gt)
+library(scales)
+
+knitr::opts_chunk$set(
+
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Overview
+
+This chapter explores the tradeoff between forecast skill (F1 score) and trigger frequency (combined annual return period) when selecting RP thresholds for each leadtime. The key constraint is that **the same threshold must be used at each leadtime across all countries** for operational consistency, while thresholds can vary between leadtimes.
+
+We compare two scenarios:
+
+- **Unconstrained**: Select thresholds that maximize F1 score without regard to trigger frequency
+- **Constrained**: Select thresholds that maximize F1 while keeping combined annual RP in the range [3, 5] years for all countries
+
+```{r}
+#| label: load-data
+
+PRIMERA_MONTHS <- 5:8
+POSTRERA_MONTHS <- 9:11
+PRIMERA_ISSUED_MONTHS <- c(3, 4, 5)
+POSTRERA_ISSUED_MONTHS <- c(6, 7, 8, 9)
+AOI_PCODES <- c("HN07", "HN08", "SV11", "GT20")
+
+con <- pg_con()
+df_weights <- tbl(con, "polygon") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 1, pcode %in% AOI_PCODES) |>
+  select(pcode, seas5_n_upsampled_pixels) |>
+  collect()
+df_seas5_raw <- tbl(con, "seas5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 1, pcode %in% AOI_PCODES) |>
+  collect()
+df_era5_raw <- tbl(con, "era5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(pcode %in% AOI_PCODES) |>
+  collect()
+DBI::dbDisconnect(con)
+
+df_seas5_mm <- df_seas5_raw |> mutate(value_mm = days_in_month(valid_date) * mean)
+
+df_seas5_seasonal <- bind_rows(
+  seas5_aggregate_forecast(df_seas5_mm, value = "value_mm", valid_months = PRIMERA_MONTHS,
+                           by = c("iso3", "pcode", "issued_date")) |> mutate(window = "primera"),
+  seas5_aggregate_forecast(df_seas5_mm, value = "value_mm", valid_months = POSTRERA_MONTHS,
+                           by = c("iso3", "pcode", "issued_date")) |> mutate(window = "postrera")
+) |>
+  rename(fcst_mm = value_mm) |>
+  mutate(year = year(issued_date), issued_month = month(issued_date)) |>
+  filter(
+    (window == "primera" & issued_month %in% PRIMERA_ISSUED_MONTHS) |
+    (window == "postrera" & issued_month %in% POSTRERA_ISSUED_MONTHS)
+  )
+
+df_era5_monthly <- df_era5_raw |>
+  mutate(year = year(valid_date), month = month(valid_date),
+         value_mm = mean * days_in_month(valid_date))
+
+df_era5_seasonal <- bind_rows(
+  df_era5_monthly |>
+    filter(month %in% PRIMERA_MONTHS) |>
+    group_by(pcode, iso3, year) |>
+    summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "primera"),
+  df_era5_monthly |>
+    filter(month %in% POSTRERA_MONTHS) |>
+    group_by(pcode, iso3, year) |>
+    summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "postrera")
+)
+
+df_joined <- df_seas5_seasonal |>
+  left_join(df_era5_seasonal |> select(pcode, year, window, obs_mm),
+            by = c("pcode", "year", "window")) |>
+  filter(!is.na(obs_mm)) |>
+  left_join(df_weights, by = "pcode") |>
+  mutate(country_aoi = case_when(
+    pcode == "GT20" ~ "Guatemala",
+    pcode %in% c("HN07", "HN08") ~ "Honduras",
+    TRUE ~ "El Salvador"
+  )) |>
+  group_by(country_aoi, year, window, leadtime) |>
+  summarise(
+    fcst_mm = weighted.mean(fcst_mm, w = seas5_n_upsampled_pixels),
+    obs_mm = weighted.mean(obs_mm, w = seas5_n_upsampled_pixels),
+    .groups = "drop"
+  )
+
+df_baseline <- df_joined |> filter(year >= 1981, year <= 2024)
+
+calc_rp_threshold <- function(x, rp_target = 4, direction = -1) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n < 3) return(NA_real_)
+  ranks <- rank(x * -direction, ties.method = "average")
+  rp <- (n + 1) / ranks
+  approx(rp, x, xout = rp_target, rule = 2)$y
+}
+```
+
+## F1 Score by RP Threshold
+
+First, let's examine how F1 score varies with RP threshold for each leadtime and country. Lower RP thresholds (more sensitive) generally yield higher F1 scores but trigger more frequently.
+
+```{r}
+#| label: compute-f1-by-rp
+
+rp_options <- seq(3, 8, by = 0.5)
+
+# Observation thresholds (fixed at RP4)
+obs_thresholds <- df_baseline |>
+  group_by(country_aoi, window) |>
+  summarise(obs_thresh = calc_rp_threshold(obs_mm, 4, -1), .groups = "drop")
+
+# Compute F1 for each country × LT × RP combo
+df_f1_by_rp <- map_dfr(rp_options, function(rp) {
+  fcst_thresh <- df_baseline |>
+    group_by(country_aoi, window, leadtime) |>
+    summarise(fcst_thresh = calc_rp_threshold(fcst_mm, rp, -1), .groups = "drop")
+
+  df_baseline |>
+    left_join(obs_thresholds, by = c("country_aoi", "window")) |>
+    left_join(fcst_thresh, by = c("country_aoi", "window", "leadtime")) |>
+    mutate(
+      obs_drought = obs_mm <= obs_thresh,
+      fcst_drought = fcst_mm <= fcst_thresh
+    ) |>
+    group_by(country_aoi, window, leadtime) |>
+    summarise(
+      tp = sum(fcst_drought & obs_drought),
+      fp = sum(fcst_drought & !obs_drought),
+      fn = sum(!fcst_drought & obs_drought),
+      f1 = if_else(tp + fp + fn > 0, 2 * tp / (2 * tp + fp + fn), NA_real_),
+      trigger_rate = mean(fcst_drought),
+      .groups = "drop"
+    ) |>
+    mutate(rp_thresh = rp)
+})
+```
+
+```{r}
+#| label: fig-f1-by-rp-primera
+#| fig-cap: "F1 score by RP threshold for Primera season (May-Aug). Each panel shows a different leadtime. Lower RP thresholds are more sensitive and generally achieve higher F1 scores."
+#| fig-height: 4
+#| fig-width: 9
+
+df_f1_by_rp |>
+  filter(window == "primera") |>
+  mutate(
+    lt_label = paste0("Leadtime ", leadtime),
+    lt_label = fct_reorder(lt_label, leadtime)
+  ) |>
+  ggplot(aes(x = rp_thresh, y = f1, color = country_aoi)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~lt_label, nrow = 1) +
+  scale_x_continuous(breaks = seq(3, 8, 1)) +
+  scale_y_continuous(limits = c(0, 0.8), labels = scales::percent_format(scale = 100, suffix = "")) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    x = "RP Threshold (years)",
+    y = "F1 Score (%)",
+    color = "Country"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+```{r}
+#| label: fig-f1-by-rp-postrera
+#| fig-cap: "F1 score by RP threshold for Postrera season (Sep-Nov). Postrera shows similar patterns to Primera with skill decreasing at higher (more conservative) thresholds."
+#| fig-height: 4
+#| fig-width: 7
+
+df_f1_by_rp |>
+  filter(window == "postrera", leadtime <= 1) |>
+  mutate(
+    lt_label = paste0("Leadtime ", leadtime),
+    lt_label = fct_reorder(lt_label, leadtime)
+  ) |>
+  ggplot(aes(x = rp_thresh, y = f1, color = country_aoi)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~lt_label, nrow = 1) +
+  scale_x_continuous(breaks = seq(3, 8, 1)) +
+  scale_y_continuous(limits = c(0, 0.8), labels = scales::percent_format(scale = 100, suffix = "")) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    x = "RP Threshold (years)",
+    y = "F1 Score (%)",
+    color = "Country"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Mean F1 Across Countries
+
+Since operational thresholds must be consistent across countries, we need to optimize for **mean F1 across all three countries** at each leadtime.
+
+```{r}
+#| label: fig-mean-f1-by-rp
+#| fig-cap: "Mean F1 score across all three countries by RP threshold. The solid line shows the mean, with the shaded region indicating the range across countries."
+#| fig-height: 5
+#| fig-width: 9
+
+df_f1_summary <- df_f1_by_rp |>
+  group_by(window, leadtime, rp_thresh) |>
+  summarise(
+    mean_f1 = mean(f1),
+    min_f1 = min(f1),
+    max_f1 = max(f1),
+    .groups = "drop"
+  ) |>
+  filter(!(window == "postrera" & leadtime > 1)) |>
+  mutate(
+    window_label = if_else(window == "primera", "Primera (May-Aug)", "Postrera (Sep-Nov)"),
+    lt_label = paste0("LT", leadtime)
+  )
+
+ggplot(df_f1_summary, aes(x = rp_thresh, y = mean_f1)) +
+  geom_ribbon(aes(ymin = min_f1, ymax = max_f1, fill = lt_label), alpha = 0.2) +
+  geom_line(aes(color = lt_label), linewidth = 1) +
+  geom_point(aes(color = lt_label), size = 2) +
+  facet_wrap(~window_label) +
+  scale_x_continuous(breaks = seq(3, 8, 1)) +
+  scale_y_continuous(limits = c(0, 0.7), labels = scales::percent_format(scale = 100, suffix = "")) +
+  scale_color_viridis_d(option = "D", end = 0.8) +
+  scale_fill_viridis_d(option = "D", end = 0.8) +
+  labs(
+    x = "RP Threshold (years)",
+    y = "F1 Score (%)",
+    color = "Leadtime",
+    fill = "Leadtime"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+## The F1 vs Trigger Frequency Tradeoff
+
+The fundamental challenge is that maximizing F1 leads to thresholds that trigger too frequently. Let's visualize this tradeoff.
+
+```{r}
+#| label: compute-combined-rp
+
+# Precompute yearly triggers
+df_yearly_triggers <- map_dfr(rp_options, function(rp) {
+  fcst_thresh <- df_baseline |>
+    group_by(country_aoi, window, leadtime) |>
+    summarise(fcst_thresh = calc_rp_threshold(fcst_mm, rp, -1), .groups = "drop")
+
+  df_baseline |>
+    left_join(fcst_thresh, by = c("country_aoi", "window", "leadtime")) |>
+    mutate(triggered = fcst_mm <= fcst_thresh) |>
+    select(country_aoi, window, leadtime, year, triggered) |>
+    mutate(rp_thresh = rp)
+})
+
+# Pivot to wide for fast lookup
+yearly_wide <- df_yearly_triggers |>
+  unite("key", country_aoi, window, leadtime, rp_thresh, sep = "_") |>
+  pivot_wider(names_from = key, values_from = triggered)
+```
+
+```{r}
+#| label: compute-grid-results
+
+rp_grid <- seq(3, 8, by = 1)
+
+# Full grid search
+full_grid <- expand_grid(
+  p0 = rp_grid, p1 = rp_grid, p2 = rp_grid,
+  s0 = rp_grid, s1 = rp_grid
+)
+
+# Compute F1 and RP for each combo (vectorized where possible)
+f1_lookup <- df_f1_by_rp |>
+  filter(rp_thresh %in% rp_grid) |>
+  unite("key", country_aoi, window, leadtime, rp_thresh, sep = "_") |>
+  select(key, f1) |>
+  deframe()
+
+full_results <- full_grid |>
+  rowwise() |>
+  mutate(
+    # Mean F1 across countries for each window
+    f1_primera = mean(c(
+      f1_lookup[paste0("Guatemala_primera_0_", p0)],
+      f1_lookup[paste0("Guatemala_primera_1_", p1)],
+      f1_lookup[paste0("Guatemala_primera_2_", p2)],
+      f1_lookup[paste0("Honduras_primera_0_", p0)],
+      f1_lookup[paste0("Honduras_primera_1_", p1)],
+      f1_lookup[paste0("Honduras_primera_2_", p2)],
+      f1_lookup[paste0("El Salvador_primera_0_", p0)],
+      f1_lookup[paste0("El Salvador_primera_1_", p1)],
+      f1_lookup[paste0("El Salvador_primera_2_", p2)]
+    )),
+    f1_postrera = mean(c(
+      f1_lookup[paste0("Guatemala_postrera_0_", s0)],
+      f1_lookup[paste0("Guatemala_postrera_1_", s1)],
+      f1_lookup[paste0("Honduras_postrera_0_", s0)],
+      f1_lookup[paste0("Honduras_postrera_1_", s1)],
+      f1_lookup[paste0("El Salvador_postrera_0_", s0)],
+      f1_lookup[paste0("El Salvador_postrera_1_", s1)]
+    )),
+    f1_overall = (f1_primera * 3 + f1_postrera * 2) / 5,
+    # Combined RP per country
+    rp_gtm = {
+      any_trig <- yearly_wide[[paste0("Guatemala_primera_0_", p0)]] |
+                  yearly_wide[[paste0("Guatemala_primera_1_", p1)]] |
+                  yearly_wide[[paste0("Guatemala_primera_2_", p2)]] |
+                  yearly_wide[[paste0("Guatemala_postrera_0_", s0)]] |
+                  yearly_wide[[paste0("Guatemala_postrera_1_", s1)]]
+      1 / mean(any_trig, na.rm = TRUE)
+    },
+    rp_hnd = {
+      any_trig <- yearly_wide[[paste0("Honduras_primera_0_", p0)]] |
+                  yearly_wide[[paste0("Honduras_primera_1_", p1)]] |
+                  yearly_wide[[paste0("Honduras_primera_2_", p2)]] |
+                  yearly_wide[[paste0("Honduras_postrera_0_", s0)]] |
+                  yearly_wide[[paste0("Honduras_postrera_1_", s1)]]
+      1 / mean(any_trig, na.rm = TRUE)
+    },
+    rp_slv = {
+      any_trig <- yearly_wide[[paste0("El Salvador_primera_0_", p0)]] |
+                  yearly_wide[[paste0("El Salvador_primera_1_", p1)]] |
+                  yearly_wide[[paste0("El Salvador_primera_2_", p2)]] |
+                  yearly_wide[[paste0("El Salvador_postrera_0_", s0)]] |
+                  yearly_wide[[paste0("El Salvador_postrera_1_", s1)]]
+      1 / mean(any_trig, na.rm = TRUE)
+    }
+  ) |>
+  ungroup() |>
+  mutate(
+    min_rp = pmin(rp_gtm, rp_hnd, rp_slv),
+    max_rp = pmax(rp_gtm, rp_hnd, rp_slv),
+    all_rp_in_range = min_rp >= 3 & max_rp <= 5
+  )
+```
+
+```{r}
+#| label: fig-f1-vs-rp-scatter
+#| fig-cap: "Tradeoff between mean F1 score and minimum combined annual RP across countries. Each point represents a threshold configuration. The green shaded region shows configurations where all countries have RP between 3-5 years. The red star marks the unconstrained optimum; the blue star marks the best constrained configuration."
+#| fig-height: 5
+#| fig-width: 8
+
+# Find optimal points
+best_unconstrained <- full_results |> slice_max(f1_overall, n = 1)
+best_constrained <- full_results |> filter(all_rp_in_range) |> slice_max(f1_overall, n = 1)
+
+ggplot(full_results, aes(x = min_rp, y = f1_overall)) +
+  annotate("rect", xmin = 3, xmax = 5, ymin = -Inf, ymax = Inf,
+           fill = "green", alpha = 0.1) +
+  geom_point(aes(color = all_rp_in_range), alpha = 0.4, size = 1.5) +
+  geom_point(data = best_unconstrained, color = "red", size = 5, shape = 8, stroke = 2) +
+  geom_point(data = best_constrained, color = "blue", size = 5, shape = 8, stroke = 2) +
+  geom_vline(xintercept = c(3, 5), linetype = "dashed", color = "darkgreen", alpha = 0.7) +
+  scale_color_manual(values = c("FALSE" = "gray50", "TRUE" = "darkgreen"),
+                     labels = c("Outside [3,5]", "Within [3,5]")) +
+  scale_x_continuous(breaks = seq(1, 8, 0.5), limits = c(1.5, 6)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 100, suffix = "")) +
+  labs(
+    x = "Minimum Combined Annual RP Across Countries (years)",
+    y = "Mean F1 Score (%)",
+    color = "RP Constraint"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Optimization Results
+
+### Unconstrained Optimization
+
+When optimizing purely for F1 score without regard to trigger frequency:
+
+```{r}
+#| label: tbl-unconstrained
+#| tbl-cap: "Optimal thresholds when maximizing F1 without RP constraint"
+
+# Per-window unconstrained
+primera_only <- expand_grid(p0 = rp_grid, p1 = rp_grid, p2 = rp_grid) |>
+  rowwise() |>
+  mutate(
+    mean_f1 = mean(c(
+      f1_lookup[paste0("Guatemala_primera_0_", p0)],
+      f1_lookup[paste0("Guatemala_primera_1_", p1)],
+      f1_lookup[paste0("Guatemala_primera_2_", p2)],
+      f1_lookup[paste0("Honduras_primera_0_", p0)],
+      f1_lookup[paste0("Honduras_primera_1_", p1)],
+      f1_lookup[paste0("Honduras_primera_2_", p2)],
+      f1_lookup[paste0("El Salvador_primera_0_", p0)],
+      f1_lookup[paste0("El Salvador_primera_1_", p1)],
+      f1_lookup[paste0("El Salvador_primera_2_", p2)]
+    ))
+  ) |>
+  ungroup() |>
+  slice_max(mean_f1, n = 1)
+
+postrera_only <- expand_grid(s0 = rp_grid, s1 = rp_grid) |>
+  rowwise() |>
+  mutate(
+    mean_f1 = mean(c(
+      f1_lookup[paste0("Guatemala_postrera_0_", s0)],
+      f1_lookup[paste0("Guatemala_postrera_1_", s1)],
+      f1_lookup[paste0("Honduras_postrera_0_", s0)],
+      f1_lookup[paste0("Honduras_postrera_1_", s1)],
+      f1_lookup[paste0("El Salvador_postrera_0_", s0)],
+      f1_lookup[paste0("El Salvador_postrera_1_", s1)]
+    ))
+  ) |>
+  ungroup() |>
+  slice_max(mean_f1, n = 1)
+
+tibble(
+  Window = c("Primera (May-Aug)", "Postrera (Sep-Nov)"),
+  `LT0 Threshold` = c(paste0("RP", primera_only$p0), paste0("RP", postrera_only$s0)),
+  `LT1 Threshold` = c(paste0("RP", primera_only$p1), paste0("RP", postrera_only$s1)),
+  `LT2 Threshold` = c(paste0("RP", primera_only$p2), "—"),
+  `Mean F1` = c(primera_only$mean_f1, postrera_only$mean_f1)
+) |>
+  gt() |>
+  fmt_percent(columns = `Mean F1`, decimals = 1, scale_values = FALSE) |>
+  cols_align(align = "center", columns = -Window)
+```
+
+With these thresholds, the combined annual RP (across all leadtimes and windows) is approximately **1.8-2.0 years** — meaning the system would trigger in roughly half of all years.
+
+### Constrained Optimization (RP ∈ [3, 5])
+
+When we require that **all countries** have a combined annual RP between 3 and 5 years:
+
+```{r}
+#| label: tbl-constrained
+#| tbl-cap: "Optimal thresholds when constraining combined annual RP to [3, 5] years for all countries"
+
+tibble(
+  Window = c("Primera (May-Aug)", "Postrera (Sep-Nov)"),
+  `LT0 Threshold` = c(paste0("RP", best_constrained$p0), paste0("RP", best_constrained$s0)),
+  `LT1 Threshold` = c(paste0("RP", best_constrained$p1), paste0("RP", best_constrained$s1)),
+  `LT2 Threshold` = c(paste0("RP", best_constrained$p2), "—"),
+  `Mean F1` = c(best_constrained$f1_primera, best_constrained$f1_postrera)
+) |>
+  gt() |>
+  fmt_percent(columns = `Mean F1`, decimals = 1, scale_values = FALSE) |>
+  cols_align(align = "center", columns = -Window)
+```
+
+```{r}
+#| label: tbl-constrained-rp
+#| tbl-cap: "Combined annual RP by country with constrained optimal thresholds"
+
+tibble(
+  Country = c("Guatemala", "Honduras", "El Salvador"),
+  `Combined Annual RP (years)` = c(best_constrained$rp_gtm, best_constrained$rp_hnd, best_constrained$rp_slv)
+) |>
+  gt() |>
+  fmt_number(columns = `Combined Annual RP (years)`, decimals = 2) |>
+  cols_align(align = "center", columns = -Country)
+```
+
+## Comparison: Unconstrained vs Constrained
+
+```{r}
+#| label: fig-comparison-bar
+#| fig-cap: "Comparison of mean F1 scores between unconstrained and constrained optimal thresholds. Constraining RP to [3, 5] years reduces F1 by approximately 12-14 percentage points."
+#| fig-height: 4
+#| fig-width: 7
+
+tibble(
+  Scenario = rep(c("Unconstrained\n(RP ~2 yr)", "Constrained\n(RP 3-5 yr)"), 2),
+  Window = c("Primera", "Primera", "Postrera", "Postrera"),
+  F1 = c(primera_only$mean_f1, best_constrained$f1_primera,
+         postrera_only$mean_f1, best_constrained$f1_postrera)
+) |>
+  mutate(Scenario = fct_inorder(Scenario)) |>
+  ggplot(aes(x = Window, y = F1, fill = Scenario)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_text(aes(label = scales::percent(F1, accuracy = 0.1, scale = 100, suffix = "")),
+            position = position_dodge(width = 0.8), vjust = -0.5, size = 3.5) +
+  scale_y_continuous(limits = c(0, 0.7), labels = scales::percent_format(scale = 100, suffix = "")) +
+  scale_fill_manual(values = c("Unconstrained\n(RP ~2 yr)" = "#E41A1C",
+                               "Constrained\n(RP 3-5 yr)" = "#377EB8")) +
+  labs(
+    x = NULL,
+    y = "Mean F1 Score (%)",
+    fill = "Scenario"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank()
+  )
+```
+
+## Per-Country F1 with Constrained Thresholds
+
+The constrained optimal thresholds affect countries differently:
+
+```{r}
+#| label: fig-per-country-f1
+#| fig-cap: "F1 scores by country and window using the constrained optimal thresholds. Guatemala shows stronger Primera skill while El Salvador struggles with Primera but performs better for Postrera."
+#| fig-height: 4
+#| fig-width: 8
+
+# Extract per-country F1 for constrained optimal
+df_per_country <- tibble(
+  Country = rep(c("Guatemala", "Honduras", "El Salvador"), each = 2),
+  Window = rep(c("Primera", "Postrera"), 3),
+  F1 = c(
+    mean(c(f1_lookup[paste0("Guatemala_primera_0_", best_constrained$p0)],
+           f1_lookup[paste0("Guatemala_primera_1_", best_constrained$p1)],
+           f1_lookup[paste0("Guatemala_primera_2_", best_constrained$p2)])),
+    mean(c(f1_lookup[paste0("Guatemala_postrera_0_", best_constrained$s0)],
+           f1_lookup[paste0("Guatemala_postrera_1_", best_constrained$s1)])),
+    mean(c(f1_lookup[paste0("Honduras_primera_0_", best_constrained$p0)],
+           f1_lookup[paste0("Honduras_primera_1_", best_constrained$p1)],
+           f1_lookup[paste0("Honduras_primera_2_", best_constrained$p2)])),
+    mean(c(f1_lookup[paste0("Honduras_postrera_0_", best_constrained$s0)],
+           f1_lookup[paste0("Honduras_postrera_1_", best_constrained$s1)])),
+    mean(c(f1_lookup[paste0("El Salvador_primera_0_", best_constrained$p0)],
+           f1_lookup[paste0("El Salvador_primera_1_", best_constrained$p1)],
+           f1_lookup[paste0("El Salvador_primera_2_", best_constrained$p2)])),
+    mean(c(f1_lookup[paste0("El Salvador_postrera_0_", best_constrained$s0)],
+           f1_lookup[paste0("El Salvador_postrera_1_", best_constrained$s1)]))
+  )
+)
+
+ggplot(df_per_country, aes(x = Country, y = F1, fill = Window)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_text(aes(label = scales::percent(F1, accuracy = 0.1, scale = 100, suffix = "")),
+            position = position_dodge(width = 0.8), vjust = -0.5, size = 3.5) +
+  scale_y_continuous(limits = c(0, 0.7), labels = scales::percent_format(scale = 100, suffix = "")) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    x = NULL,
+    y = "Mean F1 Score (%)",
+    fill = "Window"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank()
+  )
+```
+
+## Threshold Configuration Heatmap
+
+The following heatmap shows how different Primera threshold combinations perform, with Postrera thresholds fixed at their constrained optimum:
+
+```{r}
+#| label: fig-primera-heatmap
+#| fig-cap: "Mean F1 score for Primera across all LT0/LT1 threshold combinations (LT2 fixed at RP5, Postrera fixed at constrained optimum). Green border indicates combinations meeting the RP [3, 5] constraint."
+#| fig-height: 5
+#| fig-width: 7
+
+# Grid with fixed LT2 and Postrera
+primera_heatmap <- expand_grid(p0 = rp_grid, p1 = rp_grid) |>
+  mutate(p2 = best_constrained$p2, s0 = best_constrained$s0, s1 = best_constrained$s1) |>
+  rowwise() |>
+  mutate(
+    f1_primera = mean(c(
+      f1_lookup[paste0("Guatemala_primera_0_", p0)],
+      f1_lookup[paste0("Guatemala_primera_1_", p1)],
+      f1_lookup[paste0("Guatemala_primera_2_", p2)],
+      f1_lookup[paste0("Honduras_primera_0_", p0)],
+      f1_lookup[paste0("Honduras_primera_1_", p1)],
+      f1_lookup[paste0("Honduras_primera_2_", p2)],
+      f1_lookup[paste0("El Salvador_primera_0_", p0)],
+      f1_lookup[paste0("El Salvador_primera_1_", p1)],
+      f1_lookup[paste0("El Salvador_primera_2_", p2)]
+    )),
+    min_rp = {
+      rp_vals <- c(
+        1 / mean(yearly_wide[[paste0("Guatemala_primera_0_", p0)]] |
+                 yearly_wide[[paste0("Guatemala_primera_1_", p1)]] |
+                 yearly_wide[[paste0("Guatemala_primera_2_", p2)]] |
+                 yearly_wide[[paste0("Guatemala_postrera_0_", s0)]] |
+                 yearly_wide[[paste0("Guatemala_postrera_1_", s1)]], na.rm = TRUE),
+        1 / mean(yearly_wide[[paste0("Honduras_primera_0_", p0)]] |
+                 yearly_wide[[paste0("Honduras_primera_1_", p1)]] |
+                 yearly_wide[[paste0("Honduras_primera_2_", p2)]] |
+                 yearly_wide[[paste0("Honduras_postrera_0_", s0)]] |
+                 yearly_wide[[paste0("Honduras_postrera_1_", s1)]], na.rm = TRUE),
+        1 / mean(yearly_wide[[paste0("El Salvador_primera_0_", p0)]] |
+                 yearly_wide[[paste0("El Salvador_primera_1_", p1)]] |
+                 yearly_wide[[paste0("El Salvador_primera_2_", p2)]] |
+                 yearly_wide[[paste0("El Salvador_postrera_0_", s0)]] |
+                 yearly_wide[[paste0("El Salvador_postrera_1_", s1)]], na.rm = TRUE)
+      )
+      min(rp_vals)
+    },
+    max_rp = {
+      rp_vals <- c(
+        1 / mean(yearly_wide[[paste0("Guatemala_primera_0_", p0)]] |
+                 yearly_wide[[paste0("Guatemala_primera_1_", p1)]] |
+                 yearly_wide[[paste0("Guatemala_primera_2_", p2)]] |
+                 yearly_wide[[paste0("Guatemala_postrera_0_", s0)]] |
+                 yearly_wide[[paste0("Guatemala_postrera_1_", s1)]], na.rm = TRUE),
+        1 / mean(yearly_wide[[paste0("Honduras_primera_0_", p0)]] |
+                 yearly_wide[[paste0("Honduras_primera_1_", p1)]] |
+                 yearly_wide[[paste0("Honduras_primera_2_", p2)]] |
+                 yearly_wide[[paste0("Honduras_postrera_0_", s0)]] |
+                 yearly_wide[[paste0("Honduras_postrera_1_", s1)]], na.rm = TRUE),
+        1 / mean(yearly_wide[[paste0("El Salvador_primera_0_", p0)]] |
+                 yearly_wide[[paste0("El Salvador_primera_1_", p1)]] |
+                 yearly_wide[[paste0("El Salvador_primera_2_", p2)]] |
+                 yearly_wide[[paste0("El Salvador_postrera_0_", s0)]] |
+                 yearly_wide[[paste0("El Salvador_postrera_1_", s1)]], na.rm = TRUE)
+      )
+      max(rp_vals)
+    }
+  ) |>
+  ungroup() |>
+  mutate(in_range = min_rp >= 3 & max_rp <= 5)
+
+ggplot(primera_heatmap, aes(x = factor(p0), y = factor(p1))) +
+  geom_tile(aes(fill = f1_primera), color = "white", linewidth = 0.5) +
+  geom_tile(data = primera_heatmap |> filter(in_range),
+            fill = NA, color = "darkgreen", linewidth = 1.5) +
+  geom_text(aes(label = scales::percent(f1_primera, accuracy = 1, scale = 100, suffix = "")),
+            size = 3) +
+  scale_fill_distiller(palette = "RdYlGn", direction = 1,
+                       labels = scales::percent_format(scale = 100, suffix = "")) +
+  labs(
+    x = "LT0 Threshold (RP years)",
+    y = "LT1 Threshold (RP years)",
+    fill = "Mean F1"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+```
+
+## Summary
+
+The optimization analysis reveals a clear tradeoff:
+
+- **Unconstrained optimization** selects the most sensitive thresholds (RP3 across all leadtimes), achieving F1 scores of 53% for Primera and 56% for Postrera, but triggering approximately every 2 years
+
+- **Constrained optimization** (RP 3-5 years) requires more conservative thresholds:
+  - Primera: LT0=RP`r best_constrained$p0`, LT1=RP`r best_constrained$p1`, LT2=RP`r best_constrained$p2`
+  - Postrera: LT0=RP`r best_constrained$s0`, LT1=RP`r best_constrained$s1`
+
+  This achieves F1 scores of `r scales::percent(best_constrained$f1_primera, accuracy = 0.1, scale = 100, suffix = "")`% for Primera and `r scales::percent(best_constrained$f1_postrera, accuracy = 0.1, scale = 100, suffix = "")`% for Postrera
+
+- **Country-level variation**: Guatemala shows stronger Primera skill (55%) while El Salvador struggles (26%). Postrera skill is more consistent across countries (40-47%)
+
+- **The RP constraint costs approximately 12-14 percentage points of F1** but ensures the trigger frequency aligns with the target 1-in-4 year return period

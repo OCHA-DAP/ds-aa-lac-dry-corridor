@@ -1,0 +1,686 @@
+---
+title: "ENSO & Forecast Reliability"
+---
+
+This chapter explores the relationship between ENSO strength and forecast reliability.
+
+**Key question**: Can we trust SEAS5 drought forecasts more when ENSO signal is strong?
+
+If the answer is yes, this has operational implications - we might weight the forecast more heavily during strong ENSO years and rely more on climatology during neutral conditions.
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+library(lubridate)
+library(cumulus)
+library(yardstick)
+library(gghdx)
+library(gt)
+gghdx()
+
+set.seed(42)
+```
+
+## Data Preparation
+
+```{r}
+#| label: load-data
+#| cache: true
+
+PRIMERA_MONTHS <- 5:8
+POSTRERA_MONTHS <- 9:11
+PRIMERA_ISSUED_MONTHS <- c(3, 4, 5)
+POSTRERA_ISSUED_MONTHS <- c(6, 7, 8, 9)
+
+AOI_PCODES <- c("HN07", "HN08", "SV11", "GT20")
+
+con <- pg_con()
+
+df_weights <- tbl(con, "polygon") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 1, pcode %in% AOI_PCODES) |>
+  select(pcode, iso3, name, seas5_n_upsampled_pixels) |>
+  collect()
+
+df_seas5_raw <- tbl(con, "seas5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(adm_level == 1, pcode %in% AOI_PCODES) |>
+  collect()
+
+df_era5_raw <- tbl(con, "era5") |>
+  mutate(across(pcode, as.character)) |>
+  filter(pcode %in% AOI_PCODES) |>
+  collect()
+
+DBI::dbDisconnect(con)
+
+# Load ONI data
+df_oni <- load_oni() |>
+  rename(year = yr, month = mon, oni = anom)
+
+# Process SEAS5 to seasonal totals
+df_seas5_mm <- df_seas5_raw |>
+  mutate(value_mm = days_in_month(valid_date) * mean)
+
+df_seas5_seasonal <- bind_rows(
+  seas5_aggregate_forecast(df_seas5_mm, value = "value_mm", valid_months = PRIMERA_MONTHS,
+                           by = c("iso3", "pcode", "issued_date")) |> mutate(window = "primera"),
+  seas5_aggregate_forecast(df_seas5_mm, value = "value_mm", valid_months = POSTRERA_MONTHS,
+                           by = c("iso3", "pcode", "issued_date")) |> mutate(window = "postrera")
+) |>
+  rename(fcst_mm = value_mm) |>
+  mutate(
+    year = year(issued_date),
+    issued_month = month(issued_date)
+  ) |>
+  filter(
+    (window == "primera" & issued_month %in% PRIMERA_ISSUED_MONTHS) |
+    (window == "postrera" & issued_month %in% POSTRERA_ISSUED_MONTHS)
+  )
+
+# Aggregate SEAS5 to country level
+df_fcst <- df_seas5_seasonal |>
+  left_join(df_weights |> select(pcode, seas5_n_upsampled_pixels), by = "pcode") |>
+  mutate(
+    country_aoi = case_when(
+      pcode == "GT20" ~ "Guatemala",
+      pcode %in% c("HN07", "HN08") ~ "Honduras",
+      pcode == "SV11" ~ "El Salvador"
+    )
+  ) |>
+  group_by(country_aoi, year, window, leadtime, issued_date) |>
+  summarise(
+    fcst_mm = weighted.mean(fcst_mm, w = seas5_n_upsampled_pixels),
+    .groups = "drop"
+  )
+
+# Process ERA5 to seasonal totals
+df_era5_monthly <- df_era5_raw |>
+  mutate(
+    year = year(valid_date),
+    month = month(valid_date),
+    value_mm = mean * days_in_month(valid_date)
+  )
+
+df_era5_seasonal <- bind_rows(
+  df_era5_monthly |>
+    filter(month %in% PRIMERA_MONTHS) |>
+    group_by(pcode, year) |>
+    summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "primera"),
+  df_era5_monthly |>
+    filter(month %in% POSTRERA_MONTHS) |>
+    group_by(pcode, year) |>
+    summarise(obs_mm = sum(value_mm), .groups = "drop") |>
+    mutate(window = "postrera")
+)
+
+# Aggregate ERA5 to country level
+df_obs <- df_era5_seasonal |>
+  left_join(df_weights |> select(pcode, seas5_n_upsampled_pixels), by = "pcode") |>
+  mutate(
+    country_aoi = case_when(
+      pcode == "GT20" ~ "Guatemala",
+      pcode %in% c("HN07", "HN08") ~ "Honduras",
+      pcode == "SV11" ~ "El Salvador"
+    )
+  ) |>
+  group_by(country_aoi, year, window) |>
+  summarise(
+    obs_mm = weighted.mean(obs_mm, w = seas5_n_upsampled_pixels),
+    .groups = "drop"
+  )
+
+# Join forecast and observations
+df_joined <- df_fcst |>
+  left_join(df_obs, by = c("country_aoi", "year", "window")) |>
+  filter(!is.na(obs_mm))
+```
+
+```{r}
+#| label: enso-classification
+
+# Classify ENSO phase for each year
+# Use JJA ONI for Postrera (Sep-Nov season)
+df_oni_jja <- df_oni |>
+  filter(month %in% 6:8) |>
+  group_by(year) |>
+  summarise(oni = mean(oni, na.rm = TRUE), .groups = "drop") |>
+  mutate(
+    enso_phase = case_when(
+      oni >= 0.5 ~ "El Niño",
+      oni <= -0.5 ~ "La Niña",
+      TRUE ~ "Neutral"
+    ),
+    enso_phase = factor(enso_phase, levels = c("El Niño", "Neutral", "La Niña"))
+  )
+
+# Join ENSO to data
+df_joined_enso <- df_joined |>
+  left_join(df_oni_jja, by = "year") |>
+  filter(!is.na(enso_phase))
+
+# Count years by ENSO phase
+df_oni_jja |>
+  filter(year >= 1981, year <= 2024) |>
+  count(enso_phase) |>
+  gt() |>
+  tab_header(title = "Years by ENSO Phase (1981-2024, JJA ONI)")
+```
+
+## Drought Rate by ENSO Phase
+
+First, let's confirm that ENSO phase is predictive of drought - this is the climate signal we're trying to leverage.
+
+```{r}
+#| label: drought-by-enso
+#| fig-width: 10
+#| fig-height: 5
+
+# RP threshold function
+calc_rp_threshold <- function(x, rp_target = 4, direction = -1) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n < 3) return(NA_real_)
+  ranks <- rank(x * -direction, ties.method = "average")
+  rp <- (n + 1) / ranks
+  approx(rp, x, xout = rp_target, rule = 2)$y
+}
+
+# Calculate drought threshold (RP=4) for observations
+obs_thresholds <- df_joined_enso |>
+  filter(year >= 1981, year <= 2024, window == "postrera") |>
+  group_by(country_aoi) |>
+  summarise(obs_thresh = calc_rp_threshold(obs_mm, 4, -1), .groups = "drop")
+
+# Classify observed droughts
+df_drought_enso <- df_joined_enso |>
+  filter(year >= 1981, year <= 2024, window == "postrera", leadtime == 0) |>
+  left_join(obs_thresholds, by = "country_aoi") |>
+  mutate(obs_drought = obs_mm <= obs_thresh) |>
+  distinct(country_aoi, year, enso_phase, obs_drought, oni)
+
+# Drought rate by ENSO phase
+df_drought_rate <- df_drought_enso |>
+  group_by(country_aoi, enso_phase) |>
+  summarise(
+    n_years = n(),
+    n_drought = sum(obs_drought),
+    drought_rate = mean(obs_drought),
+    .groups = "drop"
+  )
+
+df_drought_rate |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = enso_phase, y = drought_rate, fill = enso_phase)) +
+  geom_col() +
+  geom_text(aes(label = sprintf("%.0f%%\n(%d/%d)", drought_rate * 100, n_drought, n_years)),
+            vjust = -0.2, size = 3) +
+  facet_wrap(~country_aoi) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.6)) +
+  scale_fill_manual(values = c("El Niño" = "#E31A1C", "Neutral" = "#33A02C", "La Niña" = "#1F78B4")) +
+  labs(
+    title = "Postrera Drought Rate by ENSO Phase",
+    subtitle = "Drought = RP ≥ 4 based on ERA5.",
+    x = NULL, y = "Drought Rate", fill = "ENSO Phase"
+  ) +
+  theme(legend.position = "none")
+```
+
+El Niño years have substantially higher drought rates. This is real climate signal.
+
+## Forecast Error vs ENSO Strength
+
+The key question: **Does forecast accuracy improve when ENSO signal is strong?**
+
+If yes, we could weight the forecast more heavily during strong ENSO years.
+
+```{r}
+#| label: forecast-error-calc
+
+# Calculate forecast errors for Postrera LT1 (the harder case)
+df_errors <- df_joined_enso |>
+  filter(year >= 1981, year <= 2024, window == "postrera", leadtime == 1) |>
+  group_by(country_aoi) |>
+  mutate(
+    # Rank within each country's distribution
+    obs_rank = rank(obs_mm),
+    fcst_rank = rank(fcst_mm),
+    n_years = n(),
+    # Errors
+    abs_error = abs(fcst_mm - obs_mm),
+    rank_error = abs(obs_rank - fcst_rank),
+    # ENSO strength (absolute value)
+    oni_abs = abs(oni)
+  ) |>
+  ungroup()
+```
+
+### Scatter: Rank Error vs |ONI|
+
+```{r}
+#| label: error-vs-oni-scatter
+#| fig-width: 10
+#| fig-height: 5
+
+df_errors |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = oni_abs, y = rank_error, color = enso_phase)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(aes(group = 1), method = "lm", se = TRUE, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0.5, linetype = "dotted", color = "grey50") +
+  facet_wrap(~country_aoi) +
+  scale_color_manual(values = c("El Niño" = "#E31A1C", "Neutral" = "#33A02C", "La Niña" = "#1F78B4")) +
+  labs(
+    title = "Postrera LT1: Forecast Rank Error vs ENSO Strength",
+    subtitle = "If strong ENSO = better forecast, we'd expect downward slope. Dotted line = |ONI| = 0.5 threshold.",
+    x = "|ONI| (ENSO Strength)",
+    y = "Rank Error (positions)",
+    color = "ENSO Phase"
+  )
+```
+
+### Correlation: |ONI| vs Forecast Accuracy
+
+```{r}
+#| label: oni-error-correlation
+
+# Correlation between |ONI| and rank error
+df_oni_corr <- df_errors |>
+  group_by(country_aoi) |>
+  summarise(
+    n = n(),
+    corr_oni_rank_error = cor(oni_abs, rank_error, method = "spearman"),
+    corr_oni_abs_error = cor(oni_abs, abs_error, method = "spearman"),
+    .groups = "drop"
+  )
+
+df_oni_corr |>
+  gt() |>
+  fmt_number(columns = starts_with("corr"), decimals = 3) |>
+  cols_label(
+    country_aoi = "Country",
+    n = "N Years",
+    corr_oni_rank_error = "Corr: |ONI| vs Rank Error",
+    corr_oni_abs_error = "Corr: |ONI| vs Abs Error"
+  ) |>
+  tab_header(
+    title = "Does Strong ENSO = Lower Forecast Error?",
+    subtitle = "Negative correlation would indicate better forecasts during strong ENSO"
+  )
+```
+
+### Which Years Are in Each Category?
+
+First, let's see which specific years fall into each ENSO strength category.
+
+```{r}
+#| label: years-by-strength
+
+# Show which years are in each category
+df_errors |>
+  distinct(year, oni, oni_abs, enso_phase) |>
+  mutate(
+    enso_strength = case_when(
+      oni_abs >= 1.0 ~ "Strong",
+      oni_abs >= 0.5 ~ "Moderate",
+      TRUE ~ "Weak/Neutral"
+    )
+  ) |>
+  arrange(desc(oni_abs)) |>
+  select(year, oni, enso_phase, enso_strength) |>
+  gt() |>
+  fmt_number(columns = oni, decimals = 2) |>
+  tab_header(title = "Years by ENSO Strength (sorted by |ONI|)")
+```
+
+### Skill by ENSO Strength Category
+
+```{r}
+#| label: skill-by-enso-strength
+#| fig-width: 10
+#| fig-height: 5
+
+# Categorize by ENSO strength
+df_errors_cat <- df_errors |>
+  mutate(
+    enso_strength = case_when(
+      oni_abs >= 1.0 ~ "Strong (|ONI| ≥ 1.0)",
+      oni_abs >= 0.5 ~ "Moderate (0.5 ≤ |ONI| < 1.0)",
+      TRUE ~ "Weak/Neutral (|ONI| < 0.5)"
+    ),
+    enso_strength = factor(enso_strength, levels = c(
+      "Strong (|ONI| ≥ 1.0)",
+      "Moderate (0.5 ≤ |ONI| < 1.0)",
+      "Weak/Neutral (|ONI| < 0.5)"
+    ))
+  )
+
+# Calculate Spearman correlation by ENSO strength
+df_skill_by_strength <- df_errors_cat |>
+  group_by(country_aoi, enso_strength) |>
+  summarise(
+    n = n(),
+    spearman = cor(fcst_mm, obs_mm, method = "spearman"),
+    mean_rank_error = mean(rank_error),
+    .groups = "drop"
+  )
+
+df_skill_by_strength |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = enso_strength, y = spearman, fill = enso_strength)) +
+  geom_col() +
+  geom_hline(yintercept = 0, color = "grey40") +
+  geom_text(aes(label = sprintf("%.2f\n(n=%d)", spearman, n)), vjust = -0.2, size = 3) +
+  facet_wrap(~country_aoi) +
+  scale_y_continuous(limits = c(-0.5, 1)) +
+  scale_fill_manual(values = c(
+    "Strong (|ONI| ≥ 1.0)" = "#7B3294",
+    "Moderate (0.5 ≤ |ONI| < 1.0)" = "#C2A5CF",
+    "Weak/Neutral (|ONI| < 0.5)" = "#D9F0D3"
+  )) +
+  labs(
+    title = "Postrera LT1: Spearman Correlation by ENSO Strength",
+    subtitle = "Does ranking skill improve during strong ENSO years?",
+    x = NULL, y = "Spearman Correlation"
+  ) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 15, hjust = 1))
+```
+
+```{r}
+#| label: skill-strength-table
+
+df_skill_by_strength |>
+  select(country_aoi, enso_strength, n, spearman, mean_rank_error) |>
+  pivot_wider(
+    names_from = enso_strength,
+    values_from = c(n, spearman, mean_rank_error),
+    names_glue = "{enso_strength}_{.value}"
+  ) |>
+  gt() |>
+  fmt_number(columns = contains("spearman"), decimals = 2) |>
+  fmt_number(columns = contains("rank_error"), decimals = 1) |>
+  tab_header(title = "Forecast Skill by ENSO Strength (Postrera LT1)")
+```
+
+### Simpler Test: Active ENSO vs Neutral
+
+The 3-way split has very small samples (n=7). Let's try a simpler 2-way split with better sample sizes.
+
+```{r}
+#| label: active-vs-neutral
+
+df_errors_binary <- df_errors |>
+  mutate(
+    enso_active = if_else(oni_abs >= 0.5, "Active ENSO (|ONI| ≥ 0.5)", "Neutral (|ONI| < 0.5)")
+  )
+
+# Skill by Active vs Neutral
+df_skill_binary <- df_errors_binary |>
+  group_by(country_aoi, enso_active) |>
+  summarise(
+    n = n(),
+    spearman = cor(fcst_mm, obs_mm, method = "spearman"),
+    mean_rank_error = mean(rank_error),
+    .groups = "drop"
+  )
+
+df_skill_binary |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = enso_active, y = spearman, fill = enso_active)) +
+  geom_col() +
+  geom_hline(yintercept = 0, color = "grey40") +
+  geom_text(aes(label = sprintf("r=%.2f\n(n=%d)", spearman, n)), vjust = -0.2, size = 3.5) +
+  facet_wrap(~country_aoi) +
+  scale_y_continuous(limits = c(-0.3, 0.8)) +
+  scale_fill_manual(values = c("Active ENSO (|ONI| ≥ 0.5)" = "#7B3294", "Neutral (|ONI| < 0.5)" = "#5AAE61")) +
+  labs(
+    title = "Postrera LT1: Spearman Correlation - Active ENSO vs Neutral",
+    subtitle = "More robust sample sizes. Is there a clear difference?",
+    x = NULL, y = "Spearman Correlation"
+  ) +
+  theme(legend.position = "none")
+```
+
+```{r}
+#| label: binary-table
+
+df_skill_binary |>
+  gt() |>
+  fmt_number(columns = spearman, decimals = 2) |>
+  fmt_number(columns = mean_rank_error, decimals = 1) |>
+  cols_label(
+    country_aoi = "Country",
+    enso_active = "ENSO State",
+    n = "N Years",
+    spearman = "Spearman",
+    mean_rank_error = "Mean Rank Error"
+  ) |>
+  tab_header(title = "Active ENSO vs Neutral: Forecast Skill Comparison")
+```
+
+### Scatter: Forecast vs Observed by ENSO Strength (with Year Labels)
+
+Let's visualize the actual forecast vs observed values, labeled by year and colored by ENSO strength.
+
+```{r}
+#| label: scatter-by-strength-labeled
+#| fig-width: 12
+#| fig-height: 5
+
+library(ggrepel)
+
+df_errors_cat |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = obs_mm, y = fcst_mm, color = enso_strength, label = year)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(size = 2, alpha = 0.8) +
+  geom_text_repel(size = 2.5, max.overlaps = 20) +
+  facet_wrap(~country_aoi) +
+  scale_color_manual(values = c(
+    "Strong (|ONI| ≥ 1.0)" = "#7B3294",
+    "Moderate (0.5 ≤ |ONI| < 1.0)" = "#E66101",
+    "Weak/Neutral (|ONI| < 0.5)" = "#5AAE61"
+  )) +
+  labs(
+    title = "Postrera LT1: Forecast vs Observed by ENSO Strength",
+    subtitle = "Dashed line = perfect forecast. Look for patterns by color.",
+    x = "Observed (mm)", y = "Forecast (mm)",
+    color = "ENSO Strength"
+  )
+```
+
+## Anomaly RMSE vs ENSO Signal
+
+A different approach: instead of correlation, look at whether the forecast captures the **magnitude** of anomalies during ENSO events.
+
+```{r}
+#| label: anomaly-calc
+
+# Calculate anomalies from climatology
+df_anomalies <- df_errors |>
+  group_by(country_aoi) |>
+  mutate(
+    # Climatological mean
+    obs_clim = mean(obs_mm),
+    fcst_clim = mean(fcst_mm),
+    # Anomalies
+    obs_anom = obs_mm - obs_clim,
+    fcst_anom = fcst_mm - fcst_clim,
+    # Anomaly error
+    anom_error = fcst_anom - obs_anom,
+    abs_anom_error = abs(anom_error),
+    # Signal strength (observed anomaly magnitude)
+    obs_signal = abs(obs_anom)
+  ) |>
+  ungroup()
+```
+
+### Does Forecast Error Scale with Signal?
+
+If the model captures ENSO signal well, larger observed anomalies should have proportionally similar errors (not worse).
+
+```{r}
+#| label: error-vs-signal-scatter
+#| fig-width: 10
+#| fig-height: 5
+
+df_anomalies |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = obs_signal, y = abs_anom_error, color = enso_phase)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(aes(group = 1), method = "lm", se = TRUE, color = "black", linetype = "dashed") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dotted", color = "grey50") +
+  facet_wrap(~country_aoi) +
+  scale_color_manual(values = c("El Niño" = "#E31A1C", "Neutral" = "#33A02C", "La Niña" = "#1F78B4")) +
+  labs(
+    title = "Anomaly Error vs Signal Strength",
+    subtitle = "Dotted line = error equals signal (no skill). Below = forecast adds value.",
+    x = "Observed Anomaly Magnitude (mm)",
+    y = "Absolute Anomaly Error (mm)",
+    color = "ENSO Phase"
+  )
+```
+
+### RMSE by ENSO Strength
+
+```{r}
+#| label: rmse-by-enso
+
+df_rmse_by_enso <- df_anomalies |>
+  mutate(
+    enso_active = if_else(oni_abs >= 0.5, "Active ENSO", "Neutral")
+  ) |>
+  group_by(country_aoi, enso_active) |>
+  summarise(
+    n = n(),
+    rmse_mm = sqrt(mean(anom_error^2)),
+    mean_signal = mean(obs_signal),
+    # Normalized RMSE (relative to signal)
+    nrmse = rmse_mm / mean_signal,
+    .groups = "drop"
+  )
+
+df_rmse_by_enso |>
+  gt() |>
+  fmt_number(columns = c(rmse_mm, mean_signal), decimals = 0) |>
+  fmt_number(columns = nrmse, decimals = 2) |>
+  cols_label(
+    country_aoi = "Country",
+    enso_active = "ENSO State",
+    n = "N",
+    rmse_mm = "RMSE (mm)",
+    mean_signal = "Mean Signal (mm)",
+    nrmse = "NRMSE (RMSE/Signal)"
+  ) |>
+  tab_header(
+    title = "Anomaly RMSE: Active ENSO vs Neutral",
+    subtitle = "Lower NRMSE = better skill relative to signal strength"
+  )
+```
+
+```{r}
+#| label: rmse-comparison-plot
+#| fig-width: 10
+#| fig-height: 4
+
+df_rmse_by_enso |>
+  mutate(country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))) |>
+  ggplot(aes(x = enso_active, y = nrmse, fill = enso_active)) +
+  geom_col() +
+  geom_text(aes(label = sprintf("%.2f", nrmse)), vjust = -0.3, size = 4) +
+  facet_wrap(~country_aoi) +
+  scale_fill_manual(values = c("Active ENSO" = "#7B3294", "Neutral" = "#5AAE61")) +
+  labs(
+    title = "Normalized RMSE: Active ENSO vs Neutral",
+    subtitle = "NRMSE = RMSE / Mean Signal. Lower = better skill relative to anomaly magnitude.",
+    x = NULL, y = "NRMSE"
+  ) +
+  theme(legend.position = "none")
+```
+
+## What About Overall Skill Coming from ENSO?
+
+A different question: Does the model's overall skill come from correctly predicting the **average** conditions during ENSO years, rather than individual year accuracy?
+
+```{r}
+#| label: mean-by-phase
+
+# Compare mean forecast vs mean observed by ENSO phase
+df_means_by_phase <- df_errors |>
+  group_by(country_aoi, enso_phase) |>
+  summarise(
+    n = n(),
+    mean_obs = mean(obs_mm),
+    mean_fcst = mean(fcst_mm),
+    .groups = "drop"
+  )
+
+df_means_by_phase |>
+  pivot_longer(cols = c(mean_obs, mean_fcst), names_to = "type", values_to = "mm") |>
+  mutate(
+    type = if_else(type == "mean_obs", "Observed", "Forecast"),
+    country_aoi = factor(country_aoi, levels = c("Guatemala", "Honduras", "El Salvador"))
+  ) |>
+  ggplot(aes(x = enso_phase, y = mm, fill = type)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~country_aoi) +
+  scale_fill_manual(values = c("Observed" = "#1F78B4", "Forecast" = "#E31A1C")) +
+  labs(
+    title = "Mean Rainfall by ENSO Phase: Forecast vs Observed",
+    subtitle = "Does SEAS5 correctly rank the phases on average?",
+    x = NULL, y = "Mean Rainfall (mm)", fill = NULL
+  )
+```
+
+```{r}
+#| label: phase-ordering
+
+# Check if forecast correctly orders phases
+df_means_by_phase |>
+  arrange(country_aoi, mean_obs) |>
+  group_by(country_aoi) |>
+  mutate(
+    obs_order = row_number(),
+    fcst_order = rank(mean_fcst)
+  ) |>
+  select(country_aoi, enso_phase, mean_obs, obs_order, mean_fcst, fcst_order) |>
+  gt() |>
+  fmt_number(columns = c(mean_obs, mean_fcst), decimals = 0) |>
+  tab_header(
+    title = "ENSO Phase Ordering: Does Forecast Match Observed?",
+    subtitle = "Rank 1 = driest phase"
+  )
+```
+
+## Conclusion
+
+**The hypothesis that "ENSO = more trustworthy forecast" is NOT supported by the data.**
+
+The simpler binary comparison (with better sample sizes) shows:
+
+| Country | Active ENSO (n=14) | Neutral (n=30) | Difference |
+|---------|-------------------|----------------|------------|
+| El Salvador | r=0.46 | r=0.56 | Neutral better |
+| Guatemala | r=0.20 | r=0.55 | **Neutral much better** |
+| Honduras | r=0.48 | r=0.53 | Similar |
+
+**Key finding**: Neutral years have equal or better forecast skill than ENSO-active years. Guatemala shows the largest difference - forecasts perform much worse during active ENSO (r=0.20 vs r=0.55).
+
+### Why might ENSO-active years have worse (not better) forecasts?
+
+1. **Non-linear teleconnections**: The ENSO-Central America relationship may have high year-to-year variability. Some El Niño years are very dry, others (like 2014) are unexpectedly wet.
+
+2. **Forecast spread**: During ENSO events, ensemble spread may be larger, making the ensemble mean less reliable.
+
+3. **The model captures the mean shift but not the variance**: SEAS5 correctly predicts El Niño = drier on average (see phase ordering table), but within El Niño years, it cannot reliably rank individual years.
+
+### Operational implications
+
+- **Cannot assume "strong ENSO signal = more trustworthy forecast"** - the data doesn't support this
+- **Neutral years actually have the most reliable forecasts** for ranking
+- **During ENSO events**: The forecast correctly indicates elevated (El Niño) or reduced (La Niña) drought risk on average, but specific year predictions are less reliable
+
+This finding challenges the intuition that predictable forcing (ENSO) translates to more accurate forecasts.
