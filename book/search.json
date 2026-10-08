@@ -4,7 +4,7 @@
     "href": "index.html",
     "title": "Anticipatory Action Drought Trigger Development & Forecast Evaluation",
     "section": "",
-    "text": "Overview\nThis book documents the forecast evaluation and trigger design process for drought anticipatory action in the Central American Dry Corridor (Guatemala, Honduras, El Salvador) for the 2026 season.\n\nPart I: Forecast Skill Evaluations\nThese analyses were conducted based on the framework as it stood at the time of writing, with a primary focus on Guatemala (Chiquimula) and the central question of which seasonal forecast system — ECMWF SEAS5 or INSIVUMEH — to use for drought prediction. The evaluation spans binary and continuous metrics, multiple observation sources, temporal stability, and internal consistency diagnostics.\n\n\nPart II: 2026 Trigger Design & Tuning\nBuilding on the forecast evaluation findings, this section presents a more detailed analysis to refine the operational trigger configurations for 2026. A common methodology was developed — systematic exploration of areas of interest, leadtime selection, and threshold optimization, grounded in both historical rainfall skill (ERA5) and humanitarian impact records (EM-DAT, CERF) — and applied consistently across all three countries. This process led to updated AOI definitions and forecast skill benchmarks that differ from the initial framework assumptions. Country-specific trigger configurations are recommended for Honduras, El Salvador, and Guatemala. For Guatemala, a parallel analysis was conducted for the StartNetwork programme, covering distinct AOIs and exploring multiple trigger variants to accommodate different operational scenarios and partner priorities.",
+    "text": "← Dry Corridor drought AA\n\n\n\n\n\nOverview\nThis book documents the forecast evaluation and trigger design process for drought anticipatory action in the Central American Dry Corridor (Guatemala, Honduras, El Salvador) for the 2026 season.\n\nPart I: Forecast Skill Evaluations\nThese analyses were conducted based on the framework as it stood at the time of writing, with a primary focus on Guatemala (Chiquimula) and the central question of which seasonal forecast system — ECMWF SEAS5 or INSIVUMEH — to use for drought prediction. The evaluation spans binary and continuous metrics, multiple observation sources, temporal stability, and internal consistency diagnostics.\n\n\nPart II: 2026 Trigger Design & Tuning\nBuilding on the forecast evaluation findings, this section presents a more detailed analysis to refine the operational trigger configurations for 2026. A common methodology was developed — systematic exploration of areas of interest, leadtime selection, and threshold optimization, grounded in both historical rainfall skill (ERA5) and humanitarian impact records (EM-DAT, CERF) — and applied consistently across all three countries. This process led to updated AOI definitions and forecast skill benchmarks that differ from the initial framework assumptions. Country-specific trigger configurations are recommended for Honduras, El Salvador, and Guatemala. For Guatemala, a parallel analysis was conducted for the StartNetwork programme, covering distinct AOIs and exploring multiple trigger variants to accommodate different operational scenarios and partner priorities.",
     "crumbs": [
       "Overview"
     ]
@@ -931,6 +931,105 @@
     "crumbs": [
       "2026 Situation & Mission Support",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>2026 Situation Summary</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html",
+    "href": "14_season_review_2026.html",
+    "title": "11  2026 Season Review",
+    "section": "",
+    "text": "11.1 Intro\nDraft: the narrative under Key points is still to be written.\nThe anticipatory action framework for drought in the Central American Dry Corridor (CADC) covers Guatemala, Honduras and El Salvador in 2026. It was developed by the regional and national partners with the Centre for Humanitarian Data (CHD) and combines pre-agreed financing, pre-selected interventions and a trigger based on the ECMWF SEAS5 seasonal rainfall forecast. Two seasons are monitored: Primera (May–August, MJJA) and Postrera (September–November, SON).\nThe framework was activated in all three countries in March 2026: the SEAS5 forecast of Primera rainfall published on 5 March met the threshold in Guatemala, Honduras and El Salvador. A country’s funds are released once, by whichever monitoring moment meets its threshold first, so the forecasts after March are reported here for information only.\nThis review does for all three countries what the 2025 review did after the Guatemala activation. It compares the rainfall that was observed over each area of interest (AOI) with the historical record and with the forecast that activated the framework, and it compiles the forecasts as they stood at each monitoring moment. Observed rainfall is from ERA5 and is available through September 2026.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#intro",
+    "href": "14_season_review_2026.html#intro",
+    "title": "11  2026 Season Review",
+    "section": "",
+    "text": "Country\nArea of interest for the trigger\n\n\n\n\nGuatemala\nChiquimula, Jalapa, El Progreso, Zacapa (area-weighted)\n\n\nHonduras\nEl Paraíso, Francisco Morazán (area-weighted)\n\n\nEl Salvador\nNational average (activities target Ahuachapán and Santa Ana)",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#key-points",
+    "href": "14_season_review_2026.html#key-points",
+    "title": "11  2026 Season Review",
+    "section": "11.2 Key points",
+    "text": "11.2 Key points\n\nGuatemala: observed Primera rainfall was 497 mm, 35% below the 1991–2024 average. That is the driest of 35 years (return period 1 in 36 or rarer). The March forecast that activated the framework was 593 mm against a threshold of 639 mm (return period 1 in 18.0 among March forecasts).\nHonduras: observed Primera rainfall was 423 mm, 39% below the 1991–2024 average. That is the 2nd driest of 35 years (return period 1 in 18.0). The March forecast that activated the framework was 416 mm against a threshold of 472 mm (return period 1 in 18.0 among March forecasts).\nEl Salvador: observed Primera rainfall was 436 mm, 51% below the 1991–2024 average. That is the driest of 35 years (return period 1 in 36 or rarer). The March forecast that activated the framework was 574 mm against a threshold of 685 mm (return period 1 in 18.0 among March forecasts).\n\nTo be written once the numbers are in: one or two sentences on whether the season was as dry as the March forecast indicated, and how that differed between the three countries.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#forecast-at-activation-and-the-season-that-followed",
+    "href": "14_season_review_2026.html#forecast-at-activation-and-the-season-that-followed",
+    "title": "11  2026 Season Review",
+    "section": "11.3 Forecast at activation and the season that followed",
+    "text": "11.3 Forecast at activation and the season that followed\n\n\n\n\nTable 11.1: Primera 2026: SEAS5 forecast issued in March and observed rainfall (ERA5), each against its own 1991–2024 record.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCountry\nForecast at activation (mm)\nThreshold (mm)\nForecast vs average\nForecast return period\nObserved months\nObserved (mm)\nObserved vs average\nObserved rank\nObserved return period\n\n\n\n\nGuatemala\n593\n639\n18% below\n1 in 18.0\nMay–August\n497\n35% below\ndriest of 35\n1 in 36 or rarer\n\n\nHonduras\n416\n472\n24% below\n1 in 18.0\nMay–August\n423\n39% below\n2nd driest of 35\n1 in 18.0\n\n\nEl Salvador\n574\n685\n28% below\n1 in 18.0\nMay–August\n436\n51% below\ndriest of 35\n1 in 36 or rarer\n\n\n\n\n\n\n\n\nForecast and observed totals are not compared in millimetres, because SEAS5 and ERA5 have different climatologies. Each is placed in its own record instead: the forecast among forecasts issued in the same month of 1991–2024, the observed total among observed seasons of 1991–2024. The return periods are empirical, and with 35 years they cannot distinguish anything rarer than 1 in 36.\n\n\n\n\n\n\n\n\nFigure 11.1: Forecast at the activation moment against the season that was then observed, every year since 1991.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#observed-rainfall",
+    "href": "14_season_review_2026.html#observed-rainfall",
+    "title": "11  2026 Season Review",
+    "section": "11.4 Observed rainfall",
+    "text": "11.4 Observed rainfall\n\n\n\n\nTable 11.2: Observed rainfall over each AOI in 2026 (ERA5), against 1991–2024.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSeason\nMonths\nCountry\nObserved (mm)\nAverage (mm)\nvs average\nRank\nReturn period\n\n\n\n\nPrimera\nMay–August\nGuatemala\n497\n767\n35% below\ndriest of 35\n1 in 36 or rarer\n\n\nPrimera\nMay–August\nHonduras\n423\n698\n39% below\n2nd driest of 35\n1 in 18.0\n\n\nPrimera\nMay–August\nEl Salvador\n436\n895\n51% below\ndriest of 35\n1 in 36 or rarer\n\n\nPostrera\nSeptember (season to date)\nGuatemala\n168\n248\n32% below\n5th driest of 35\n1 in 7.2\n\n\nPostrera\nSeptember (season to date)\nHonduras\n163\n220\n26% below\n11th driest of 35\n1 in 3.3\n\n\nPostrera\nSeptember (season to date)\nEl Salvador\n191\n307\n38% below\n3rd driest of 35\n1 in 12.0\n\n\n\n\n\n\n\n\nA season still in progress is compared like for like: the months observed so far against the same months in every other year.\n\n\n\n\n\n\n\n\nFigure 11.2\n\n\n\n\n\n\n\n\n\n\n\n\n\nFigure 11.3\n\n\n\n\n\n\n\n\n\n\n\n\n\nFigure 11.4: Monthly rainfall in the review year against the average for each month.\n\n\n\n\n\n\n11.4.1 Observational zoom-in\nThe trigger areas are averages. The table below gives the same statistics for the individual departments: those that make up the Guatemala and Honduras AOIs, and the two departments targeted in El Salvador, where the trigger itself uses the national average.\n\n\n\n\nTable 11.3: Observed rainfall by department in 2026 (ERA5), against 1991–2024.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSeason\nMonths\nCountry\nDepartment\nObserved (mm)\nvs average\nRank\nReturn period\n\n\n\n\nPrimera\nMay–August\nGuatemala\nChiquimula\n549\n34% below\n2nd driest of 35\n1 in 18.0\n\n\nPrimera\nMay–August\nGuatemala\nEl Progreso\n360\n44% below\ndriest of 35\n1 in 36 or rarer\n\n\nPrimera\nMay–August\nGuatemala\nJalapa\n346\n49% below\ndriest of 35\n1 in 36 or rarer\n\n\nPrimera\nMay–August\nGuatemala\nZacapa\n661\n23% below\n3rd driest of 35\n1 in 12.0\n\n\nPrimera\nMay–August\nHonduras\nEl Paraiso\n446\n32% below\n3rd driest of 35\n1 in 12.0\n\n\nPrimera\nMay–August\nHonduras\nFrancisco Morazan\n404\n45% below\n2nd driest of 35\n1 in 18.0\n\n\nPrimera\nMay–August\nEl Salvador\nAhuachapán\n454\n55% below\ndriest of 35\n1 in 36 or rarer\n\n\nPrimera\nMay–August\nEl Salvador\nSanta Ana\n298\n52% below\ndriest of 35\n1 in 36 or rarer\n\n\nPostrera\nSeptember (season to date)\nGuatemala\nChiquimula\n171\n39% below\n3rd driest of 35\n1 in 12.0\n\n\nPostrera\nSeptember (season to date)\nGuatemala\nEl Progreso\n158\n28% below\n7th driest of 35\n1 in 5.1\n\n\nPostrera\nSeptember (season to date)\nGuatemala\nJalapa\n145\n35% below\n3rd driest of 35\n1 in 12.0\n\n\nPostrera\nSeptember (season to date)\nGuatemala\nZacapa\n190\n26% below\n7th driest of 35\n1 in 5.1\n\n\nPostrera\nSeptember (season to date)\nHonduras\nEl Paraiso\n159\n16% below\n14th driest of 35\n1 in 2.6\n\n\nPostrera\nSeptember (season to date)\nHonduras\nFrancisco Morazan\n166\n33% below\n8th driest of 35\n1 in 4.5\n\n\nPostrera\nSeptember (season to date)\nEl Salvador\nAhuachapán\n235\n35% below\n3rd driest of 35\n1 in 12.0\n\n\nPostrera\nSeptember (season to date)\nEl Salvador\nSanta Ana\n145\n37% below\n3rd driest of 35\n1 in 12.0",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#forecasts",
+    "href": "14_season_review_2026.html#forecasts",
+    "title": "11  2026 Season Review",
+    "section": "11.5 Forecasts",
+    "text": "11.5 Forecasts\nThe forecasts are compiled below in reverse chronological order, as they stood at each monitoring moment. All three countries activated at the March moment. A threshold met at a later moment had no further operational consequence and is shown to see whether later forecasts agreed with the one that activated the framework.\n\n\n\n\nTable 11.4: SEAS5 forecast of seasonal rainfall at each 2026 monitoring moment. Average and return period are relative to forecasts issued in the same month of 1991–2024.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSeason\nIssued\nCountry\nForecast (mm)\nThreshold (mm)\nStatus\nvs average\nReturn period\n\n\n\n\nPostrera\nSeptember 2026\nGuatemala\n288\n386\nThreshold met\n38% below\n1 in 36 or rarer\n\n\nPostrera\nSeptember 2026\nHonduras\n232\n319\nThreshold met\n45% below\n1 in 36 or rarer\n\n\nPostrera\nSeptember 2026\nEl Salvador\n357\n497\nThreshold met\n39% below\n1 in 36 or rarer\n\n\nPostrera\nAugust 2026\nGuatemala\n327\n367\nThreshold met\n26% below\n1 in 18.0\n\n\nPostrera\nAugust 2026\nHonduras\n259\n319\nThreshold met\n35% below\n1 in 36 or rarer\n\n\nPostrera\nAugust 2026\nEl Salvador\n392\n488\nThreshold met\n32% below\n1 in 18.0\n\n\nPostrera\nJuly 2026\nGuatemala\n339\n356\nThreshold met\n23% below\n1 in 12.0\n\n\nPostrera\nJuly 2026\nHonduras\n267\n300\nThreshold met\n32% below\n1 in 18.0\n\n\nPrimera\nMay 2026\nGuatemala\n602\n671\nThreshold met\n22% below\n1 in 18.0\n\n\nPrimera\nMay 2026\nHonduras\n455\n510\nThreshold met\n26% below\n1 in 18.0\n\n\nPrimera\nMay 2026\nEl Salvador\n588\n722\nThreshold met\n33% below\n1 in 18.0\n\n\nPrimera\nApril 2026\nGuatemala\n610\n654\nThreshold met\n18% below\n1 in 36 or rarer\n\n\nPrimera\nApril 2026\nHonduras\n449\n498\nThreshold met\n23% below\n1 in 36 or rarer\n\n\nPrimera\nApril 2026\nEl Salvador\n582\n690\nThreshold met\n30% below\n1 in 36 or rarer\n\n\nPrimera\nMarch 2026\nGuatemala\n593\n639\nThreshold met\n18% below\n1 in 18.0\n\n\nPrimera\nMarch 2026\nHonduras\n416\n472\nThreshold met\n24% below\n1 in 18.0\n\n\nPrimera\nMarch 2026\nEl Salvador\n574\n685\nThreshold met\n28% below\n1 in 18.0\n\n\n\n\n\n\n\n\n\n11.5.1 Postrera\n\n\n\n\n\n\n\n\nFigure 11.5\n\n\n\n\n\n\n\n11.5.2 Primera\n\n\n\n\n\n\n\n\nFigure 11.6",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#method-notes",
+    "href": "14_season_review_2026.html#method-notes",
+    "title": "11  2026 Season Review",
+    "section": "11.6 Method notes",
+    "text": "11.6 Method notes\n\nObserved rainfall: ERA5 monthly precipitation from the team database, area-weighted across the departments of each AOI in the same way as the forecast. ERA5 is a reanalysis and is the only observational source used so far; see the open points.\nForecasts: SEAS5 seasonal totals aggregated as in the 2026 monitoring (src/monitoring_2026/update_activation_status.R) and compared with the same thresholds. A threshold is met when the forecast is at or below it. The values are recomputed from the database as it stands now. They are not the figures emailed on the day.\nBaseline: 1991–2024 for both, the period the 2026 thresholds were calibrated on.\nReturn periods: rank of 2026 among the 34 baseline years plus itself, Weibull plotting position, (n + 1) / rank. They describe how unusual the value is in its own record. They are not the return period of the trigger, which combines several monitoring moments.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#open-points",
+    "href": "14_season_review_2026.html#open-points",
+    "title": "11  2026 Season Review",
+    "section": "11.7 Open points",
+    "text": "11.7 Open points\n\nCross-check the observed totals against a second source (CHIRPS). The 2024 review showed both, and ERA5 alone is a thin basis for a severity statement.\nPostrera: redo the observed section once ERA5 covers November (early December).\nAdd evidence of impact (FAO ASI, as in the July situation summary, and reported impacts). Rainfall shows whether the hazard occurred, and says nothing about whether the impact followed.\nWrite the narrative for the two questions left open on the 2025 review, using the first table (did the trigger capture the right severity level) and the forecast table (how later forecasts and the season compared with the moment of activation).",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
+    ]
+  },
+  {
+    "objectID": "14_season_review_2026.html#slide-figures",
+    "href": "14_season_review_2026.html#slide-figures",
+    "title": "11  2026 Season Review",
+    "section": "11.8 Slide figures",
+    "text": "11.8 Slide figures\nOne figure per country at 16:9 (1920 × 1080 px, also saved in output/png/ next to this chapter), each with a short summary in English and Spanish for presentations. The summaries use only the return periods: the March forecast among March forecasts, and the observed season among observed seasons, as in the first table.\n\n11.8.1 Guatemala\n\nEnglish\nGuatemala: a rare forecast, followed by a rarer drought\nForecast: 1 in 18. Observed: 1 in 36 or rarer.\nIn March, the seasonal forecast for the Primera season (May–August) showed a 1-in-18-year dry signal: the second-driest March forecast in 35 years. It activated the framework before the season began. The observed rainfall made the season the driest Primera in 35 years, a 1-in-36-year event or rarer. The forecast picked up a rare drought, and the outcome was rarer still.\nEspañol\nGuatemala: un pronóstico excepcional, seguido de una sequía aún más excepcional\nPronóstico: 1 en 18 años. Observado: 1 en 36 años o más raro.\nEn marzo, el pronóstico estacional para la Primera (mayo–agosto) mostró una señal de sequía con un período de retorno de 1 en 18 años: el segundo pronóstico de marzo más seco en 35 años. Activó el marco antes de que comenzara la temporada. Con la lluvia observada, la temporada resultó ser la Primera más seca en 35 años, un evento de 1 en 36 años o más raro. El pronóstico detectó una sequía excepcional, y lo que ocurrió fue más extremo aún.\n\n\n11.8.2 Honduras\n\nEnglish\nHonduras: a rare forecast, and a season just as rare\nForecast: 1 in 18. Observed: 1 in 18.\nIn March, the seasonal forecast for the Primera season (May–August) showed a 1-in-18-year dry signal: the second-driest March forecast in 35 years. It activated the framework before the season began. The observed rainfall made the season the second-driest Primera in 35 years, a 1-in-18-year event. The season turned out as rare as the forecast signalled.\nEspañol\nHonduras: un pronóstico excepcional, y una temporada igual de excepcional\nPronóstico: 1 en 18 años. Observado: 1 en 18 años.\nEn marzo, el pronóstico estacional para la Primera (mayo–agosto) mostró una señal de sequía con un período de retorno de 1 en 18 años: el segundo pronóstico de marzo más seco en 35 años. Activó el marco antes de que comenzara la temporada. Con la lluvia observada, la temporada resultó ser la segunda Primera más seca en 35 años, un evento de 1 en 18 años. La temporada fue tan excepcional como anticipaba el pronóstico.\n\n\n11.8.3 El Salvador\n\nEnglish\nEl Salvador: a rare forecast, followed by a rarer drought\nForecast: 1 in 18. Observed: 1 in 36 or rarer.\nIn March, the seasonal forecast for the Primera season (May–August) showed a 1-in-18-year dry signal: the second-driest March forecast in 35 years. It activated the framework before the season began. The observed rainfall made the season the driest Primera in 35 years, a 1-in-36-year event or rarer. The forecast picked up a rare drought, and the outcome was rarer still.\nEspañol\nEl Salvador: un pronóstico excepcional, seguido de una sequía aún más excepcional\nPronóstico: 1 en 18 años. Observado: 1 en 36 años o más raro.\nEn marzo, el pronóstico estacional para la Primera (mayo–agosto) mostró una señal de sequía con un período de retorno de 1 en 18 años: el segundo pronóstico de marzo más seco en 35 años. Activó el marco antes de que comenzara la temporada. Con la lluvia observada, la temporada resultó ser la Primera más seca en 35 años, un evento de 1 en 36 años o más raro. El pronóstico detectó una sequía excepcional, y lo que ocurrió fue más extremo aún.\nContact the OCHA Centre for Humanitarian Data via Zachary Arno, Data Scientist, at zachary.arno@un.org with any questions or feedback.",
+    "crumbs": [
+      "2026 Situation & Mission Support",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>2026 Season Review</span>"
     ]
   },
   {
