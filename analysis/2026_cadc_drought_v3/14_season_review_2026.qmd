@@ -599,7 +599,7 @@ p_fcst_vs_obs <- ggplot(df_fcst_vs_obs, aes(x = fcst_mm, y = obs_mm)) +
     data = \(d) filter(d, year == REVIEW_YEAR), aes(label = year),
     color = "#F2645A", fontface = "bold", size = 3.5, vjust = -1.2
   ) +
-  facet_wrap(~aoi, nrow = 1, scales = "free") +
+  facet_wrap(~aoi, nrow = 1, scales = "free_x") +
   labs(
     title = glue("{activation_month} forecast and observed {activation_season$label} rainfall"),
     x = glue("SEAS5 forecast of {activation_season$abbr} rainfall, issued in {activation_month} (mm)"),
