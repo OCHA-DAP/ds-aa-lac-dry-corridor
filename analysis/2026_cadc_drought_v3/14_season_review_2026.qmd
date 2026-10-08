@@ -597,7 +597,7 @@ p_fcst_vs_obs <- ggplot(df_fcst_vs_obs, aes(x = fcst_mm, y = obs_mm)) +
   ) +
   geom_text(
     data = \(d) filter(d, year == REVIEW_YEAR), aes(label = year),
-    color = "#F2645A", fontface = "bold", size = 3.5, vjust = -1.2
+    color = "#F2645A", fontface = "bold", size = 3.5, hjust = 1.3, vjust = 0.4
   ) +
   facet_wrap(~aoi, nrow = 1, scales = "free_x") +
   labs(
@@ -612,6 +612,27 @@ p_fcst_vs_obs <- ggplot(df_fcst_vs_obs, aes(x = fcst_mm, y = obs_mm)) +
   theme(plot.caption = element_text(hjust = 0, margin = margin(t = 10)))
 
 save_png(p_fcst_vs_obs, "forecast_vs_observed_activation.png", 9, 4)
+
+# One country per figure at 16:9 for slides (1920 x 1080 px), shown under "Slide figures".
+# Saved small at high dpi so text and points come out large enough to read on a projector.
+# gghdx draws text with showtext, which renders at its own dpi (96 by default), so match it
+# to the save dpi or the text shrinks.
+slide_png <- function(aoi_label) {
+  iso3 <- names(aoi_configs)[map_chr(aoi_configs, "label") == aoi_label]
+  file.path(OUT_PNG, glue("forecast_vs_observed_activation_{tolower(iso3)}_16x9.png"))
+}
+showtext_dpi <- showtext::showtext_opts()$dpi
+showtext::showtext_opts(dpi = 240)
+walk(aoi_order, \(a) {
+  d <- filter(df_fcst_vs_obs, aoi == a)
+  if (nrow(d) == 0) stop("No ", a, " rows in df_fcst_vs_obs.")
+  p <- p_fcst_vs_obs + d +
+    facet_null() +
+    labs(title = glue("{a}: {activation_month} forecast and observed {activation_season$label} rainfall"))
+  ggsave(slide_png(a), p, width = 8, height = 4.5, dpi = 240, bg = "white")
+})
+showtext::showtext_opts(dpi = showtext_dpi)
+
 p_fcst_vs_obs
 ```
 
@@ -794,5 +815,112 @@ p_fcst_primera
 - Postrera: redo the observed section once ERA5 covers November (early December).
 - Add evidence of impact (FAO ASI, as in the July situation summary, and reported impacts). Rainfall shows whether the hazard occurred, and says nothing about whether the impact followed.
 - Write the narrative for the two questions left open on the 2025 review, using the first table (did the trigger capture the right severity level) and the forecast table (how later forecasts and the season compared with the moment of activation).
+
+## Slide figures
+
+One figure per country at 16:9 (1920 × 1080 px, also saved in `output/png/` next to this chapter), each with a short summary in English and Spanish for presentations. The summaries use only the return periods: the `r activation_month` forecast among `r activation_month` forecasts, and the observed season among observed seasons, as in the first table.
+
+```{r}
+#| label: slide-figures
+#| output: asis
+#| eval: !expr activation_complete
+
+# Both ranks are out of the same number of years, so comparing ranks compares the return
+# periods: the wording says whether the season was rarer than, as rare as, or less rare
+# than the forecast.
+n_years <- BASELINE_END - BASELINE_START + 2
+if (any(df_headline$obs_n != n_years)) stop("Observed records are not all ", n_years, " years long.")
+
+meses <- c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+           "septiembre", "octubre", "noviembre", "diciembre")
+season_months <- activation_season$months
+months_en <- months_label(season_months)
+months_es <- paste0(meses[min(season_months)], "–", meses[max(season_months)])
+month_es  <- meses[ACTIVATION$issued_month]
+
+# 18 -> "18", 5.83 -> "5.8" (Spanish "5,8")
+rp_num <- function(rp, decimal_mark = ".") {
+  r <- round(rp, 1)
+  if (r == round(r)) format(round(r)) else format(r, nsmall = 1, decimal.mark = decimal_mark)
+}
+
+ord_en   <- c("second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
+ord_es_m <- c("segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo", "noveno", "décimo")
+ord_es_f <- c("segunda", "tercera", "cuarta", "quinta", "sexta", "séptima", "octava", "novena", "décima")
+nth <- function(words, rank, fallback) if (rank <= length(words) + 1) words[rank - 1] else fallback
+
+# "the driest March forecast", "the second-driest March forecast"
+driest_en <- function(rank, noun) {
+  if (rank == 1) return(glue("the driest {noun}"))
+  glue("the {nth(ord_en, rank, scales::ordinal(rank))}-driest {noun}")
+}
+# "el segundo pronóstico de marzo más seco", "la Primera más seca"
+driest_es <- function(rank, noun, gender) {
+  art <- if (gender == "m") "el" else "la"
+  adj <- if (gender == "m") "seco" else "seca"
+  if (rank == 1) return(glue("{art} {noun} más {adj}"))
+  ords <- if (gender == "m") ord_es_m else ord_es_f
+  glue("{art} {nth(ords, rank, paste0(rank, if (gender == 'm') '.º' else '.ª'))} {noun} más {adj}")
+}
+# The driest year on record only bounds the return period from below
+or_rarer_en <- function(rank) if (rank == 1) " or rarer" else ""
+or_rarer_es <- function(rank) if (rank == 1) " o más raro" else ""
+
+headline_en <- c(
+  rarer = "a rare forecast, followed by a rarer drought",
+  same  = "a rare forecast, and a season just as rare",
+  less  = "a rare forecast, and a dry but less extreme season"
+)
+closing_en <- c(
+  rarer = "The forecast picked up a rare drought, and the outcome was rarer still.",
+  same  = "The season turned out as rare as the forecast signalled.",
+  less  = "The season was dry, but less extreme than the forecast signalled."
+)
+headline_es <- c(
+  rarer = "un pronóstico excepcional, seguido de una sequía aún más excepcional",
+  same  = "un pronóstico excepcional, y una temporada igual de excepcional",
+  less  = "un pronóstico excepcional, y una temporada seca pero menos extrema"
+)
+closing_es <- c(
+  rarer = "El pronóstico detectó una sequía excepcional, y lo que ocurrió fue más extremo aún.",
+  same  = "La temporada fue tan excepcional como anticipaba el pronóstico.",
+  less  = "La temporada fue seca, pero menos extrema de lo que anticipaba el pronóstico."
+)
+
+pwalk(df_headline, \(aoi, fcst_rank, fcst_rp, obs_rank, obs_rp, ...) {
+  outcome <- if (obs_rank < fcst_rank) "rarer" else if (obs_rank == fcst_rank) "same" else "less"
+  fcst_en <- rp_num(fcst_rp)
+  obs_en  <- rp_num(obs_rp)
+  fcst_es <- rp_num(fcst_rp, ",")
+  obs_es  <- rp_num(obs_rp, ",")
+  season  <- activation_season$label
+
+  cat(glue(
+    "### {aoi}\n\n",
+    "![]({slide_png(as.character(aoi))}){{fig-alt=\"Scatter plot for {aoi}: {activation_month} SEAS5 ",
+    "forecast against observed {season} rainfall for each year since {BASELINE_START}, with ",
+    "{REVIEW_YEAR} highlighted\"}}\n\n",
+    "**English**\n\n",
+    "**{aoi}: {headline_en[[outcome]]}**\n\n",
+    "Forecast: 1 in {fcst_en}{or_rarer_en(fcst_rank)}. Observed: 1 in {obs_en}{or_rarer_en(obs_rank)}.\n\n",
+    "In {activation_month}, the seasonal forecast for the {season} season ({months_en}) showed a ",
+    "1-in-{fcst_en}-year dry signal{or_rarer_en(fcst_rank)}: ",
+    "{driest_en(fcst_rank, paste(activation_month, 'forecast'))} in {n_years} years. ",
+    "It activated the framework before the season began. The observed rainfall made the season ",
+    "{driest_en(obs_rank, season)} in {n_years} years, a 1-in-{obs_en}-year event{or_rarer_en(obs_rank)}. ",
+    "{closing_en[[outcome]]}\n\n",
+    "**Español**\n\n",
+    "**{aoi}: {headline_es[[outcome]]}**\n\n",
+    "Pronóstico: 1 en {fcst_es} años{or_rarer_es(fcst_rank)}. ",
+    "Observado: 1 en {obs_es} años{or_rarer_es(obs_rank)}.\n\n",
+    "En {month_es}, el pronóstico estacional para la {season} ({months_es}) mostró una señal de ",
+    "sequía con un período de retorno de 1 en {fcst_es} años{or_rarer_es(fcst_rank)}: ",
+    "{driest_es(fcst_rank, paste('pronóstico de', month_es), 'm')} en {n_years} años. ",
+    "Activó el marco antes de que comenzara la temporada. Con la lluvia observada, la temporada ",
+    "resultó ser {driest_es(obs_rank, season, 'f')} en {n_years} años, un evento de ",
+    "1 en {obs_es} años{or_rarer_es(obs_rank)}. {closing_es[[outcome]]}"
+  ), "\n\n")   # outside glue(), which trims trailing newlines
+})
+```
 
 Contact the OCHA Centre for Humanitarian Data via Zachary Arno, Data Scientist, at zachary.arno@un.org with any questions or feedback.
