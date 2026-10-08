@@ -1,0 +1,926 @@
+---
+execute:
+  echo: false
+---
+
+# 2026 Season Review
+
+*Draft: the narrative under Key points is still to be written.*
+
+```{r}
+#| label: setup
+#| include: false
+
+# 2026 season review for the three framework countries (GTM, HND, SLV), following the
+# structure of the 2025 review (Drive: CADC_Drought_2025_Review): observed rainfall
+# over each AOI, then the forecasts as seen at each monitoring moment.
+#
+# Rendered as a chapter of the book (analysis/2026_cadc_drought_v3).
+# The first render pulls ERA5 / SEAS5 / polygon from the DB (cumulus::pg_con()) and the
+# 2026 thresholds from blob, then caches them in output/ so later renders need neither.
+# Delete the cache (or point CADC_REVIEW_CACHE elsewhere) to pull again. Since 2026-09-30
+# a laptop reaches the DB only through the Databricks SSH tunnel (internal KB
+# infrastructure/local-db-access.md), and pg_con() connects on port 5432, so a first
+# render from a laptop needs a connection pointed at the tunnel port.
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(lubridate)
+library(glue)
+library(ggplot2)
+library(cumulus)
+library(gghdx)
+
+gghdx()
+knitr::opts_chunk$set(dpi = 150)
+
+
+# 0. Configuration --------------------------------------------------------
+
+REVIEW_YEAR    <- 2026
+BASELINE_START <- 1991   # same baseline as the 2026 thresholds and informational updates
+BASELINE_END   <- 2024
+
+SEASONS <- list(
+  primera  = list(label = "Primera",  months = 5:8,  abbr = "MJJA"),
+  postrera = list(label = "Postrera", months = 9:11, abbr = "SON")
+)
+
+# AOIs as monitored in 2026 (src/monitoring_2026/provide_informational_update.R).
+# zoom_pcodes: admin-1 units shown one by one in the observational zoom-in.
+aoi_configs <- list(
+  GTM = list(
+    label       = "Guatemala",
+    iso3        = "GTM",
+    adm_level   = 1,
+    pcodes      = c("GT20", "GT21", "GT02", "GT19"),
+    admin1      = "Chiquimula, Jalapa, El Progreso, Zacapa",
+    zoom_pcodes = c("GT20", "GT21", "GT02", "GT19")
+  ),
+  HND = list(
+    label       = "Honduras",
+    iso3        = "HND",
+    adm_level   = 1,
+    pcodes      = c("HN07", "HN08"),
+    admin1      = "El Paraíso, Francisco Morazán",
+    zoom_pcodes = c("HN07", "HN08")
+  ),
+  SLV = list(
+    label       = "El Salvador",
+    iso3        = "SLV",
+    adm_level   = 0,
+    pcodes      = NULL,
+    admin1      = "National (admin 0)",
+    zoom_pcodes = c("SV01", "SV12"),  # the targeted departments
+    zoom_names  = c("Ahuachapan", "Santa Ana")
+  )
+)
+aoi_order <- map_chr(aoi_configs, "label") |> unname()
+
+# All three countries activated on the March 2026 SEAS5 forecast for Primera.
+ACTIVATION <- list(window = "primera", issued_month = 3)
+
+CACHE   <- Sys.getenv("CADC_REVIEW_CACHE", unset = "output/review_data_2026.rds")
+OUT_PNG <- "output/png"
+
+
+# 1. Load ERA5, SEAS5, weights, thresholds --------------------------------
+
+pull_review_data <- function(con) {
+  iso3s       <- map_chr(aoi_configs, "iso3") |> unname()
+  adm0_iso3s  <- iso3s[map_dbl(aoi_configs, "adm_level") == 0]
+  aoi_pcodes  <- unlist(map(aoi_configs, "pcodes"), use.names = FALSE)
+  adm1_pcodes <- unique(c(aoi_pcodes, unlist(map(aoi_configs, "zoom_pcodes"), use.names = FALSE)))
+
+  # `mean` is stored as a rate (mm/day) in both tables
+  era5 <- tbl(con, "era5") |>
+    mutate(across(pcode, as.character)) |>
+    filter(
+      (adm_level == 1 & pcode %in% !!adm1_pcodes) |
+        (adm_level == 0 & iso3 %in% !!adm0_iso3s)
+    ) |>
+    select(iso3, pcode, adm_level, valid_date, mean) |>
+    collect()
+
+  seas5 <- tbl(con, "seas5") |>
+    mutate(across(pcode, as.character)) |>
+    filter(
+      (adm_level == 1 & pcode %in% !!aoi_pcodes) |
+        (adm_level == 0 & iso3 %in% !!adm0_iso3s)
+    ) |>
+    select(iso3, pcode, adm_level, issued_date, valid_date, leadtime, mean) |>
+    collect()
+
+  polygon <- tbl(con, "polygon") |>
+    mutate(across(pcode, as.character)) |>
+    filter(adm_level == 1, pcode %in% !!adm1_pcodes) |>
+    select(pcode, iso3, name, era5_n_upsampled_pixels, seas5_n_upsampled_pixels) |>
+    collect()
+
+  # Same file the monitoring script reads (update_activation_status.R)
+  thresholds <- blob_read(
+    container = "projects",
+    name = "ds-aa-lac-dry-corridor/monitoring/2026/df_thresholds_2026.parquet"
+  )
+
+  list(
+    era5 = era5, seas5 = seas5, polygon = polygon, thresholds = thresholds,
+    pulled_at = Sys.time()
+  )
+}
+
+if (file.exists(CACHE)) {
+  dat <- readRDS(CACHE)
+} else {
+  con <- pg_con()
+  dat <- pull_review_data(con)
+  DBI::dbDisconnect(con)   # top-level on.exit() would not fire; disconnect explicitly
+  dir.create(dirname(CACHE), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(dat, CACHE)
+}
+
+# A duplicated row would be summed into a seasonal total without any sign of it
+if (anyDuplicated(select(dat$era5, iso3, pcode, adm_level, valid_date)) ||
+    anyDuplicated(select(dat$seas5, iso3, pcode, adm_level, issued_date, valid_date))) {
+  stop("Duplicate rows in the ERA5 or SEAS5 pull.")
+}
+
+
+# 2. Helpers --------------------------------------------------------------
+
+n_units <- function(cfg) if (is.null(cfg$pcodes)) 1L else length(cfg$pcodes)
+
+# Rows of a DB table belonging to an AOI, with the pixel-count weight of each unit.
+aoi_rows <- function(df, cfg, weight_col) {
+  out <- df |> filter(iso3 == cfg$iso3, adm_level == cfg$adm_level)
+  if (cfg$adm_level == 1) {
+    out <- out |>
+      filter(pcode %in% cfg$pcodes) |>
+      left_join(select(dat$polygon, pcode, w = all_of(weight_col)), by = "pcode")
+  } else {
+    out <- out |> mutate(w = 1)
+  }
+  if (nrow(out) == 0) stop("No rows for the ", cfg$iso3, " AOI.")
+  if (anyNA(out$w)) stop("Missing ", weight_col, " for one or more ", cfg$iso3, " pcodes.")
+  out
+}
+
+# Dry-side rank and empirical return period of `curr` within baseline + itself.
+# Weibull plotting position: RP = (n + 1) / rank, so the driest of n years reads 1 in n + 1.
+dry_stats <- function(curr, hist) {
+  n <- length(hist) + 1
+  dry_rank <- sum(hist < curr) + 1
+  tibble(
+    hist_mean = mean(hist),
+    pct_below = (1 - curr / mean(hist)) * 100,
+    dry_rank  = dry_rank,
+    n_years   = n,
+    rp        = (n + 1) / dry_rank
+  )
+}
+
+# Seasonal totals per year for one monthly series (year, month, mm), over the months of
+# the season that are observed in REVIEW_YEAR. A season still in progress is compared
+# like for like (same months in every year) and flagged complete = FALSE.
+season_totals <- function(df_monthly, season) {
+  mths <- SEASONS[[season]]$months
+  mths_obs <- sort(intersect(mths, df_monthly$month[df_monthly$year == REVIEW_YEAR]))
+  if (length(mths_obs) == 0) return(NULL)
+  if (any(mths_obs != mths[seq_along(mths_obs)])) {
+    stop("Gap in ", REVIEW_YEAR, " ", season, ": missing ",
+         toString(month.name[setdiff(mths[mths <= max(mths_obs)], mths_obs)]))
+  }
+  df_monthly |>
+    filter(month %in% mths_obs) |>
+    group_by(year) |>
+    filter(n() == length(mths_obs)) |>   # drop years with a missing month
+    summarise(mm = sum(mm), .groups = "drop") |>
+    mutate(
+      season      = season,
+      complete    = length(mths_obs) == length(mths),
+      months_used = months_label(mths_obs)
+    )
+}
+
+# 2026 vs baseline for a table of yearly values, per group.
+review_stats <- function(df, value, ...) {
+  df |>
+    group_by(...) |>
+    filter(any(year == REVIEW_YEAR)) |>
+    group_modify(\(d, key) {
+      hist <- d[[value]][d$year >= BASELINE_START & d$year <= BASELINE_END]
+      curr <- d[[value]][d$year == REVIEW_YEAR]
+      group_label <- paste(map_chr(key, as.character), collapse = " / ")
+      if (length(hist) != BASELINE_END - BASELINE_START + 1) {
+        stop("Baseline has ", length(hist), " years for ", group_label)
+      }
+      if (length(curr) != 1) stop(length(curr), " values in ", REVIEW_YEAR, " for ", group_label)
+      bind_cols(tibble(!!value := curr), dry_stats(curr, hist))
+    }) |>
+    ungroup()
+}
+
+months_label <- function(m) {
+  if (length(m) == 1) month.name[m] else paste0(month.name[min(m)], "–", month.name[max(m)])
+}
+fmt_mm  <- function(x) ifelse(is.na(x), "–", format(round(x), big.mark = ",", trim = TRUE))
+# The driest year on record only bounds the return period from below.
+fmt_rp  <- function(x, dry_rank) {
+  case_when(
+    is.na(x)      ~ "–",
+    dry_rank == 1 ~ paste0("1 in ", round(x), " or rarer"),
+    TRUE          ~ paste0("1 in ", format(round(x, 1), nsmall = 1, trim = TRUE))
+  )
+}
+fmt_dev <- function(pct_below) {
+  case_when(
+    is.na(pct_below) ~ "–",
+    round(pct_below) >= 0 ~ paste0(round(pct_below), "% below"),
+    TRUE ~ paste0(round(-pct_below), "% above")
+  )
+}
+fmt_rank <- function(dry_rank, n_years) {
+  case_when(
+    is.na(dry_rank) ~ "–",
+    dry_rank == 1   ~ paste0("driest of ", n_years),
+    TRUE            ~ paste0(scales::ordinal(dry_rank), " driest of ", n_years)
+  )
+}
+
+
+# 3. Observed rainfall (ERA5) ---------------------------------------------
+
+to_monthly_mm <- function(df) {
+  df |> mutate(
+    mm    = days_in_month(valid_date) * mean,
+    year  = year(valid_date),
+    month = month(valid_date)
+  )
+}
+
+# AOI monthly series, area-weighted across the AOI's admin-1 units
+df_obs_monthly <- map(aoi_configs, \(cfg) {
+  aoi_rows(dat$era5, cfg, "era5_n_upsampled_pixels") |>
+    to_monthly_mm() |>
+    group_by(year, month) |>
+    filter(n() == n_units(cfg)) |>
+    summarise(mm = weighted.mean(mm, w), .groups = "drop") |>
+    mutate(aoi = cfg$label)
+}) |>
+  list_rbind() |>
+  mutate(aoi = factor(aoi, levels = aoi_order))
+
+df_obs_latest <- df_obs_monthly |>
+  filter(year == REVIEW_YEAR) |>
+  group_by(aoi) |>
+  summarise(latest = max(month), .groups = "drop")
+if (nrow(df_obs_latest) != length(aoi_configs) || n_distinct(df_obs_latest$latest) != 1) {
+  stop("ERA5 does not reach the same month of ", REVIEW_YEAR, " for every AOI.")
+}
+era5_latest <- make_date(REVIEW_YEAR, unique(df_obs_latest$latest), 1)
+
+df_obs_season <- df_obs_monthly |>
+  group_by(aoi) |>
+  group_modify(\(d, key) map(names(SEASONS), \(s) season_totals(d, s)) |> list_rbind()) |>
+  ungroup()
+
+df_obs_stats <- review_stats(df_obs_season, "mm", aoi, season, complete, months_used)
+
+# Zoom-in: the same statistics for individual admin-1 units
+df_zoom_units <- map(aoi_configs, \(cfg) tibble(aoi = cfg$label, pcode = cfg$zoom_pcodes)) |>
+  list_rbind() |>
+  left_join(select(dat$polygon, pcode, name), by = "pcode")
+
+# The zoom-in is labelled from the DB names; check them where the config states them
+walk(aoi_configs, \(cfg) {
+  if (is.null(cfg$zoom_names)) return(invisible())
+  db_names <- df_zoom_units$name[df_zoom_units$pcode %in% cfg$zoom_pcodes] |>
+    stringi::stri_trans_general("Latin-ASCII")
+  if (!setequal(db_names, cfg$zoom_names)) {
+    stop(cfg$iso3, " zoom pcodes are ", toString(db_names), ", expected ", toString(cfg$zoom_names))
+  }
+})
+
+df_zoom_stats <- dat$era5 |>
+  filter(adm_level == 1) |>
+  inner_join(df_zoom_units, by = "pcode") |>
+  to_monthly_mm() |>
+  group_by(aoi, pcode, name) |>
+  group_modify(\(d, key) map(names(SEASONS), \(s) season_totals(d, s)) |> list_rbind()) |>
+  ungroup() |>
+  review_stats("mm", aoi, pcode, name, season, complete, months_used) |>
+  mutate(aoi = factor(aoi, levels = aoi_order))
+
+
+# 4. Forecasts at each monitoring moment (SEAS5) --------------------------
+
+# Seasonal forecast per issue date, area-weighted across the AOI (as in the monitoring script)
+df_fcst <- map(aoi_configs, \(cfg) {
+  df_raw <- aoi_rows(dat$seas5, cfg, "seas5_n_upsampled_pixels") |>
+    mutate(value_mm = days_in_month(valid_date) * mean)
+  imap(SEASONS, \(s, season) {
+    seas5_aggregate_forecast(
+      df_raw,
+      value = "value_mm",
+      valid_months = s$months,
+      by = c("iso3", "pcode", "w", "issued_date")
+    ) |>
+      group_by(iso3, issued_date, leadtime) |>
+      filter(n() == n_units(cfg)) |>
+      summarise(fcst_mm = weighted.mean(value_mm, w), .groups = "drop") |>
+      mutate(window = season)
+  }) |>
+    list_rbind() |>
+    mutate(aoi = cfg$label)
+}) |>
+  list_rbind() |>
+  mutate(
+    aoi          = factor(aoi, levels = aoi_order),
+    year         = year(issued_date),
+    issued_month = month(issued_date)
+  )
+
+# The thresholds parquet is also the list of monitoring moments per country
+df_moments <- dat$thresholds |>
+  filter(programme == "ocha", forecast_source == "SEAS5") |>
+  transmute(
+    iso3, window,
+    issued_month    = match(as.character(issued_month_label), month.abb),
+    thresh_leadtime = leadtime,
+    thresh_mm       = value_empirical
+  )
+if (anyNA(df_moments$issued_month)) {
+  stop("Unrecognised issued_month_label: ", toString(unique(dat$thresholds$issued_month_label)))
+}
+if (anyDuplicated(select(df_moments, iso3, window, issued_month))) {
+  stop("More than one OCHA threshold per country / window / issue month.")
+}
+
+df_fcst_moments <- df_fcst |>
+  inner_join(df_moments, by = c("iso3", "window", "issued_month"))
+# The monitoring script joins forecast to threshold on leadtime; the two must agree
+if (any(df_fcst_moments$leadtime != df_fcst_moments$thresh_leadtime)) {
+  stop("Forecast leadtime differs from the threshold leadtime for an issue month.")
+}
+
+df_moment_stats <- df_moments |>
+  inner_join(
+    map(aoi_configs, \(cfg) tibble(iso3 = cfg$iso3, aoi = factor(cfg$label, levels = aoi_order))) |>
+      list_rbind(),
+    by = "iso3"
+  ) |>
+  left_join(
+    review_stats(df_fcst_moments, "fcst_mm", aoi, window, issued_month, leadtime),
+    by = c("aoi", "window", "issued_month")
+  ) |>
+  mutate(
+    issued_date   = make_date(REVIEW_YEAR, issued_month, 1),
+    threshold_met = fcst_mm <= thresh_mm,
+    status        = case_when(
+      is.na(fcst_mm) ~ "Forecast not available",
+      threshold_met  ~ "Threshold met",
+      TRUE           ~ "Threshold not met"
+    )
+  )
+
+
+# 5. Forecast at activation vs observed season ----------------------------
+
+df_activation <- df_moment_stats |>
+  filter(window == ACTIVATION$window, issued_month == ACTIVATION$issued_month)
+
+# The text states that every country met its threshold at the activation moment
+if (nrow(df_activation) != length(aoi_configs) || !all(df_activation$threshold_met %in% TRUE)) {
+  stop("The ", month.name[ACTIVATION$issued_month], " forecast does not meet the threshold in every country.")
+}
+
+df_headline <- df_activation |>
+  select(aoi, fcst_mm, thresh_mm, fcst_pct_below = pct_below, fcst_rank = dry_rank, fcst_rp = rp) |>
+  left_join(
+    df_obs_stats |>
+      filter(season == ACTIVATION$window) |>
+      select(aoi, obs_mm = mm, obs_complete = complete, obs_months = months_used,
+             obs_pct_below = pct_below, obs_rank = dry_rank, obs_n = n_years, obs_rp = rp),
+    by = "aoi"
+  ) |>
+  arrange(aoi)
+
+# Every year's forecast at the activation moment against that year's observed season
+df_fcst_vs_obs <- df_fcst_moments |>
+  filter(window == ACTIVATION$window, issued_month == ACTIVATION$issued_month) |>
+  select(aoi, year, fcst_mm, thresh_mm) |>
+  inner_join(
+    df_obs_season |> filter(season == ACTIVATION$window) |> select(aoi, year, obs_mm = mm),
+    by = c("aoi", "year")
+  ) |>
+  filter((year >= BASELINE_START & year <= BASELINE_END) | year == REVIEW_YEAR)
+
+activation_season   <- SEASONS[[ACTIVATION$window]]
+activation_month    <- month.name[ACTIVATION$issued_month]
+activation_complete <- nrow(df_headline) > 0 && all(df_headline$obs_complete %in% TRUE)
+
+
+# 6. Plot helpers ---------------------------------------------------------
+
+THRESH_COLOR <- "#7E3F98"
+
+# Historical values as grey points, average as a teal bar, review year as a red diamond.
+# Same visual as the 2026 informational updates.
+jitter_plot <- function(df, value, facets, df_thresh = NULL) {
+  df <- df |> mutate(.y = .data[[value]], .x = "")
+  df_hist <- df |> filter(year >= BASELINE_START, year <= BASELINE_END)
+  df_curr <- df |> filter(year == REVIEW_YEAR)
+  df_mean <- df_hist |>
+    group_by(across(all_of(setdiff(all.vars(facets), ".")))) |>
+    summarise(.y = mean(.y), .groups = "drop") |>
+    mutate(.x = "")
+
+  p <- ggplot(df_hist, aes(x = .x, y = .y)) +
+    geom_jitter(width = 0.15, height = 0, alpha = 0.35, color = "grey55", size = 2.5) +
+    geom_crossbar(
+      data = df_mean, aes(ymin = .y, ymax = .y),
+      width = 0.35, color = "#1EBFB3", linewidth = 0.6, fatten = 2
+    ) +
+    geom_text(
+      data = df_mean, aes(label = paste0("avg: ", round(.y), " mm")),
+      hjust = -0.15, vjust = -0.8, size = 3, color = "#1EBFB3", fontface = "italic"
+    )
+
+  if (!is.null(df_thresh) && nrow(df_thresh) > 0) {
+    df_thresh <- df_thresh |> mutate(.x = "")
+    p <- p +
+      geom_crossbar(
+        data = df_thresh, aes(y = thresh_mm, ymin = thresh_mm, ymax = thresh_mm),
+        width = 0.35, color = THRESH_COLOR, linewidth = 0.6, fatten = 2
+      ) +
+      geom_text(
+        data = df_thresh, aes(y = thresh_mm, label = paste0("threshold: ", round(thresh_mm), " mm")),
+        hjust = -0.15, vjust = 1.6, size = 3, color = THRESH_COLOR, fontface = "italic"
+      )
+  }
+
+  p +
+    geom_point(data = df_curr, color = "#F2645A", size = 5, shape = 18) +
+    geom_text(
+      data = df_curr, aes(label = paste0(round(.y), " mm")),
+      hjust = 1.25, vjust = 0.4, size = 3.5, color = "#F2645A", fontface = "bold"
+    ) +
+    facet_grid(facets) +
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.15))) +
+    labs(y = "Seasonal Rainfall (mm)") +
+    theme(
+      axis.title.x  = element_blank(),
+      axis.text.x   = element_blank(),
+      axis.ticks.x  = element_blank(),
+      plot.caption  = element_text(hjust = 0, margin = margin(t = 10))
+    )
+}
+
+save_png <- function(plot, name, width, height) {
+  dir.create(OUT_PNG, recursive = TRUE, showWarnings = FALSE)
+  ggsave(file.path(OUT_PNG, name), plot, width = width, height = height, dpi = 150, bg = "white")
+}
+
+obs_season_plot <- function(season) {
+  d <- df_obs_season |> filter(season == !!season)
+  jitter_plot(d, "mm", facets = . ~ aoi) +
+    labs(
+      title = glue("Observed rainfall, {SEASONS[[season]]$label} {REVIEW_YEAR} ({unique(d$months_used)})"),
+      caption = glue(
+        "ERA5 monthly totals, area-weighted over each AOI. Grey points: {BASELINE_START}–{BASELINE_END}. ",
+        "Teal line: average. Red: {REVIEW_YEAR}."
+      )
+    )
+}
+
+fcst_window_plot <- function(window) {
+  d <- df_fcst_moments |>
+    filter(window == !!window) |>
+    mutate(moment = factor(month.name[issued_month], levels = month.name))
+  d_thresh <- d |> distinct(aoi, moment, thresh_mm)
+  jitter_plot(d, "fcst_mm", facets = aoi ~ moment, df_thresh = d_thresh) +
+    labs(
+      title = glue("SEAS5 forecasts of {SEASONS[[window]]$label} ({SEASONS[[window]]$abbr}) rainfall by month of issue"),
+      caption = glue(
+        "Grey points: forecasts issued in the same month, {BASELINE_START}–{BASELINE_END}. Teal line: their average. ",
+        "Purple line: trigger threshold. Red: {REVIEW_YEAR}."
+      )
+    )
+}
+```
+
+## Intro
+
+The anticipatory action framework for drought in the Central American Dry Corridor (CADC) covers Guatemala, Honduras and El Salvador in 2026. It was developed by the regional and national partners with the Centre for Humanitarian Data (CHD) and combines pre-agreed financing, pre-selected interventions and a trigger based on the ECMWF SEAS5 seasonal rainfall forecast. Two seasons are monitored: Primera (May–August, MJJA) and Postrera (September–November, SON).
+
+The framework was activated in all three countries in March 2026: the SEAS5 forecast of Primera rainfall published on 5 March met the threshold in Guatemala, Honduras and El Salvador. A country's funds are released once, by whichever monitoring moment meets its threshold first, so the forecasts after March are reported here for information only.
+
+This review does for all three countries what the 2025 review did after the Guatemala activation. It compares the rainfall that was observed over each area of interest (AOI) with the historical record and with the forecast that activated the framework, and it compiles the forecasts as they stood at each monitoring moment. Observed rainfall is from ERA5 and is available through `r format(era5_latest, "%B %Y")`.
+
+| Country | Area of interest for the trigger |
+|:--|:--|
+| Guatemala | Chiquimula, Jalapa, El Progreso, Zacapa (area-weighted) |
+| Honduras | El Paraíso, Francisco Morazán (area-weighted) |
+| El Salvador | National average (activities target Ahuachapán and Santa Ana) |
+
+## Key points
+
+```{r}
+#| label: key-points
+#| output: asis
+
+pwalk(df_headline, \(aoi, fcst_mm, thresh_mm, fcst_pct_below, fcst_rank, fcst_rp, obs_mm,
+                     obs_complete, obs_months, obs_pct_below, obs_rank, obs_n, obs_rp) {
+  if (is.na(obs_mm)) {
+    cat(glue("- **{aoi}**: no observed {activation_season$label} rainfall for {REVIEW_YEAR} yet."), "\n")
+    return(invisible())
+  }
+  partial <- if (obs_complete) "" else glue(" (season to date: {obs_months} only)")
+  cat(glue(
+    "- **{aoi}**: observed {activation_season$label} rainfall{partial} was {fmt_mm(obs_mm)} mm, ",
+    "{fmt_dev(obs_pct_below)} the {BASELINE_START}–{BASELINE_END} average. That is the ",
+    "{fmt_rank(obs_rank, obs_n)} years (return period {fmt_rp(obs_rp, obs_rank)}). ",
+    "The {activation_month} forecast that activated the framework was {fmt_mm(fcst_mm)} mm ",
+    "against a threshold of {fmt_mm(thresh_mm)} mm (return period {fmt_rp(fcst_rp, fcst_rank)} ",
+    "among {activation_month} forecasts)."
+  ), "\n")
+})
+```
+
+*To be written once the numbers are in: one or two sentences on whether the season was as dry as the March forecast indicated, and how that differed between the three countries.*
+
+## Forecast at activation and the season that followed
+
+```{r}
+#| label: tbl-headline
+
+df_headline |>
+  transmute(
+    Country = aoi,
+    `Forecast at activation (mm)` = fmt_mm(fcst_mm),
+    `Threshold (mm)` = fmt_mm(thresh_mm),
+    `Forecast vs average` = fmt_dev(fcst_pct_below),
+    `Forecast return period` = fmt_rp(fcst_rp, fcst_rank),
+    `Observed months` = if_else(obs_complete, obs_months, paste0(obs_months, " (season to date)")),
+    `Observed (mm)` = fmt_mm(obs_mm),
+    `Observed vs average` = fmt_dev(obs_pct_below),
+    `Observed rank` = fmt_rank(obs_rank, obs_n),
+    `Observed return period` = fmt_rp(obs_rp, obs_rank)
+  ) |>
+  knitr::kable(
+    caption = glue(
+      "{activation_season$label} {REVIEW_YEAR}: SEAS5 forecast issued in {activation_month} and observed ",
+      "rainfall (ERA5), each against its own {BASELINE_START}–{BASELINE_END} record."
+    )
+  )
+```
+
+Forecast and observed totals are not compared in millimetres, because SEAS5 and ERA5 have different climatologies. Each is placed in its own record instead: the forecast among forecasts issued in the same month of 1991–2024, the observed total among observed seasons of 1991–2024. The return periods are empirical, and with `r BASELINE_END - BASELINE_START + 2` years they cannot distinguish anything rarer than 1 in `r BASELINE_END - BASELINE_START + 3`.
+
+```{r}
+#| label: fig-fcst-vs-obs
+#| fig-cap: "Forecast at the activation moment against the season that was then observed, every year since 1991."
+#| fig-width: 9
+#| fig-height: 4
+#| eval: !expr activation_complete
+
+p_fcst_vs_obs <- ggplot(df_fcst_vs_obs, aes(x = fcst_mm, y = obs_mm)) +
+  geom_vline(aes(xintercept = thresh_mm), color = THRESH_COLOR, linetype = "dashed") +
+  geom_point(
+    data = \(d) filter(d, year != REVIEW_YEAR),
+    color = "grey55", alpha = 0.6, size = 2.5
+  ) +
+  geom_point(
+    data = \(d) filter(d, year == REVIEW_YEAR),
+    color = "#F2645A", size = 5, shape = 18
+  ) +
+  geom_text(
+    data = \(d) filter(d, year == REVIEW_YEAR), aes(label = year),
+    color = "#F2645A", fontface = "bold", size = 3.5, hjust = 1.3, vjust = 0.4
+  ) +
+  facet_wrap(~aoi, nrow = 1, scales = "free_x") +
+  labs(
+    title = glue("{activation_month} forecast and observed {activation_season$label} rainfall"),
+    x = glue("SEAS5 forecast of {activation_season$abbr} rainfall, issued in {activation_month} (mm)"),
+    y = glue("Observed {activation_season$abbr} rainfall, ERA5 (mm)"),
+    caption = glue(
+      "Grey points: {BASELINE_START}–{BASELINE_END}. Red: {REVIEW_YEAR}. ",
+      "Dashed purple line: trigger threshold; forecasts to its left meet it."
+    )
+  ) +
+  theme(plot.caption = element_text(hjust = 0, margin = margin(t = 10)))
+
+save_png(p_fcst_vs_obs, "forecast_vs_observed_activation.png", 9, 4)
+
+# One country per figure at 16:9 for slides (1920 x 1080 px), shown under "Slide figures".
+# Saved small at high dpi so text and points come out large enough to read on a projector.
+# gghdx draws text with showtext, which renders at its own dpi (96 by default), so match it
+# to the save dpi or the text shrinks.
+slide_png <- function(aoi_label) {
+  iso3 <- names(aoi_configs)[map_chr(aoi_configs, "label") == aoi_label]
+  file.path(OUT_PNG, glue("forecast_vs_observed_activation_{tolower(iso3)}_16x9.png"))
+}
+showtext_dpi <- showtext::showtext_opts()$dpi
+showtext::showtext_opts(dpi = 240)
+walk(aoi_order, \(a) {
+  d <- filter(df_fcst_vs_obs, aoi == a)
+  if (nrow(d) == 0) stop("No ", a, " rows in df_fcst_vs_obs.")
+  p <- p_fcst_vs_obs + d +
+    facet_null() +
+    labs(title = glue("{a}: {activation_month} forecast and observed {activation_season$label} rainfall"))
+  ggsave(slide_png(a), p, width = 8, height = 4.5, dpi = 240, bg = "white")
+})
+showtext::showtext_opts(dpi = showtext_dpi)
+
+p_fcst_vs_obs
+```
+
+## Observed rainfall
+
+```{r}
+#| label: tbl-observed
+
+df_obs_stats |>
+  arrange(match(season, names(SEASONS)), aoi) |>
+  transmute(
+    Season = map_chr(season, \(s) SEASONS[[s]]$label),
+    Months = if_else(complete, months_used, paste0(months_used, " (season to date)")),
+    Country = aoi,
+    `Observed (mm)` = fmt_mm(mm),
+    `Average (mm)` = fmt_mm(hist_mean),
+    `vs average` = fmt_dev(pct_below),
+    Rank = fmt_rank(dry_rank, n_years),
+    `Return period` = fmt_rp(rp, dry_rank)
+  ) |>
+  knitr::kable(
+    caption = glue(
+      "Observed rainfall over each AOI in {REVIEW_YEAR} (ERA5), against {BASELINE_START}–{BASELINE_END}."
+    )
+  )
+```
+
+A season still in progress is compared like for like: the months observed so far against the same months in every other year.
+
+```{r}
+#| label: fig-observed-primera
+#| fig-width: 9
+#| fig-height: 5.5
+#| eval: !expr '"primera" %in% df_obs_season$season'
+
+p_obs_primera <- obs_season_plot("primera")
+save_png(p_obs_primera, glue("observed_primera_{REVIEW_YEAR}_era5.png"), 9, 5.5)
+p_obs_primera
+```
+
+```{r}
+#| label: fig-observed-postrera
+#| fig-width: 9
+#| fig-height: 5.5
+#| eval: !expr '"postrera" %in% df_obs_season$season'
+
+p_obs_postrera <- obs_season_plot("postrera")
+save_png(p_obs_postrera, glue("observed_postrera_{REVIEW_YEAR}_era5.png"), 9, 5.5)
+p_obs_postrera
+```
+
+```{r}
+#| label: fig-observed-monthly
+#| fig-cap: "Monthly rainfall in the review year against the average for each month."
+#| fig-width: 9
+#| fig-height: 4
+
+season_months <- unlist(map(SEASONS, "months"), use.names = FALSE)
+lab_current   <- as.character(REVIEW_YEAR)
+lab_average   <- as.character(glue("{BASELINE_START}–{BASELINE_END} average"))
+
+df_monthly_plot <- df_obs_monthly |>
+  filter(month %in% season_months) |>
+  group_by(aoi, month) |>
+  summarise(
+    average = mean(mm[year >= BASELINE_START & year <= BASELINE_END]),
+    current = if (any(year == REVIEW_YEAR)) mm[year == REVIEW_YEAR] else NA_real_,
+    .groups = "drop"
+  ) |>
+  filter(!is.na(current)) |>
+  pivot_longer(c(average, current), names_to = "series", values_to = "mm") |>
+  mutate(
+    series = factor(if_else(series == "current", lab_current, lab_average),
+                    levels = c(lab_average, lab_current)),
+    month_label = factor(month.abb[month], levels = month.abb)
+  )
+
+p_monthly <- ggplot(df_monthly_plot, aes(x = month_label, y = mm, fill = series)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.75) +
+  facet_wrap(~aoi, nrow = 1) +
+  scale_fill_manual(values = setNames(c("grey70", "#F2645A"), c(lab_average, lab_current)), name = NULL) +
+  labs(
+    title = glue("Monthly rainfall over each AOI, {REVIEW_YEAR}"),
+    x = NULL, y = "Monthly Rainfall (mm)",
+    caption = "ERA5 monthly totals, area-weighted over each AOI."
+  ) +
+  theme(legend.position = "top", plot.caption = element_text(hjust = 0, margin = margin(t = 10)))
+
+save_png(p_monthly, glue("observed_monthly_{REVIEW_YEAR}_era5.png"), 9, 4)
+p_monthly
+```
+
+### Observational zoom-in
+
+The trigger areas are averages. The table below gives the same statistics for the individual departments: those that make up the Guatemala and Honduras AOIs, and the two departments targeted in El Salvador, where the trigger itself uses the national average.
+
+```{r}
+#| label: tbl-zoom
+
+df_zoom_stats |>
+  arrange(match(season, names(SEASONS)), aoi, name) |>
+  transmute(
+    Season = map_chr(season, \(s) SEASONS[[s]]$label),
+    Months = if_else(complete, months_used, paste0(months_used, " (season to date)")),
+    Country = aoi,
+    Department = name,
+    `Observed (mm)` = fmt_mm(mm),
+    `vs average` = fmt_dev(pct_below),
+    Rank = fmt_rank(dry_rank, n_years),
+    `Return period` = fmt_rp(rp, dry_rank)
+  ) |>
+  knitr::kable(
+    caption = glue("Observed rainfall by department in {REVIEW_YEAR} (ERA5), against {BASELINE_START}–{BASELINE_END}.")
+  )
+```
+
+## Forecasts
+
+The forecasts are compiled below in reverse chronological order, as they stood at each monitoring moment. All three countries activated at the March moment. A threshold met at a later moment had no further operational consequence and is shown to see whether later forecasts agreed with the one that activated the framework.
+
+```{r}
+#| label: tbl-forecasts
+
+df_moment_stats |>
+  arrange(desc(issued_date), aoi) |>
+  transmute(
+    Season = map_chr(window, \(s) SEASONS[[s]]$label),
+    Issued = format(issued_date, "%B %Y"),
+    Country = aoi,
+    `Forecast (mm)` = fmt_mm(fcst_mm),
+    `Threshold (mm)` = fmt_mm(thresh_mm),
+    Status = status,
+    `vs average` = fmt_dev(pct_below),
+    `Return period` = fmt_rp(rp, dry_rank)
+  ) |>
+  knitr::kable(
+    caption = glue(
+      "SEAS5 forecast of seasonal rainfall at each {REVIEW_YEAR} monitoring moment. Average and return period ",
+      "are relative to forecasts issued in the same month of {BASELINE_START}–{BASELINE_END}."
+    )
+  )
+```
+
+### Postrera
+
+```{r}
+#| label: fig-fcst-postrera
+#| fig-width: 9
+#| fig-height: 8
+#| eval: !expr '"postrera" %in% df_fcst_moments$window'
+
+p_fcst_postrera <- fcst_window_plot("postrera")
+save_png(p_fcst_postrera, glue("forecasts_postrera_{REVIEW_YEAR}.png"), 9, 8)
+p_fcst_postrera
+```
+
+### Primera
+
+```{r}
+#| label: fig-fcst-primera
+#| fig-width: 9
+#| fig-height: 8
+#| eval: !expr '"primera" %in% df_fcst_moments$window'
+
+p_fcst_primera <- fcst_window_plot("primera")
+save_png(p_fcst_primera, glue("forecasts_primera_{REVIEW_YEAR}.png"), 9, 8)
+p_fcst_primera
+```
+
+## Method notes
+
+- **Observed rainfall**: ERA5 monthly precipitation from the team database, area-weighted across the departments of each AOI in the same way as the forecast. ERA5 is a reanalysis and is the only observational source used so far; see the open points.
+- **Forecasts**: SEAS5 seasonal totals aggregated as in the 2026 monitoring (`src/monitoring_2026/update_activation_status.R`) and compared with the same thresholds. A threshold is met when the forecast is at or below it. The values are recomputed from the database as it stands now. They are not the figures emailed on the day.
+- **Baseline**: 1991–2024 for both, the period the 2026 thresholds were calibrated on.
+- **Return periods**: rank of `r REVIEW_YEAR` among the `r BASELINE_END - BASELINE_START + 1` baseline years plus itself, Weibull plotting position, (n + 1) / rank. They describe how unusual the value is in its own record. They are not the return period of the trigger, which combines several monitoring moments.
+
+## Open points
+
+- Cross-check the observed totals against a second source (CHIRPS). The 2024 review showed both, and ERA5 alone is a thin basis for a severity statement.
+- Postrera: redo the observed section once ERA5 covers November (early December).
+- Add evidence of impact (FAO ASI, as in the July situation summary, and reported impacts). Rainfall shows whether the hazard occurred, and says nothing about whether the impact followed.
+- Write the narrative for the two questions left open on the 2025 review, using the first table (did the trigger capture the right severity level) and the forecast table (how later forecasts and the season compared with the moment of activation).
+
+## Slide figures
+
+One figure per country at 16:9 (1920 × 1080 px, also saved in `output/png/` next to this chapter), each with a short summary in English and Spanish for presentations. The summaries use only the return periods: the `r activation_month` forecast among `r activation_month` forecasts, and the observed season among observed seasons, as in the first table.
+
+```{r}
+#| label: slide-figures
+#| output: asis
+#| eval: !expr activation_complete
+
+# Both ranks are out of the same number of years, so comparing ranks compares the return
+# periods: the wording says whether the season was rarer than, as rare as, or less rare
+# than the forecast.
+n_years <- BASELINE_END - BASELINE_START + 2
+if (any(df_headline$obs_n != n_years)) stop("Observed records are not all ", n_years, " years long.")
+
+meses <- c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+           "septiembre", "octubre", "noviembre", "diciembre")
+season_months <- activation_season$months
+months_en <- months_label(season_months)
+months_es <- paste0(meses[min(season_months)], "–", meses[max(season_months)])
+month_es  <- meses[ACTIVATION$issued_month]
+
+# 18 -> "18", 5.83 -> "5.8" (Spanish "5,8")
+rp_num <- function(rp, decimal_mark = ".") {
+  r <- round(rp, 1)
+  if (r == round(r)) format(round(r)) else format(r, nsmall = 1, decimal.mark = decimal_mark)
+}
+
+ord_en   <- c("second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
+ord_es_m <- c("segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo", "noveno", "décimo")
+ord_es_f <- c("segunda", "tercera", "cuarta", "quinta", "sexta", "séptima", "octava", "novena", "décima")
+nth <- function(words, rank, fallback) if (rank <= length(words) + 1) words[rank - 1] else fallback
+
+# "the driest March forecast", "the second-driest March forecast"
+driest_en <- function(rank, noun) {
+  if (rank == 1) return(glue("the driest {noun}"))
+  glue("the {nth(ord_en, rank, scales::ordinal(rank))}-driest {noun}")
+}
+# "el segundo pronóstico de marzo más seco", "la Primera más seca"
+driest_es <- function(rank, noun, gender) {
+  art <- if (gender == "m") "el" else "la"
+  adj <- if (gender == "m") "seco" else "seca"
+  if (rank == 1) return(glue("{art} {noun} más {adj}"))
+  ords <- if (gender == "m") ord_es_m else ord_es_f
+  glue("{art} {nth(ords, rank, paste0(rank, if (gender == 'm') '.º' else '.ª'))} {noun} más {adj}")
+}
+# The driest year on record only bounds the return period from below
+or_rarer_en <- function(rank) if (rank == 1) " or rarer" else ""
+or_rarer_es <- function(rank) if (rank == 1) " o más raro" else ""
+
+headline_en <- c(
+  rarer = "a rare forecast, followed by a rarer drought",
+  same  = "a rare forecast, and a season just as rare",
+  less  = "a rare forecast, and a dry but less extreme season"
+)
+closing_en <- c(
+  rarer = "The forecast picked up a rare drought, and the outcome was rarer still.",
+  same  = "The season turned out as rare as the forecast signalled.",
+  less  = "The season was dry, but less extreme than the forecast signalled."
+)
+headline_es <- c(
+  rarer = "un pronóstico excepcional, seguido de una sequía aún más excepcional",
+  same  = "un pronóstico excepcional, y una temporada igual de excepcional",
+  less  = "un pronóstico excepcional, y una temporada seca pero menos extrema"
+)
+closing_es <- c(
+  rarer = "El pronóstico detectó una sequía excepcional, y lo que ocurrió fue más extremo aún.",
+  same  = "La temporada fue tan excepcional como anticipaba el pronóstico.",
+  less  = "La temporada fue seca, pero menos extrema de lo que anticipaba el pronóstico."
+)
+
+pwalk(df_headline, \(aoi, fcst_rank, fcst_rp, obs_rank, obs_rp, ...) {
+  outcome <- if (obs_rank < fcst_rank) "rarer" else if (obs_rank == fcst_rank) "same" else "less"
+  fcst_en <- rp_num(fcst_rp)
+  obs_en  <- rp_num(obs_rp)
+  fcst_es <- rp_num(fcst_rp, ",")
+  obs_es  <- rp_num(obs_rp, ",")
+  season  <- activation_season$label
+
+  cat(glue(
+    "### {aoi}\n\n",
+    "![]({slide_png(as.character(aoi))}){{fig-alt=\"Scatter plot for {aoi}: {activation_month} SEAS5 ",
+    "forecast against observed {season} rainfall for each year since {BASELINE_START}, with ",
+    "{REVIEW_YEAR} highlighted\"}}\n\n",
+    "**English**\n\n",
+    "**{aoi}: {headline_en[[outcome]]}**\n\n",
+    "Forecast: 1 in {fcst_en}{or_rarer_en(fcst_rank)}. Observed: 1 in {obs_en}{or_rarer_en(obs_rank)}.\n\n",
+    "In {activation_month}, the seasonal forecast for the {season} season ({months_en}) showed a ",
+    "1-in-{fcst_en}-year dry signal{or_rarer_en(fcst_rank)}: ",
+    "{driest_en(fcst_rank, paste(activation_month, 'forecast'))} in {n_years} years. ",
+    "It activated the framework before the season began. The observed rainfall made the season ",
+    "{driest_en(obs_rank, season)} in {n_years} years, a 1-in-{obs_en}-year event{or_rarer_en(obs_rank)}. ",
+    "{closing_en[[outcome]]}\n\n",
+    "**Español**\n\n",
+    "**{aoi}: {headline_es[[outcome]]}**\n\n",
+    "Pronóstico: 1 en {fcst_es} años{or_rarer_es(fcst_rank)}. ",
+    "Observado: 1 en {obs_es} años{or_rarer_es(obs_rank)}.\n\n",
+    "En {month_es}, el pronóstico estacional para la {season} ({months_es}) mostró una señal de ",
+    "sequía con un período de retorno de 1 en {fcst_es} años{or_rarer_es(fcst_rank)}: ",
+    "{driest_es(fcst_rank, paste('pronóstico de', month_es), 'm')} en {n_years} años. ",
+    "Activó el marco antes de que comenzara la temporada. Con la lluvia observada, la temporada ",
+    "resultó ser {driest_es(obs_rank, season, 'f')} en {n_years} años, un evento de ",
+    "1 en {obs_es} años{or_rarer_es(obs_rank)}. {closing_es[[outcome]]}"
+  ), "\n\n")   # outside glue(), which trims trailing newlines
+})
+```
+
+Contact the OCHA Centre for Humanitarian Data via Zachary Arno, Data Scientist, at zachary.arno@un.org with any questions or feedback.
