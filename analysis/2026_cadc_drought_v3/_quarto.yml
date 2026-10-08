@@ -29,6 +29,7 @@ book:
     - part: "2026 Situation & Mission Support"
       chapters:
         - 13_rolac_summary.qmd
+        - 14_season_review_2026.qmd
         # detailed working chapter — retired in favour of the summary above; uncomment to restore
         # - 12_rolac_mission_support.qmd
   appendices:

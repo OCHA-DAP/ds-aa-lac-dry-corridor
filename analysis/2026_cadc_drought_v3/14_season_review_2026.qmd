@@ -1,17 +1,11 @@
 ---
-title: "Anticipatory Action in the Central American Dry Corridor (CADC): 2026 Review (INTERNAL)"
-subtitle: "DRAFT"
-date: today
-format:
-  docx: default
-  html:
-    embed-resources: true
-    toc: true
 execute:
   echo: false
-  warning: false
-  message: false
 ---
+
+# 2026 Season Review
+
+*Draft: the narrative under Key points is still to be written.*
 
 ```{r}
 #| label: setup
@@ -21,11 +15,13 @@ execute:
 # structure of the 2025 review (Drive: CADC_Drought_2025_Review): observed rainfall
 # over each AOI, then the forecasts as seen at each monitoring moment.
 #
-# Render from this directory:
-#   quarto render cadc_drought_2026_review.qmd
+# Rendered as a chapter of the book (analysis/2026_cadc_drought_v3).
 # The first render pulls ERA5 / SEAS5 / polygon from the DB (cumulus::pg_con()) and the
 # 2026 thresholds from blob, then caches them in output/ so later renders need neither.
-# Delete the cache (or point CADC_REVIEW_CACHE elsewhere) to pull again.
+# Delete the cache (or point CADC_REVIEW_CACHE elsewhere) to pull again. Since 2026-09-30
+# a laptop reaches the DB only through the Databricks SSH tunnel (internal KB
+# infrastructure/local-db-access.md), and pg_con() connects on port 5432, so a first
+# render from a laptop needs a connection pointed at the tunnel port.
 
 library(dplyr)
 library(tidyr)
@@ -514,7 +510,7 @@ fcst_window_plot <- function(window) {
 }
 ```
 
-# Intro
+## Intro
 
 The anticipatory action framework for drought in the Central American Dry Corridor (CADC) covers Guatemala, Honduras and El Salvador in 2026. It was developed by the regional and national partners with the Centre for Humanitarian Data (CHD) and combines pre-agreed financing, pre-selected interventions and a trigger based on the ECMWF SEAS5 seasonal rainfall forecast. Two seasons are monitored: Primera (May–August, MJJA) and Postrera (September–November, SON).
 
@@ -528,7 +524,7 @@ This review does for all three countries what the 2025 review did after the Guat
 | Honduras | El Paraíso, Francisco Morazán (area-weighted) |
 | El Salvador | National average (activities target Ahuachapán and Santa Ana) |
 
-# Key points
+## Key points
 
 ```{r}
 #| label: key-points
@@ -554,7 +550,7 @@ pwalk(df_headline, \(aoi, fcst_mm, thresh_mm, fcst_pct_below, fcst_rank, fcst_rp
 
 *To be written once the numbers are in: one or two sentences on whether the season was as dry as the March forecast indicated, and how that differed between the three countries.*
 
-# Forecast at activation and the season that followed
+## Forecast at activation and the season that followed
 
 ```{r}
 #| label: tbl-headline
@@ -619,7 +615,7 @@ save_png(p_fcst_vs_obs, "forecast_vs_observed_activation.png", 9, 4)
 p_fcst_vs_obs
 ```
 
-# Observed rainfall
+## Observed rainfall
 
 ```{r}
 #| label: tbl-observed
@@ -708,7 +704,7 @@ save_png(p_monthly, glue("observed_monthly_{REVIEW_YEAR}_era5.png"), 9, 4)
 p_monthly
 ```
 
-## Observational zoom-in
+### Observational zoom-in
 
 The trigger areas are averages. The table below gives the same statistics for the individual departments: those that make up the Guatemala and Honduras AOIs, and the two departments targeted in El Salvador, where the trigger itself uses the national average.
 
@@ -732,7 +728,7 @@ df_zoom_stats |>
   )
 ```
 
-# Forecasts
+## Forecasts
 
 The forecasts are compiled below in reverse chronological order, as they stood at each monitoring moment. All three countries activated at the March moment. A threshold met at a later moment had no further operational consequence and is shown to see whether later forecasts agreed with the one that activated the framework.
 
@@ -759,7 +755,7 @@ df_moment_stats |>
   )
 ```
 
-## Postrera
+### Postrera
 
 ```{r}
 #| label: fig-fcst-postrera
@@ -772,7 +768,7 @@ save_png(p_fcst_postrera, glue("forecasts_postrera_{REVIEW_YEAR}.png"), 9, 8)
 p_fcst_postrera
 ```
 
-## Primera
+### Primera
 
 ```{r}
 #| label: fig-fcst-primera
@@ -785,14 +781,14 @@ save_png(p_fcst_primera, glue("forecasts_primera_{REVIEW_YEAR}.png"), 9, 8)
 p_fcst_primera
 ```
 
-# Method notes
+## Method notes
 
 - **Observed rainfall**: ERA5 monthly precipitation from the team database, area-weighted across the departments of each AOI in the same way as the forecast. ERA5 is a reanalysis and is the only observational source used so far; see the open points.
 - **Forecasts**: SEAS5 seasonal totals aggregated as in the 2026 monitoring (`src/monitoring_2026/update_activation_status.R`) and compared with the same thresholds. A threshold is met when the forecast is at or below it. The values are recomputed from the database as it stands now. They are not the figures emailed on the day.
 - **Baseline**: 1991–2024 for both, the period the 2026 thresholds were calibrated on.
 - **Return periods**: rank of `r REVIEW_YEAR` among the `r BASELINE_END - BASELINE_START + 1` baseline years plus itself, Weibull plotting position, (n + 1) / rank. They describe how unusual the value is in its own record. They are not the return period of the trigger, which combines several monitoring moments.
 
-# Open points
+## Open points
 
 - Cross-check the observed totals against a second source (CHIRPS). The 2024 review showed both, and ERA5 alone is a thin basis for a severity statement.
 - Postrera: redo the observed section once ERA5 covers November (early December).
