@@ -1,0 +1,6 @@
+# pulled data, figures and rendered review (internal)
+output/
+*.docx
+*_files/
+
+/.quarto/
