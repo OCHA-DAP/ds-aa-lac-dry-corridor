@@ -1,0 +1,14 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
+.Random.seed|object|8ff2b81cf6c6b9b5|||||||||||||||
+df_iri_adm0|stem|a5e222512fc22fa4|7dac976f330c7afb|ce9ecd14ae1f2305|796467628||t19626.7091366325s|998fe425e8f859d9|17252|rds|local|vector|||1.012||
+fp_iri_prob|object|be2208e64c26e452|||||||||||||||
+gdf_aoi_adm|stem|10cc8717e15fd508|b6f8c5e974fad3cb|dade321183e7dabe|1204730351||t19626.708586427s|691cc41844a65629|66964017|rds|local|vector|||11.067||
+iri_nc_to_r|function|f62c287298eefac9|||||||||||||||
+load_proj_admins|function|09d2fd9d45a754a8|||||||||||||||
+pct_cropland_lte_vhi_thresh|function|79274c76cf4797f1|||||||||||||||
+vhi_mo_composite_reduce_region|function|5ae004a1eca97058|||||||||||||||
+vhi_mo_composite_reduce_region_batch|function|10fe3a09971aba92|||||||||||||||
+vhi_year_month_composites|function|ca8ce0860544d5bf|||||||||||||||
+vhi_zonal|function|524bd441e5290fb5|||||||||||||||
+vhi_zonal_pct_lte_thresh|function|0972ca9c5de9a5a4|||||||||||||||
+zonal_sum_cropland|function|f6cb2a92e96f7434|||||||||||||||
