@@ -83,9 +83,8 @@ trigger_status_choropleth <- function(
         "Not Available" = gghdx$hdx_hex("gray-medium"),
         "Already activated" = gghdx$hdx_hex("gray-medium"),
         
-        "No Activation"= "#55b284ff",#"#00ad78ff", # gghdx$hdx_hex("mint-ultra-light"),
-        "Activation"=gghdx$hdx_hex("tomato-light"),
-        "asdfa"="red"
+        "Threshold Not Met"= "#55b284ff",
+        "Threshold Met"=gghdx$hdx_hex("tomato-light")
         
       ),
       drop=FALSE
