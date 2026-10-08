@@ -29,9 +29,12 @@ book:
   appendices:
     - appendix_technical_notes.qmd
 
+# Publish with ./publish_book.sh, NOT `quarto publish gh-pages` (that wipes the whole site).
 format:
   html:
-    include-before-body: password.html
+    include-before-body:
+      - password.html
+      - home-link.html
     theme: cosmo
     css: custom.css
     toc: true
