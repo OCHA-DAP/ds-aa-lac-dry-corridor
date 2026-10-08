@@ -9,14 +9,14 @@ It follows the team's landing-page convention (ds-knowledge-base
 | Path | What | Source | Gate |
 |---|---|---|---|
 | `/` | Landing page (`index.html`, `assets/`) | edited here | none |
-| `/book/` | Quarto book: trigger development & forecast evaluation | `analysis/2026_cadc_drought_v3/` on `main`, published by `publish_book.sh` | JS password prompt |
-| `/season-review-2026/` | 2026 season review | StatiCrypt-encrypted HTML, committed here directly | team passphrase (AES) |
+| `/book/` | Quarto book: trigger development & forecast evaluation, incl. the 2026 season review (chapter 14) | `analysis/2026_cadc_drought_v3/`, published by `publish_book.sh` | JS password prompt |
+| `/season-review-2026/` | Redirect stub: the season review was a separate StatiCrypt page until it moved into the book | edited here | none |
 | `/*.html` at the root | Redirect stubs: the book lived at the root until 2026-10-08 | edited here | none |
 
 ## Never run `quarto publish gh-pages`
 
 It runs `git rm -r .` on this branch before copying the book in, so it deletes the landing
-page, the season review and the redirect stubs. Publish the book with
+page and the redirect stubs. Publish the book with
 `analysis/2026_cadc_drought_v3/publish_book.sh` instead. It only touches `book/` and refuses to
 push if anything else changed.
 
@@ -34,6 +34,6 @@ push if anything else changed.
 ## What the gates protect
 
 The book's password is checked by a script in the page, and the password is in the page
-source. It keeps casual visitors out, nothing more. The season review is actually encrypted
-(StatiCrypt), so its content can't be read without the passphrase. The repository is public
-either way, so neither gate protects the analysis sources on `main`.
+source. It keeps casual visitors out, nothing more. That now includes the 2026 season review,
+which was StatiCrypt-encrypted while it was a separate page. The repository is public either
+way, so the gate doesn't protect the analysis sources.
