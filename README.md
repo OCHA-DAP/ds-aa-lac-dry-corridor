@@ -92,6 +92,17 @@ provided in this email as the National forecast is the official forecast for the
 Once the INSIVUMEH forecast has been received and migrated to the appropriate blob location, the analyst must re-run 
 step 2 which will provide a final email update for the month with the status for Guatemala included
 
+## Pages site
+
+https://ocha-dap.github.io/ds-aa-lac-dry-corridor/ is served straight from the `gh-pages`
+branch: a landing page at `/` with one card per product, the Quarto book from
+`analysis/2026_cadc_drought_v3/` at `/book/`, and other pages under their own paths. The
+branch's `README.md` documents the layout and how to add a page.
+
+Publish the book with `analysis/2026_cadc_drought_v3/publish_book.sh` (add `--dry-run` to
+preview). **Never use `quarto publish gh-pages`**: it deletes everything on the branch that
+isn't the book, including the landing page and the other products.
+
 ## Development
 
 If you would like to instead receive the processed data from our team, please
