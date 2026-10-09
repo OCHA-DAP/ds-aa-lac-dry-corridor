@@ -372,3 +372,10 @@ rpubs_upload/
 shinyAppData/
 *.xlsx
 ecmwf_gribs/
+.positai
+
+# exploratory scratch tree (reviewed, then distilled into analysis/)
+artefacts/
+
+# committed-data policy: mission-support inputs stay local, plots read them at render
+analysis/2026_cadc_drought_v3/data/mission_support/

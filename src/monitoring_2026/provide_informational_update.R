@@ -566,7 +566,7 @@ Documentaci\u00f3n completa: https://github.com/OCHA-DAP/ds-aa-lac-dry-corridor
 
 # ── StartNetwork (EN only) ──
 sn_aoi_text <- paste(
-  sapply(sn_configs, \(x) glue("- {gsub(chr(10), ' ', x$label)}: {x$admin1}")),
+  sapply(sn_configs, \(x) glue("- {gsub('\\n', ' ', x$label)}: {x$admin1}")),
   collapse = "\n"
 )
 

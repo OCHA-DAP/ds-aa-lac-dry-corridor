@@ -1,0 +1,634 @@
+# 2026 Primera Situation & Priorities {#sec-rolac-mission}
+
+```{r}
+#| label: setup-mission
+#| include: false
+
+library(tidyverse)
+library(sf)
+library(gt)
+library(scales)
+library(ggrepel)
+library(patchwork)
+library(gghdx)
+gghdx()
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# --- self-contained: read only PRE-COMPUTED data, no DB / GEE at render time ---
+# The underlying pulls (SEAS5/ERA5/IMERG from the team DB; CHIRPS + cropland from GEE) and the
+# analysis scripts live in the gitignored artefacts/ tree; their outputs are committed here so
+# this chapter renders anywhere without credentials. Key pull scripts are shown (un-run) below.
+dd <- "data/mission_support"
+priority <- readr::read_csv(file.path(dd, "priority_synthesis_adm1.csv"), show_col_types = FALSE)
+obs      <- readr::read_csv(file.path(dd, "primera_observed_2026.csv"), show_col_types = FALSE)
+asi      <- readr::read_csv(file.path(dd, "asi_primera_2026.csv"), show_col_types = FALSE)
+twoprod  <- readr::read_csv(file.path(dd, "two_product_mayjun_2026_country.csv"), show_col_types = FALSE)
+enso     <- readr::read_csv(file.path(dd, "enso_composite_by_unit.csv"), show_col_types = FALSE)
+mixed    <- readr::read_csv(file.path(dd, "mixed_primera_2026.csv"), show_col_types = FALSE)
+joint    <- readr::read_csv(file.path(dd, "primera_vs_postrera_2026.csv"), show_col_types = FALSE)
+skill    <- readr::read_csv(file.path(dd, "forecast_skill_auc.csv"), show_col_types = FALSE)
+season   <- readr::read_csv(file.path(dd, "season_specific_risk_adm1.csv"), show_col_types = FALSE)
+asi_ej   <- readr::read_csv(file.path(dd, "asi_end_june_by_year.csv"), show_col_types = FALSE)
+asi_ef   <- readr::read_csv(file.path(dd, "early_vs_final_asi.csv"), show_col_types = FALSE)
+gaul     <- sf::st_read(file.path(dd, "gaul_adm1_gtm_hnd_slv.geojson"), quiet = TRUE) |>
+  janitor::clean_names()
+
+# priority table carries pcode + gaul_code -> use it as the pcode<->gaul crosswalk for maps.
+xwalk <- priority |> select(pcode, gaul_code)
+iso_lab <- c(GTM = "Guatemala", HND = "Honduras", SLV = "El Salvador")
+
+# RP classing (Weibull), matching the repo's gen_utils.R::threshold_var
+rp_breaks <- c(0, 2, 3, 5, 10, 20, Inf)
+rp_labels <- c("<2", "2–3", "3–5", "5–10", "10–20", "≥20")
+rp_class  <- function(rp) factor(cut(rp, rp_breaks, rp_labels, right = FALSE), levels = rp_labels)
+rp_fill   <- setNames(c("#fee5d9","#fcae91","#fb6a4a","#de2d26","#a50f15","#67000d"), rp_labels)
+
+join_gaul <- function(df, by = "gaul_code") {
+  left_join(gaul, df, by = c("adm1_code" = by)) |>
+    mutate(iso3 = c(Guatemala = "GTM", Honduras = "HND", `El Salvador` = "SLV")[adm0_name])
+}
+
+# Diagonal-line hatch (dependency-free): linestrings clipped to `poly_sf`, for a "not in season"
+# fill on off-calendar admin units.
+hatch_lines <- function(poly_sf, n = 110) {
+  suppressWarnings({
+    g <- sf::st_collection_extract(sf::st_make_valid(sf::st_geometry(poly_sf)), "POLYGON")
+    u <- sf::st_union(g); bb <- sf::st_bbox(u)
+    cs <- seq(bb["ymin"] - bb["xmax"], bb["ymax"] - bb["xmin"], length.out = n)   # y = x + c
+    lines <- lapply(cs, function(cc) sf::st_linestring(
+      matrix(c(bb["xmin"], bb["xmin"] + cc, bb["xmax"], bb["xmax"] + cc), ncol = 2, byrow = TRUE)))
+    sf::st_intersection(sf::st_sfc(lines, crs = sf::st_crs(poly_sf)), u)
+  })
+}
+
+# Stack per-country maps, each auto-fit to its OWN extent (coord_sf can't do facet free scales),
+# with a single shared legend. `layers` = list of ggplot layers (geom_sf(aes(fill=…)) + scale).
+stack3 <- function(df, layers, title = NULL, hatch_col = NULL) {
+  ccs <- c("GTM", "HND", "SLV")
+  fmap <- layers[[1]]$mapping   # the fill mapping
+  # For a DISCRETE fill, a country panel may lack some categories (Guatemala has no "Both"),
+  # and patchwork then drops them from the collected legend. Fix: add one dummy feature per
+  # category at an off-view point (0,0) — clipped away by coord_sf — so every level is in the
+  # guide with no map bleed. (Continuous fills use scale limits, so no dummy needed.)
+  fill_var <- tryCatch(rlang::as_name(fmap$fill), error = function(e) NA_character_)
+  lv <- if (!is.na(fill_var) && is.factor(df[[fill_var]])) levels(df[[fill_var]]) else NULL
+  ps <- lapply(ccs, function(cc) {
+    cd <- dplyr::filter(df, iso3 == cc); b <- sf::st_bbox(cd)
+    p <- ggplot(cd)
+    # For discrete fills: seed one tiny dummy polygon per level AT the country's centroid, drawn
+    # UNDER the real polygons (so hidden) but INSIDE the view — patchwork keeps every level in the
+    # collected legend (it otherwise re-derives the guide post-clip and drops absent categories).
+    if (!is.null(lv)) {
+      ctr <- suppressWarnings(sf::st_coordinates(sf::st_centroid(sf::st_union(sf::st_geometry(cd)))))
+      poly <- lapply(seq_along(lv), function(i) sf::st_polygon(list(rbind(
+        ctr, ctr + c(0, 1e-4), ctr + c(1e-4, 1e-4), ctr + c(1e-4, 0), ctr))))
+      dummy <- sf::st_sf(setNames(data.frame(factor(lv, levels = lv)), fill_var),
+                         geometry = sf::st_sfc(poly, crs = sf::st_crs(df)))
+      p <- p + geom_sf(data = dummy, mapping = fmap, color = NA)
+    }
+    p <- p + layers
+    if (!is.null(hatch_col)) {                    # per-country hatch (avoids cross-country bleed)
+      offc <- cd[which(cd[[hatch_col]]), ]
+      if (nrow(offc) > 0) p <- p + geom_sf(data = hatch_lines(offc), color = "grey35", linewidth = 0.2)
+    }
+    p +
+      coord_sf(xlim = c(b["xmin"], b["xmax"]), ylim = c(b["ymin"], b["ymax"])) +
+      labs(subtitle = iso_lab[cc]) +
+      theme(axis.text = element_blank(), axis.ticks = element_blank(),
+            panel.grid = element_blank(), plot.subtitle = element_text(face = "bold"))
+  })
+  # Use each panel's OWN (native ggplot) legend rather than patchwork's collected one — patchwork
+  # re-derives collected discrete guides and drops absent categories. Keep the legend only on the
+  # bottom panel; guides="keep" leaves it untouched (all levels present via the dummy above).
+  ps[[1]] <- ps[[1]] + theme(legend.position = "none")
+  ps[[2]] <- ps[[2]] + theme(legend.position = "none")
+  ps[[3]] <- ps[[3]] + theme(legend.position = "bottom")
+  patchwork::wrap_plots(ps, ncol = 1, guides = "keep") +
+    patchwork::plot_annotation(
+      title = title,
+      theme = theme(plot.title = element_text(face = "bold", size = 13)))
+}
+```
+
+## Purpose
+
+ROLAC missions to El Salvador, Honduras, and Guatemala (July 2026) are supporting country-level
+analysis of El Niño humanitarian impacts. This chapter is CHD's contribution to the preliminary
+desk review, and it follows one line of reasoning: **a drought is already underway, it is
+unlikely to relent this season, and because it is region-wide the useful question is not
+*whether* but *where* to concentrate attention.** Each section builds toward that answer — first
+the current situation, then the forecast, then the sub-national targeting.
+
+::: {.callout-note}
+## Bottom line
+1. **A dry start, confirmed and region-wide.** Two independent rainfall products put the
+   May–June primera at roughly two-thirds of normal in every admin-1 unit of all three countries.
+2. **The season is unlikely to recover.** The forecast keeps the rest of primera dry, and points
+   to a dry postrera as well — so the usual "second harvest" fallback looks compromised. (That
+   postrera signal is low-confidence: SEAS5's postrera skill is weak, so it is a flag to watch,
+   not a firm prediction — see @sec-appendix-skill.)
+3. **So the question is where to act — and in which season.** A region-wide deficit does not
+   localize priorities; that comes from where the drought meets active, rain-sensitive cropland
+   (JRC/FAO ASAP). Split by season: **primera crop stress is already realized** in Olancho, El
+   Paraíso, Choluteca (Honduras), La Unión (El Salvador), and Zacapa (Guatemala) — *act now*; a
+   **dry postrera is forecast** (low confidence) for Guatemala's Pacific belt and central El
+   Salvador — *watch*; San Vicente and Morazán face **both**; and the **western highlands sit off
+   this seasonal calendar** — a vulnerability question, not a seasonal-drought one.
+:::
+
+# The current situation {#sec-current}
+
+**Observed rainfall, May–June (primera to date).** Every admin-1 unit is in the driest third of
+its own 1981–2025 record. The two independent products with June data — ERA5 (reanalysis) and
+IMERG (satellite) — both put the May–June deficit well below normal in all three countries
+(median 65–81% of normal). They agree on the regional signal but differ on severity (ERA5 is
+consistently the most severe), so we report the regional deficit with confidence but avoid
+over-precise per-unit "record" claims. CHIRPS (the FEWS NET standard) lags ~5 weeks, so it
+covers May only; it too shows May below normal.
+
+```{r}
+#| label: fig-two-product
+#| fig-cap: "May–June 2026 median admin-1 rainfall as a percentage of each product's own normal. Both products, all three countries, well below normal."
+#| fig-height: 4.2
+
+twoprod |>
+  ggplot(aes(iso_lab[iso3], median_ratio, fill = product)) +
+  geom_col(position = position_dodge(0.8), width = 0.6) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_text(aes(label = percent(median_ratio, accuracy = 1)),
+            position = position_dodge(0.8), vjust = -0.3, size = 3.2) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "May–June 2026 rainfall vs normal — primera to date",
+       x = NULL, y = "% of normal", fill = NULL) +
+  theme(legend.position = "top")
+```
+
+The map below shows the empirical return period of the observed May–June deficit: much of the
+region is experiencing a 1-in-10-year-or-rarer dry start, and parts of Honduras and eastern
+Guatemala a 1-in-20-year-or-rarer one.
+
+```{r}
+#| label: fig-obs-rp
+#| fig-cap: "Return period of the observed May–June 2026 rainfall deficit (ERA5, Weibull). Darker = rarer/drier."
+#| fig-width: 6.5
+#| fig-height: 10
+
+obs |>
+  left_join(xwalk, by = "pcode") |>
+  mutate(rp_c = rp_class(rp_dry)) |>
+  join_gaul(by = "gaul_code") |>
+  filter(!is.na(rp_c)) |>
+  stack3(list(geom_sf(aes(fill = rp_c), color = "grey80", linewidth = 0.1),
+              scale_fill_manual(values = rp_fill, drop = FALSE, limits = rp_labels,
+                                name = "Dry return\nperiod (yr)")),
+         title = "Observed primera dryness, May–June 2026")
+```
+
+# The season is unlikely to recover {#sec-forecast}
+
+The map above is only the primera *so far*. To see where the season is likely to end up, we
+extend it: combining the observed May–June rainfall (ERA5) with the SEAS5 July-issuance forecast
+for July–August gives a **complete estimate of the full primera** — our best single view of the
+2026 season. It is the same story, and if anything darker: the full season is dry almost
+everywhere, at a 1-in-10 to 1-in-20-year-or-rarer level across much of the region. This is the
+map to anchor on.
+
+```{r}
+#| label: fig-mixed-rp
+#| fig-cap: "Complete-primera dry return period (observed May–June + SEAS5 July–August forecast, blended z, Weibull). Our best full-season view. SLV's forecast half is coarse SEAS5 (indicative within SLV)."
+#| fig-width: 6.5
+#| fig-height: 10
+
+mixed |>
+  mutate(rp_c = rp_class(rp_emp)) |>
+  left_join(xwalk, by = "pcode") |>
+  join_gaul(by = "gaul_code") |>
+  filter(!is.na(rp_c)) |>
+  stack3(list(geom_sf(aes(fill = rp_c), color = "grey80", linewidth = 0.1),
+              scale_fill_manual(values = rp_fill, drop = FALSE, limits = rp_labels,
+                                name = "Dry return\nperiod (yr)")),
+         title = "Complete primera (observed + forecast), 2026")
+```
+
+Why so dry? Because **both halves of the season point the same way.** Decomposing the estimate
+into its observed start (May–June) and its forecast remainder (July–August), nearly every unit is
+below normal in *both* — the forecast does not rescue the units that started dry (top-right =
+driest in both). Only Izabal (Guatemala) has a near-normal forecast despite a dry start.
+
+```{r}
+#| label: fig-mixed-scatter
+#| fig-cap: "2026 primera: observed May–June dryness (x) vs forecast July–August dryness (y), z-scores negated so higher = drier. Top-right = dry start AND dry forecast (worst)."
+#| fig-height: 6.5
+
+mixed |>
+  ggplot(aes(-z_obs, -z_fcst, color = iso3)) +
+  annotate("rect", xmin = 0, xmax = Inf, ymin = 0, ymax = Inf, alpha = 0.06, fill = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point(size = 2.5, alpha = 0.85) +
+  ggrepel::geom_text_repel(aes(label = name), size = 2.4, max.overlaps = 12, show.legend = FALSE) +
+  labs(title = "Complete primera: observed start vs forecast remainder",
+       subtitle = "Each axis = rainfall deficit, standard deviations below normal (0 = normal). Top-right = driest in both.",
+       x = "Observed May–Jun deficit (σ below normal) →",
+       y = "Forecast Jul–Aug deficit (σ below normal) →", color = NULL) +
+  theme(legend.position = "top")
+```
+
+**No second harvest to fall back on.** In this bimodal system a failed primera is often assumed
+to leave the postrera (Sep–Nov, the main bean season) as a second chance. Not this year: the
+SEAS5 forecast puts the postrera dry too. Plotting the **complete primera** against the **postrera
+forecast**, every admin-1 unit falls in the top-right — dry in both seasons — so the developing
+El Niño removes the fallback across the board. (This is the double-season failure the drought
+literature associates with El Niño years such as 2014–2015.)
+
+```{r}
+#| label: fig-primera-postrera
+#| fig-cap: "Complete primera dryness (x) vs postrera SON forecast dryness (y), z-scores negated so higher = drier. All units top-right = both seasons dry, i.e. no second-harvest relief."
+#| fig-height: 6.5
+
+joint |>
+  ggplot(aes(-z_primera, -z_post, color = iso3)) +
+  annotate("rect", xmin = 0, xmax = Inf, ymin = 0, ymax = Inf, alpha = 0.06, fill = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point(size = 2.5, alpha = 0.85) +
+  ggrepel::geom_text_repel(aes(label = name), size = 2.3, max.overlaps = 10, show.legend = FALSE) +
+  labs(title = "Primera vs postrera: is there a second chance in 2026?",
+       subtitle = "Each axis = rainfall deficit, standard deviations below normal (0 = normal). Every unit sits\ntop-right of 0 on both axes = both seasons forecast dry (no fallback).",
+       x = "Complete primera deficit (σ below normal) →",
+       y = "Postrera forecast deficit (σ below normal) →", color = NULL) +
+  theme(legend.position = "top")
+```
+
+The same view in **return-period** terms (the "1-in-N years" framing) tells the same story in
+more citable units — most of the region faces a 1-in-20-year-or-rarer season in *both* windows.
+Note the primera axis saturates: the complete primera is the **driest on record** (≈1-in-46+
+years) for most units, so those points pile against the record ceiling and are jittered slightly
+to be visible. The σ version above discriminates better *among* those record-dry units.
+
+```{r}
+#| label: fig-primera-postrera-rp
+#| fig-cap: "Return-period version: complete primera dry RP (x) vs postrera forecast dry RP (y), Weibull, sqrt scale. Most units are 1-in-20+ in both. Primera RP saturates at the ~46-year record (jittered)."
+#| fig-height: 6
+
+set.seed(1)
+brks <- c(2, 3, 5, 10, 20, 47)
+joint |>
+  ggplot(aes(rp_primera, rp_post, color = iso3)) +
+  annotate("rect", xmin = 20, xmax = Inf, ymin = 20, ymax = Inf, alpha = 0.06, fill = "red") +
+  geom_point(size = 2.5, alpha = 0.8, position = position_jitter(width = 1.2, height = 0.6)) +
+  ggrepel::geom_text_repel(aes(label = name), size = 2.3, max.overlaps = 9, show.legend = FALSE) +
+  scale_x_sqrt(breaks = brks, labels = paste0("1-in-", brks)) +
+  scale_y_sqrt(breaks = brks, labels = paste0("1-in-", brks)) +
+  labs(title = "Primera vs postrera return period (both seasons, 2026)",
+       subtitle = "Rarer/drier = up and right; shaded = 1-in-20-or-rarer in both seasons",
+       x = "Complete primera dry return period →",
+       y = "Postrera forecast dry return period →", color = NULL) +
+  theme(legend.position = "top")
+```
+
+One caveat governs how much weight to put on the postrera half. Validating SEAS5 against 45 years
+of observed drought (ROC-AUC), **primera skill is reasonable but postrera skill is weak** (median
+AUC 0.65; acceptable in only 11 of 54 admin-1 units — see @sec-appendix-skill). So the complete
+*primera* picture is firm (mostly observed), but the *postrera* "no relief" signal is a
+**low-confidence outlook to watch, not a prediction** — a point carried through the targeting
+below.
+
+# Targeting: beyond the regional hazard {#sec-targeting}
+
+The rainfall picture is unambiguous but **uniform** — dry everywhere, both seasons — so it does
+not tell the mission *where* to concentrate. Two further layers do: where the drought is already
+translating into **agricultural stress**, and which areas are **structurally most sensitive** to
+El Niño and so most likely to deteriorate.
+
+## Agricultural impact (FAO ASI) {#sec-asi}
+
+FAO's Agricultural Stress Index (share of crop area in severe stress, cumulative to late June) is
+well above normal in Honduras (11% vs 7%), near normal in El Salvador, and **below** normal in
+Guatemala — so despite dry rainfall, Guatemala's crops are not (yet) unusually stressed, while the
+impact is concentrating in Honduras and eastern El Salvador. Read as a **return period** — how
+unusual each unit's current stress is against its own 1984–2025 history (Weibull, the same basis
+as the rainfall maps) — the leading units are rare events: Olancho and San Vicente near
+1-in-15-year stress, Morazán ~1-in-11, Choluteca ~1-in-9, and El Paraíso and La Unión ~1-in-7.
+The table in @sec-season-risk carries this return period per unit.
+
+```{r}
+#| label: fig-asi-map
+#| fig-cap: "FAO ASI (% of crop area in severe stress), cumulative to late June 2026. Grey = no ASI (negligible cropland)."
+#| fig-width: 6.5
+#| fig-height: 10
+
+d_asi <- join_gaul(asi |> transmute(gaul_code = adm1_code, asi_mean_2026)) |> filter(!is.na(iso3))
+stack3(d_asi,
+       list(geom_sf(aes(fill = asi_mean_2026), color = "grey80", linewidth = 0.1),
+            scale_fill_gradient(low = "#fff5f0", high = "#67000d", na.value = "grey90",
+                                limits = c(0, max(d_asi$asi_mean_2026, na.rm = TRUE)),
+                                name = "ASI (% crop\narea stressed)")),
+       title = "Agricultural stress, late June 2026")
+```
+
+The same, as a **return period** — how rare 2026's end-June stress is for each unit against its
+own 1984–2025 record (darker = rarer). Units whose crops run on a different rain calendar (the
+western highlands and Caribbean, @sec-cropcalendar) are **hatched**, since an end-June ASI reading
+is not the right lens for them.
+
+```{r}
+#| label: fig-asi-rp-map
+#| fig-cap: "End-June agricultural-stress return period (Weibull, vs each unit's 1984–2025 record). Darker = rarer. Hatched = crops off this seasonal calendar (highlands/Caribbean). Grey = no ASI / near-normal."
+#| fig-width: 6.5
+#| fig-height: 10
+
+d_asirp <- asi |> transmute(gaul_code = adm1_code, asi_pctile) |>
+  left_join(season |> select(gaul_code, season_class), by = "gaul_code") |>
+  mutate(asi_rp = 1 / (1 - asi_pctile),
+         off = !is.na(season_class) & season_class == "Off-calendar",
+         rp_c = factor(ifelse(off, NA, as.character(rp_class(asi_rp))), levels = rp_labels)) |>
+  join_gaul(by = "gaul_code") |> filter(!is.na(iso3))
+stack3(d_asirp,
+       list(geom_sf(aes(fill = rp_c), color = "grey80", linewidth = 0.1),
+            scale_fill_manual(values = rp_fill, drop = FALSE, limits = rp_labels,
+                              na.value = "grey90", name = "ASI return\nperiod (yr)")),
+       title = "End-June agricultural stress: return period (2026)", hatch_col = "off")
+```
+
+Current stress, though, is a *lagging* signal — it marks where damage has already begun. To
+anticipate where an intensifying El Niño will bite hardest over the rest of the season, we add a
+second, structural lens.
+
+## El Niño structural sensitivity {#sec-enso}
+
+A rapidly developing El Niño (the ONI anomaly rose from −0.4 in January to +1.5 by June 2026)
+frames the season. The maps below show each unit's mean rainfall anomaly in past El Niño years
+(1981–2025) for **both seasons**. El Niño depresses both, but the **primera** signal is the
+stronger (a mean deficit of up to ~−31% versus ~−18% for the postrera); in both, the
+eastern/southern dry corridor dries out most, and for primera 83% of admin-1 units show a
+statistically significant El Niño drying signal. Reassuringly, these historical "El Niño losers"
+are largely the same eastern-Honduras and eastern-El-Salvador units where stress is already
+building today — current impact and structural risk point to the same places.
+
+```{r}
+#| label: fig-enso-map
+#| fig-cap: "Mean primera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Darker red = drier under El Niño. Outlined = statistically significant (Wilcoxon p<0.10)."
+#| fig-width: 6.5
+#| fig-height: 10
+
+d_enso <- enso |> filter(window == "primera") |> left_join(xwalk, by = "pcode") |>
+  join_gaul(by = "gaul_code") |> filter(!is.na(pct_anom))
+stack3(d_enso,
+       list(geom_sf(aes(fill = pct_anom), color = "grey85", linewidth = 0.1),
+            geom_sf(data = ~filter(.x, sig10), fill = NA, color = "black", linewidth = 0.4),
+            scale_fill_gradient(low = "#67000d", high = "#fff5f0", labels = percent,
+                                limits = range(d_enso$pct_anom, na.rm = TRUE),
+                                name = "El Niño\nanomaly")),
+       title = "Historical El Niño rainfall sensitivity (primera)")
+```
+
+```{r}
+#| label: fig-enso-postrera
+#| fig-cap: "Mean postrera rainfall anomaly in past El Niño years (ERA5, 1981–2025). Weaker than the primera signal but a similar pattern, concentrating in the eastern/southern dry corridor."
+#| fig-width: 6.5
+#| fig-height: 10
+
+d_enso_p <- enso |> filter(window == "postrera") |> left_join(xwalk, by = "pcode") |>
+  join_gaul(by = "gaul_code") |> filter(!is.na(pct_anom))
+stack3(d_enso_p,
+       list(geom_sf(aes(fill = pct_anom), color = "grey85", linewidth = 0.1),
+            geom_sf(data = ~filter(.x, sig10), fill = NA, color = "black", linewidth = 0.4),
+            scale_fill_gradient(low = "#67000d", high = "#fff5f0", labels = percent,
+                                limits = range(d_enso_p$pct_anom, na.rm = TRUE),
+                                name = "El Niño\nanomaly")),
+       title = "Historical El Niño rainfall sensitivity (postrera)")
+```
+
+## Is this cropland, and is it the right season? {#sec-cropcalendar}
+
+Two checks turn the hazard into *agricultural* risk. **Is it cropland?** The JRC/FAO ASAP crop
+mask shows the dry corridor is heavily agricultural — 42–65% cropland by country. (The MODIS layer
+we first tried badly underestimated smallholder farming — it put Olancho, the most-stressed unit,
+at ~2% — so ASAP is the exposure layer to trust.) **Is our drought hitting the rain-critical part
+of the season?** ASAP's precipitation-sensitive-period (PSP) layer marks May–November as the
+rain-critical window across essentially all of that cropland — *except* the western highlands
+(Honduras: Lempira, Intibucá, Copán, Ocotepeque, La Paz; Guatemala: Huehuetenango) and the
+Caribbean fringe (Izabal, Islas de la Bahía), whose crops run on a different calendar. For those
+**off-calendar** zones a primera/postrera deficit is the wrong lens — they belong to the broader
+food-security / vulnerability question, not the seasonal-drought one.
+
+## Season-specific agricultural drought risk {#sec-season-risk}
+
+For the crop-relevant, in-season zones, the risk splits cleanly by season. **Primera risk is
+realized** — read from the crop stress already on the ground (FAO ASI). **Postrera risk is
+forecast** — read from the SEAS5 September–November outlook, and therefore low-confidence (weak
+forecast skill, @sec-appendix-skill). This is the desk-review headline:
+
+- **Primera — biting now:** Olancho, El Paraíso, Choluteca (Honduras); La Unión (El Salvador);
+  Zacapa (Guatemala). Crops materially stressed today.
+- **Postrera — forecast, watch:** Guatemala's Pacific belt (Escuintla, Suchitepéquez, San Marcos,
+  Quetzaltenango, Retalhuleu, Santa Rosa) + central El Salvador (San Miguel, Usulután, Cabañas,
+  Cuscatlán) + Honduras's Valle. Driest in the SON forecast, not yet stressed.
+- **Both:** San Vicente and Morazán (eastern El Salvador) — already stressed *and* driest postrera
+  forecast.
+- **Off-calendar:** western highlands + Caribbean — assessed through vulnerability data, not this.
+
+```{r}
+#| label: fig-season-risk
+#| fig-cap: "Season-specific agricultural drought risk. Both = realized primera stress AND dry postrera forecast; Primera = realized crop stress now (ASI); Postrera = SEAS5 SON forecast, low confidence; Lower = crop-relevant and dry but no strong single-season signal yet; Off-calendar = crops on a different rain calendar (highlands/Caribbean), assessed via vulnerability data."
+#| fig-width: 6.5
+#| fig-height: 10
+
+season_pal <- c(Both = "#67000d", Primera = "#d7301f", Postrera = "#fdae61",
+                Lower = "#fee8c8", `Off-calendar` = "grey75")
+join_gaul(season |> select(gaul_code, season_class) |>
+            mutate(season_class = factor(season_class, names(season_pal)))) |>
+  filter(!is.na(season_class)) |>
+  stack3(list(geom_sf(aes(fill = season_class), color = "grey60", linewidth = 0.12),
+              scale_fill_manual(values = season_pal, drop = FALSE, limits = names(season_pal),
+                                name = "Season risk")),
+         title = "Season-specific agricultural drought risk (2026)")
+```
+
+```{r}
+#| label: tbl-season
+#| tbl-cap: "Realized primera risk (crops stressed now) and Both. Postrera is forecast-driven and lower-confidence."
+
+season |>
+  filter(season_class %in% c("Both", "Primera")) |>
+  # ASI return period: how unusual the current stress is vs the unit's own history (Weibull).
+  left_join(asi |> transmute(gaul_code = adm1_code, asi_pctile), by = "gaul_code") |>
+  mutate(asi_rp = 1 / (1 - asi_pctile)) |>
+  arrange(season_class, desc(asi_2026)) |>
+  transmute(Risk = as.character(season_class), Country = iso3, `Admin-1` = name,
+            `ASI (% crop area)` = round(asi_2026, 0),
+            `ASI return period (yr)` = ifelse(is.finite(asi_rp), paste0("1-in-", round(asi_rp)), "—"),
+            `Cropland frac` = round(crop_frac, 2),
+            `Postrera fcst (σ below normal)` = round(-z_post, 1)) |>
+  gt() |>
+  tab_header(title = "Where the drought is already agricultural",
+             subtitle = "Primera = realized (ASI, with return period); Both adds a dry postrera forecast") |>
+  data_color(columns = `ASI (% crop area)`, palette = c("#fff5f0", "#a50f15"))
+```
+
+### Is the early signal reliable? {#sec-asi-validation}
+
+The primera call rests on **end-June** agricultural stress — early in the season — so two checks
+matter: how unusual is 2026's stress, and does an end-June reading actually forecast the season's
+outcome. First, placing 2026 in each unit's full 1984–2025 history. For most of the region 2026's
+end-June stress is unremarkable, but for the units flagged above it is **near the worst on
+record** — shown below for the fifteen highest-stress units, each unit's own 43-year distribution
+in grey and 2026 in red (with 2026's rank, 1 = worst). Olancho and San Vicente sit 3rd-worst of
+43, Morazán 4th, Choluteca and Valle 5th; the comparable historical years are the known El Niño
+droughts (1985, 1987, 2001, 2015).
+
+```{r}
+#| label: fig-asi-jitter
+#| fig-cap: "End-June ASI for the 15 highest-stress admin-1 units: each unit's 1984–2025 distribution (grey) with 2026 in red and 2026's rank (1 = worst on record). For these units 2026 is among the driest years observed."
+#| fig-width: 9
+#| fig-height: 6.5
+
+r26 <- asi_ej |> group_by(iso3, province) |>
+  mutate(n = n(), rank = rank(-asi, ties.method = "min")) |> ungroup()
+top <- r26 |> filter(year == 2026) |> slice_max(asi, n = 15) |> mutate(unit = paste0(province, " (", iso3, ")"))
+d <- asi_ej |> semi_join(top, by = c("iso3", "province")) |>
+  mutate(unit = paste0(province, " (", iso3, ")"))
+d$unit <- factor(d$unit, levels = top |> arrange(asi) |> pull(unit))
+cur26 <- top |> mutate(unit = factor(unit, levels = levels(d$unit)))
+
+ggplot(d, aes(asi, unit)) +
+  geom_jitter(data = filter(d, year < 2026), height = 0.18, color = "grey72", size = 1.1, alpha = 0.7) +
+  geom_point(data = filter(d, year == 2026), color = "#d7301f", size = 3) +
+  geom_text(data = cur26, aes(x = asi, label = paste0(rank, "/", n)),
+            hjust = -0.35, size = 2.7, color = "#d7301f", fontface = "bold") +
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.12))) +
+  labs(title = "End-June agricultural stress: 2026 vs history (15 most-stressed units)",
+       subtitle = "Each row = one admin-1; grey = 1984–2025; red = 2026 (label = 2026 rank, 1 = worst)",
+       x = "ASI (% crop area stressed, end June)", y = NULL)
+```
+
+Second — and more important — **does end-June stress predict the rest of the season?** Across 40
+years of admin-1 data it does: end-June ASI correlates with the eventual Jul–Oct peak at
+**r = 0.75**, and a unit whose end-June stress is in its own top third goes on to a top-third
+season **72% of the time (versus a 36% base rate — a 2× lift)**. So the units flagged above are
+not just a snapshot: their end-June position historically leads to a failed season about seven
+times in ten. (The relationship is asymmetric — high stress now reliably signals a bad season,
+but *low* stress now does not guarantee a good one, since droughts can still develop later; that
+is why the other dry units remain a *watch*.)
+
+```{r}
+#| label: fig-asi-predict
+#| fig-cap: "End-June ASI (early signal) vs the eventual Jul–Oct peak ASI, each admin-1 × year 1984–2025. Strong positive relationship (r = 0.75) validates acting on the late-June reading."
+#| fig-height: 5.5
+
+ggplot(asi_ef |> filter(year < 2026), aes(early, final)) +
+  geom_point(alpha = 0.35, size = 1.2, color = "grey40") +
+  geom_smooth(method = "lm", se = TRUE, color = "#d7301f", linewidth = 0.8) +
+  labs(title = "End-June stress predicts the rest of the season (r = 0.75)",
+       subtitle = "Each point = one admin-1 × year. Higher end-June stress → higher peak-season stress.",
+       x = "End-June ASI (early signal)", y = "Peak ASI Jul–Oct (season outcome)")
+```
+
+**In short.** The 2026 primera is a real, region-wide drought unlikely to relent this season.
+Where it meets active, rain-sensitive cropland it becomes agricultural drought risk — and that
+splits cleanly: **primera crop stress is already realized** in southern/eastern Honduras, eastern
+El Salvador, and Zacapa (act now); a **dry postrera is forecast** for Guatemala's Pacific belt and
+central El Salvador (watch, low confidence); and the **western highlands sit off this seasonal
+calendar**, better assessed through vulnerability / food-security data. That is the desk-review
+basis for the in-country discussions.
+
+# Caveats & data sources {#sec-caveats}
+
+- **Product disagreement on severity.** ERA5, IMERG, and CHIRPS agree the region is dry but
+  differ on magnitude (ERA5 most severe; recent ERA5 months are provisional). Treat the regional
+  signal as robust and per-unit "driest on record" claims as product-dependent.
+- **Crop exposure & season = JRC/FAO ASAP.** Cropland fraction, growing-season timing, and the
+  precipitation-sensitive period all come from ASAP (crop mask + in-season + PSP layers). An
+  earlier MODIS 500 m cropland layer badly underestimated smallholder agriculture here (Olancho
+  ~2%) and is not used. ASAP's PSP treats the bimodal season as one continuous May–November
+  rain-critical window, so it gates *whether* a zone is in-season but does not itself split
+  primera vs postrera — that split comes from the season-specific hazard (ASI vs SEAS5 SON).
+- **Season-specific confidence differs.** The **primera** risk is *realized* (observed rainfall +
+  current ASI stress) — high confidence. The **postrera** risk is *forecast* (SEAS5 SON) with weak
+  skill — treat as a watch signal, not a prediction.
+- **CHIRPS latency.** CHIRPS final lags ~5 weeks, so it corroborates May only; ERA5 (to June) and
+  IMERG (to July) carry the more current read.
+- **ASI is cumulative.** We use the final June dekad (season-to-date), compared to the same dekad
+  historically — not a multi-dekad mean.
+- **Forecast resolution.** SEAS5's ~36 km pixels are coarse relative to small admin units,
+  especially in El Salvador (mostly sub-pixel at admin-1). The complete-primera map is shown at
+  admin-1 for all three countries because its observed half (ERA5 May–June) resolves admin-1
+  fine; within-El-Salvador *forecast* detail (the July–August half) should be read as indicative,
+  not precise. Observational products (CHIRPS 5 km, ASI) genuinely resolve admin-1/2.
+
+### Data provenance (pull scripts — shown, not executed here)
+
+The heavy pulls run against the team database and Google Earth Engine outside this document; their
+outputs are the committed CSVs read above. Representative CHIRPS pull (rgee):
+
+```{r}
+#| eval: false
+#| echo: true
+
+# artefacts/mission_support_2026/_shared/pull_chirps_gee.R (abridged)
+chirps <- ee$ImageCollection("UCSB-CHG/CHIRPS/DAILY")
+fc <- ee$FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level1")$
+  filter(ee$Filter$inList("ADM0_NAME", ee$List(list("Guatemala","Honduras","El Salvador"))))
+# monthly sum per year -> zonal mean over GAUL admin units (via getInfo, no Drive scope needed)
+ee_extract(x = year_image(yr, months), y = fc, fun = ee$Reducer$mean(), scale = 5566, via = "getInfo")
+```
+
+SEAS5 / ERA5 / IMERG are read from the team Postgres database (`cumulus::pg_con()`), FAO ASI via
+`cumulus::fao_asi_adm1_tabular()`, and ONI via `cumulus::load_oni()`.
+
+# Appendix — impact & structure priority tiers (exploratory) {#sec-appendix-priority}
+
+Before layering in the ASAP crop calendar, an earlier synthesis ranked units into **Act / Watch /
+Monitor** purely from *current agricultural impact* (ASI) and *structural El Niño sensitivity*.
+The season-specific view in @sec-season-risk supersedes it (it adds crop exposure, the
+precipitation-sensitive-period gate, and the primera/postrera split), but the tiers are kept here
+for reference — the Act set is identical to the realized primera-risk units.
+
+- **Act** — ≥15% of crop area already in severe stress (FAO ASI).
+- **Watch** — not yet materially stressed, but historically ≥15% drier in past El Niño years.
+- **Monitor** — dry like everywhere else, no material impact yet, not highly sensitive.
+
+```{r}
+#| label: fig-priority-map
+#| fig-cap: "(Exploratory) Admin-1 impact-and-structure priority tiers, superseded by the season-specific view."
+#| fig-width: 6.5
+#| fig-height: 10
+
+pal <- c(Act = "#a50f15", Watch = "#fb6a4a", Monitor = "#fee5d9")
+join_gaul(priority |> select(gaul_code, priority) |>
+            mutate(priority = factor(priority, c("Act","Watch","Monitor")))) |>
+  filter(!is.na(priority)) |>
+  stack3(list(geom_sf(aes(fill = priority), color = "grey70", linewidth = 0.15),
+              scale_fill_manual(values = pal, drop = FALSE,
+                                limits = c("Act", "Watch", "Monitor"), name = "Priority")),
+         title = "Impact & structure priority tiers (exploratory)")
+```
+
+# Appendix — SEAS5 forecast skill {#sec-appendix-skill}
+
+The "no relief" postrera signal rests on the SEAS5 September–November forecast, so its skill sets
+how much weight it can bear. Validating each admin-1 unit's SEAS5 forecast against 45 years of
+observed drought (ROC-AUC, following the book's forecast-skill method; AUC > 0.7 = acceptable,
+0.5 = no better than chance), **the two seasons differ sharply**. Primera skill is reasonable
+(median AUC 0.73; acceptable in 36 of 54 units), consistent with the firm, mostly-observed
+primera picture. **Postrera skill is weak (median AUC 0.65; acceptable in only 11 of 54 units)** —
+barely better than chance across much of Guatemala. That is why the primera picture is treated as
+firm and the postrera as a low-confidence watch signal throughout.
+
+```{r}
+#| label: fig-skill-map
+#| fig-cap: "SEAS5 postrera (SON) forecast skill by admin-1 unit (ROC-AUC vs observed drought, 1981–2025). Green = skill (AUC>0.5); pale ≈ chance; red = worse than chance. AUC>0.7 = acceptable."
+#| fig-width: 6.5
+#| fig-height: 10
+
+d_skill <- skill |> filter(window == "postrera") |> left_join(xwalk, by = "pcode") |>
+  join_gaul(by = "gaul_code") |> filter(!is.na(auc))
+stack3(d_skill,
+       list(geom_sf(aes(fill = auc), color = "grey80", linewidth = 0.1),
+            scale_fill_gradient2(low = "#D73027", mid = "#FFFFBF", high = "#1A9850",
+                                 midpoint = 0.5, limits = range(d_skill$auc), name = "Postrera\nAUC")),
+       title = "Postrera forecast skill (ROC-AUC)")
+```
+
