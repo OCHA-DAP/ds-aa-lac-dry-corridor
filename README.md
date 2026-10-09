@@ -2,6 +2,9 @@
 
 [![Generic badge](https://img.shields.io/badge/STATUS-ENDORSED-%231EBFB3)](https://shields.io/)
 
+**Site:** https://ocha-dap.github.io/ds-aa-lac-dry-corridor/ — the analysis book (trigger development,
+forecast evaluation, 2026 situation summary and season review; password-protected).
+
 ## Directory structure
 
 The code in this repository is organized as follows:
