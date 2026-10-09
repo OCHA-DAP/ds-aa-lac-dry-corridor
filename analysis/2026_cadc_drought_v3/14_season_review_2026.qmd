@@ -3,9 +3,7 @@ execute:
   echo: false
 ---
 
-# 2026 Season Review
-
-*Draft: the narrative under Key points is still to be written.*
+# 2026 Season Review {#sec-season-review-2026}
 
 ```{r}
 #| label: setup
@@ -247,6 +245,18 @@ fmt_rank <- function(dry_rank, n_years) {
     TRUE            ~ paste0(scales::ordinal(dry_rank), " driest of ", n_years)
   )
 }
+# Forecast against outcome from the two dry ranks. Both rank 2026 among the same years, so
+# comparing ranks compares the return periods.
+outcome_vs_forecast <- function(obs_rank, fcst_rank) {
+  if (obs_rank < fcst_rank) "rarer" else if (obs_rank == fcst_rank) "same" else "less"
+}
+# Return period for prose: 18 -> "18", 5.83 -> "5.8" (Spanish "5,8")
+rp_num <- function(rp, decimal_mark = ".") {
+  r <- round(rp, 1)
+  if (r == round(r)) format(round(r)) else format(r, nsmall = 1, decimal.mark = decimal_mark)
+}
+# The driest year on record only bounds the return period from below
+or_rarer_en <- function(rank) if (rank == 1) " or rarer" else ""
 
 
 # 3. Observed rainfall (ERA5) ---------------------------------------------
@@ -516,7 +526,7 @@ The anticipatory action framework for drought in the Central American Dry Corrid
 
 The framework was activated in all three countries in March 2026: the SEAS5 forecast of Primera rainfall published on 5 March met the threshold in Guatemala, Honduras and El Salvador. A country's funds are released once, by whichever monitoring moment meets its threshold first, so the forecasts after March are reported here for information only.
 
-This review does for all three countries what the 2025 review did after the Guatemala activation. It compares the rainfall that was observed over each area of interest (AOI) with the historical record and with the forecast that activated the framework, and it compiles the forecasts as they stood at each monitoring moment. Observed rainfall is from ERA5 and is available through `r format(era5_latest, "%B %Y")`.
+This review does for all three countries what the 2025 review did after the Guatemala activation. It compares the rainfall that was observed over each area of interest (AOI) with the historical record and with the forecast that activated the framework, and it compiles the forecasts as they stood at each monitoring moment. Observed rainfall is from ERA5 and is available through `r format(era5_latest, "%B %Y")`. The July situation summary (@sec-rolac-summary) covers the same season halfway through, for every admin-1 unit and with agricultural stress; this chapter follows it to the end for the framework's areas.
 
 | Country | Area of interest for the trigger |
 |:--|:--|
@@ -548,7 +558,34 @@ pwalk(df_headline, \(aoi, fcst_mm, thresh_mm, fcst_pct_below, fcst_rank, fcst_rp
 })
 ```
 
-*To be written once the numbers are in: one or two sentences on whether the season was as dry as the March forecast indicated, and how that differed between the three countries.*
+```{r}
+#| label: key-points-narrative
+#| output: asis
+#| eval: !expr activation_complete
+
+# Whether the season was as dry as the activating forecast indicated, from the return periods
+# (the same comparison as the slide summaries at the end of the chapter).
+and_list <- \(x) glue_collapse(x, sep = ", ", last = " and ")
+outcomes <- map2_chr(df_headline$obs_rank, df_headline$fcst_rank, outcome_vs_forecast)
+by_outcome <- split(as.character(df_headline$aoi), factor(outcomes, levels = c("rarer", "same", "less")))
+by_outcome <- by_outcome[lengths(by_outcome) > 0]
+phrase <- c(rarer = "rarer than forecast in", same = "as rare as forecast in", less = "less rare than forecast in")
+pairs <- pmap_chr(df_headline, \(aoi, fcst_rank, fcst_rp, obs_rank, obs_rp, ...) {
+  glue("1 in {rp_num(fcst_rp)}{or_rarer_en(fcst_rank)} and 1 in {rp_num(obs_rp)}{or_rarer_en(obs_rank)} in {aoi}")
+})
+lead <- if (is.null(by_outcome$less)) {
+  glue("In every country the {activation_season$label} was at least as dry as the {activation_month} forecast indicated.")
+} else {
+  glue("The {activation_season$label} was less dry than the {activation_month} forecast indicated in {and_list(by_outcome$less)}.")
+}
+groups <- imap_chr(by_outcome, \(a, k) paste(phrase[[k]], and_list(a)))
+cat(
+  lead,
+  glue("It was {glue_collapse(groups, sep = ', ', last = ', and ')}",
+       " (return periods of the forecast and of the observed season: {glue_collapse(pairs, sep = '; ')})."),
+  "\n"
+)
+```
 
 ## Forecast at activation and the season that followed
 
@@ -813,7 +850,7 @@ p_fcst_primera
 
 - Cross-check the observed totals against a second source (CHIRPS). The 2024 review showed both, and ERA5 alone is a thin basis for a severity statement.
 - Postrera: redo the observed section once ERA5 covers November (early December).
-- Add evidence of impact (FAO ASI, as in the July situation summary, and reported impacts). Rainfall shows whether the hazard occurred, and says nothing about whether the impact followed.
+- Add evidence of impact (FAO ASI, as in the July situation summary in @sec-rolac-summary, and reported impacts). Rainfall shows whether the hazard occurred, and says nothing about whether the impact followed.
 - Write the narrative for the two questions left open on the 2025 review, using the first table (did the trigger capture the right severity level) and the forecast table (how later forecasts and the season compared with the moment of activation).
 
 ## Slide figures
@@ -838,12 +875,6 @@ months_en <- months_label(season_months)
 months_es <- paste0(meses[min(season_months)], "–", meses[max(season_months)])
 month_es  <- meses[ACTIVATION$issued_month]
 
-# 18 -> "18", 5.83 -> "5.8" (Spanish "5,8")
-rp_num <- function(rp, decimal_mark = ".") {
-  r <- round(rp, 1)
-  if (r == round(r)) format(round(r)) else format(r, nsmall = 1, decimal.mark = decimal_mark)
-}
-
 ord_en   <- c("second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
 ord_es_m <- c("segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo", "noveno", "décimo")
 ord_es_f <- c("segunda", "tercera", "cuarta", "quinta", "sexta", "séptima", "octava", "novena", "décima")
@@ -862,8 +893,6 @@ driest_es <- function(rank, noun, gender) {
   ords <- if (gender == "m") ord_es_m else ord_es_f
   glue("{art} {nth(ords, rank, paste0(rank, if (gender == 'm') '.º' else '.ª'))} {noun} más {adj}")
 }
-# The driest year on record only bounds the return period from below
-or_rarer_en <- function(rank) if (rank == 1) " or rarer" else ""
 or_rarer_es <- function(rank) if (rank == 1) " o más raro" else ""
 
 headline_en <- c(
@@ -888,7 +917,7 @@ closing_es <- c(
 )
 
 pwalk(df_headline, \(aoi, fcst_rank, fcst_rp, obs_rank, obs_rp, ...) {
-  outcome <- if (obs_rank < fcst_rank) "rarer" else if (obs_rank == fcst_rank) "same" else "less"
+  outcome <- outcome_vs_forecast(obs_rank, fcst_rank)
   fcst_en <- rp_num(fcst_rp)
   obs_en  <- rp_num(obs_rp)
   fcst_es <- rp_num(fcst_rp, ",")
