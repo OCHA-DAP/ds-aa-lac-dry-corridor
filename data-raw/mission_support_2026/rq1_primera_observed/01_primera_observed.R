@@ -1,7 +1,7 @@
 # RQ1 — Observed 2026 primera performance so far (Tier-1, observational).
 #
 # Primera = May-Aug; as of early July only May-Jun are observed. Compute the May-Jun 2026
-# total per admin unit vs its 1981-2025 May-Jun climatology -> where it ranks (percentile /
+# total per admin unit -> where it ranks among 1991-2024 + 2026 (MSU_RP_YEARS; percentile /
 # empirical RP). Then overlay against rq4's historical El Nino anomaly: the strongest mission
 # statement is "historical El Nino loser AND already dry in 2026".
 #
@@ -25,11 +25,12 @@ era5 <- msu_era5_monthly(adm_level = 1L)
 mj <- msu_seasonal_total(era5, OBS_MONTHS) |>
   left_join(meta, by = c("iso3", "pcode"))
 
-# Percentile + empirical dry return period of each year within its unit's May-Jun record.
-# Weibull plotting position rank/(n+1): bounds the driest-on-record RP at ~n+1 (~47 yr here),
-# avoiding the tail over-precision of the Hazen position (which implied RP~92 for a 46-yr record).
+# Percentile + empirical dry return period of each year among MSU_RP_YEARS (1991-2024 + 2026).
+# Weibull plotting position rank/(n+1): bounds the driest-on-record RP at n+1 (36 yr here),
+# avoiding the tail over-precision of the Hazen position.
 # pctile: low = dry (dry-side plotting position). rp_dry = 1/pctile.
 mj_rank <- mj |>
+  filter(year %in% MSU_RP_YEARS) |>
   group_by(iso3, pcode, name) |>
   mutate(
     n_years = n(),
@@ -113,7 +114,7 @@ p_map <- map_df |>
   scale_fill_gradient(low = "#67000d", high = "#fff5f0", labels = scales::percent,
                       limits = c(0, 1), name = "May-Jun 2026\npercentile") +
   labs(title = "2026 primera so far (May-Jun observed) by admin-1 unit",
-       subtitle = "Percentile of May-Jun 2026 rainfall in each unit's 1981-2025 record. Dark red = driest.",
+       subtitle = "Percentile of May-Jun 2026 rainfall among 1991-2024 + 2026 in each unit. Dark red = driest.",
        caption = "ERA5, observed through June 2026. Partial season (May-Jun of May-Aug primera).") +
   base_map_theme
 msu_save_png(p_map, file.path(out_png, "01_primera_2026_map.png"), width = 11, height = 4.5)
@@ -127,7 +128,7 @@ p_map_rp <- map_df_rp |>
   scale_fill_manual(values = MSU_RP_FILL, drop = FALSE, na.value = "grey90",
                     name = "Dry return\nperiod (years)") +
   labs(title = "2026 primera so far — dry return period by admin-1 unit",
-       subtitle = "Empirical return period of the May-Jun 2026 rainfall deficit (Weibull, 1981-2025).\nDarker = rarer/drier (e.g. ≥20 = worst in a generation).",
-       caption = "ERA5, through June 2026. RP = (n+1)/rank; max ~47yr for driest-on-record.") +
+       subtitle = "Empirical return period of the May-Jun 2026 rainfall deficit (Weibull, 1991-2024 + 2026).\nDarker = rarer/drier (e.g. ≥20 = worst in a generation).",
+       caption = "ERA5, through June 2026. RP = (n+1)/rank; max 36yr for driest-on-record.") +
   base_map_theme
 msu_save_png(p_map_rp, file.path(out_png, "01b_primera_2026_rp_map.png"), width = 11, height = 4.5)

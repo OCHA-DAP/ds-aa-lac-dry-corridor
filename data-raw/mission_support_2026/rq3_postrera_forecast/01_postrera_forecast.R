@@ -2,7 +2,8 @@
 #
 # Postrera = Sep-Oct-Nov, fully forecastable from the July SEAS5 issuance (lt 2,3,4). Pure
 # forecast (Tier-2, resolution: adm1 GTM/HND, adm0 SLV per ADR-0001). Standardise SON forecast
-# vs its own July-issuance hindcast (1991-2024), z-score + empirical RP.
+# vs its own July-issuance hindcast (1991-2024), z-score + empirical RP (ranked within
+# 1991-2024 + 2026, MSU_RP_YEARS).
 #
 # Then join to the rq2 COMPLETE primera (obs May-Jun + forecast Jul-Aug) for the double-hit view:
 # a unit dry in the complete primera AND forecast-dry in postrera has no "second chance".
@@ -33,7 +34,8 @@ post_z <- seas5_son |> group_by(pcode) |>
   mutate(mu = mean(son_mm[year %in% BASE]), sig = sd(son_mm[year %in% BASE]),
          z_post = (son_mm - mu) / sig) |> ungroup()
 
-post_rp <- msu_emp_rp(post_z, var = "z_post", by = "pcode", direction = -1)
+post_rp <- msu_emp_rp(filter(post_z, year %in% MSU_RP_YEARS), var = "z_post", by = "pcode",
+                      direction = -1)
 meta <- bind_rows(msu_admin_meta(adm_level = 1L) |> select(pcode, name),
                   msu_admin_meta(adm_level = 0L) |> select(pcode, name))
 
