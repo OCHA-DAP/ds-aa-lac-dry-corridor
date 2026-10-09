@@ -12,6 +12,11 @@ suppressMessages({
 
 MSU_ISO3 <- c("GTM", "HND", "SLV")
 MSU_SEASONS <- list(primera = 5:8, postrera = 9:11)
+# Years each 2026 value is ranked among for its empirical return period: the 1991-2024 baseline
+# plus 2026 itself, as in the season review chapter, so both chapters' RPs share one scale
+# (driest on record = 1 in 36).
+MSU_RP_YEARS <- c(1991:2024, 2026)
+
 # Since 2026-09-30 a laptop reaches the DB only through the Databricks SSH tunnel (internal KB
 # infrastructure/local-db-access.md). cumulus::pg_con() always connects on port 5432, so set
 # MSU_DB_PORT to the tunnel's local port (prod: 15433) to connect through it instead.

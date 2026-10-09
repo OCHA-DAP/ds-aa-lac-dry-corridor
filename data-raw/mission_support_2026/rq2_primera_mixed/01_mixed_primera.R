@@ -4,7 +4,7 @@
 #   observed  = ERA5 May+Jun total (standardised vs its own climatology)
 #   forecast  = SEAS5 Jul+Aug total from the JULY issuance (Jul=lt0, Aug=lt1; std vs SEAS5 hindcast)
 #   blended z = mean(z_obs, z_fcst)   [per-block, equal weight]
-#   rank 2026 blended z among the historical blended series (built the SAME mixed way each year)
+#   rank 2026 blended z among 1991-2024 + 2026 (MSU_RP_YEARS; built the SAME mixed way each year)
 # Baseline for mu/sigma: 1991-2024 (framework-aligned). Resolution (ADR-0001): adm1 GTM/HND,
 # adm0 SLV, no adm2 (blend contains a SEAS5 component).
 
@@ -63,8 +63,9 @@ fc_z  <- zscore(seas5_block, "fcst_mm") |> select(pcode, year, z_fcst = z)
 mixed <- inner_join(obs_z, fc_z, by = c("pcode", "year")) |>
   mutate(z_mixed = (z_obs + z_fcst) / 2)
 
-# Rank 2026 blended z among all years (low z = dry). Weibull RP via msu_emp_rp (direction -1).
-mixed_rp <- msu_emp_rp(mixed, var = "z_mixed", by = "pcode", direction = -1)
+# Rank 2026 blended z among MSU_RP_YEARS (low z = dry). Weibull RP via msu_emp_rp (direction -1).
+mixed_rp <- msu_emp_rp(filter(mixed, year %in% MSU_RP_YEARS), var = "z_mixed", by = "pcode",
+                       direction = -1)
 
 meta <- msu_admin_meta(adm_level = 1L) |> select(pcode, name)
 meta0 <- msu_admin_meta(adm_level = 0L) |> select(pcode, name)
@@ -102,7 +103,7 @@ p_rp <- map_df |> filter(!is.na(rp_class)) |>
   scale_fill_manual(values = MSU_RP_FILL, drop = FALSE, na.value = "grey90", name = "Dry return\nperiod (yr)") +
   labs(title = "Complete 2026 primera (observed + forecast) — dry return period",
        subtitle = "ERA5 May-Jun observed blended with SEAS5 Jul-Aug forecast (z-score blend). adm1 GTM/HND, adm0 SLV.\nDarker = rarer/drier once the full primera is accounted for.",
-       caption = "Blended z ranked 1981-2026 (baseline 1991-2024). RP=(n+1)/rank, Weibull.") +
+       caption = "Blended z ranked within 1991-2024 + 2026 (baseline 1991-2024). RP=(n+1)/rank, Weibull.") +
   theme(axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
 msu_save_png(p_rp, file.path(out_png, "01_mixed_primera_rp_map.png"), width = 10, height = 6)
 
