@@ -1,0 +1,405 @@
+# 2026 Situation Summary {#sec-rolac-summary}
+
+```{r}
+#| label: setup-summary
+#| include: false
+library(tidyverse); library(sf); library(patchwork); library(gghdx); library(scales); library(cumulus)
+gghdx(); sf::sf_use_s2(FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Derived inputs are read from blob (projects / ds-aa-lac-dry-corridor/book/static/). The scripts
+# that produce them are tracked in data-raw/mission_support_2026/. Re-rendering needs the read SAS
+# (DSCI_AZ_BLOB_DEV_SAS); the committed _freeze/ output lets the book be viewed without credentials.
+rd <- function(f) cumulus::blob_read(paste0("ds-aa-lac-dry-corridor/book/static/", f),
+                                     stage = "dev", container = "projects", progress_show = FALSE)
+obs    <- rd("primera_observed_2026.csv")        # rp_dry
+mixed  <- rd("mixed_primera_2026.csv")           # z_obs, z_mixed, rp_emp
+joint  <- rd("primera_vs_postrera_2026.csv")     # z_post, rp_post
+asi    <- rd("asi_primera_2026.csv")             # asi_mean_2026, asi_pctile
+season <- rd("season_specific_risk_adm1.csv")    # asi_2026, psp, crop/psp gates, season_class
+asi_ef <- rd("early_vs_final_asi.csv")           # early vs final ASI
+pnorm  <- rd("pct_normal_2026.csv")              # % of normal
+xwalk  <- rd("priority_synthesis_adm1.csv") |> select(pcode, gaul_code)
+gaul   <- rd("gaul_adm1_gtm_hnd_slv.geojson") |> janitor::clean_names() |>
+  sf::st_make_valid() |> (\(g) sf::st_collection_extract(g, "POLYGON"))()
+
+iso_lab <- c(GTM = "Guatemala", HND = "Honduras", SLV = "El Salvador")
+join_gaul <- function(df, by = "gaul_code") left_join(gaul, df, by = c("adm1_code" = by)) |>
+  mutate(iso3c = c(Guatemala = "GTM", Honduras = "HND", `El Salvador` = "SLV")[adm0_name])
+
+# --- palettes --------------------------------------------------------------
+# ASI (stress): green only at the very bottom, then reds dominate (green->yellow->orange->red->dark).
+# Use anchored breakpoints so moderate stress already reads red, per the "mostly red" intent.
+asi_pal <- c("#1a9850", "#fee08b", "#fdae61", "#e34a33", "#7f0000")
+asi_scale <- function(anchors, name) {
+  lim <- range(anchors)
+  scale_fill_gradientn(colours = asi_pal, values = scales::rescale(anchors, from = lim),
+                       limits = lim, na.value = "grey70", name = name)
+}
+# precipitation ANOMALY (z): red (drier/below) -> white -> blue (wetter/above)
+precip_scale <- function(z, name = "Rainfall anomaly (σ)") {
+  m <- max(abs(z), na.rm = TRUE)
+  scale_fill_gradient2(low = "#b2182b", mid = "#f7f7f7", high = "#2166ac", midpoint = 0,
+                       limits = c(-m, m), na.value = "grey85", name = name)
+}
+
+# 3 countries stacked (1 col x 3 rows -> big), each fit to its own extent; shared bottom legend.
+# outline_sf (optional): sf carrying iso3c (+ `oflag` if outline_map given) — drawn PER COUNTRY so
+# outlines never bleed across borders. outline_map = named colours for a categorical outline legend;
+# NULL -> a single fixed black outline.
+land3 <- function(df, layers, title = NULL, outline_sf = NULL, outline_map = NULL) {
+  df <- filter(df, !is.na(iso3c))
+  mk <- function(cc) {
+    cd <- filter(df, iso3c == cc); b <- st_bbox(cd)
+    p <- ggplot(cd) + layers
+    if (!is.null(outline_sf)) {
+      oc <- filter(outline_sf, iso3c == cc)
+      if (nrow(oc) > 0) p <- p + (if (is.null(outline_map))
+        geom_sf(data = oc, fill = NA, color = "black", linewidth = 0.45)
+      else geom_sf(data = oc, aes(color = oflag), fill = NA, linewidth = 0.7))
+    }
+    if (!is.null(outline_map)) p <- p +
+      scale_color_manual(values = outline_map, drop = FALSE, limits = names(outline_map), name = NULL)
+    p + coord_sf(xlim = c(b["xmin"], b["xmax"]), ylim = c(b["ymin"], b["ymax"])) +
+      labs(subtitle = iso_lab[cc]) +
+      theme(axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank(),
+            plot.subtitle = element_text(face = "bold", size = 13), legend.position = "bottom")
+  }
+  wrap_plots(lapply(c("GTM","HND","SLV"), mk), ncol = 1, guides = "collect") +
+    plot_annotation(title = title, theme = theme(plot.title = element_text(face = "bold", size = 14)))
+}
+
+# Two metrics side by side (left | right), 3 countries stacked. Country labels on the left column.
+pair3 <- function(df, left_layers, right_layers, title = NULL, right_outline = NULL) {
+  df <- filter(df, !is.na(iso3c))
+  cell <- function(cc, layers, show_country, outline = NULL) {
+    cd <- filter(df, iso3c == cc); b <- st_bbox(cd)
+    p <- ggplot(cd) + layers
+    if (!is.null(outline)) {
+      oc <- filter(outline, iso3c == cc)
+      if (nrow(oc) > 0) p <- p + geom_sf(data = oc, fill = NA, color = "black", linewidth = 0.45)
+    }
+    p + coord_sf(xlim = c(b["xmin"], b["xmax"]), ylim = c(b["ymin"], b["ymax"])) +
+      labs(subtitle = if (show_country) iso_lab[cc] else NULL) +
+      theme(axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank(),
+            plot.subtitle = element_text(face = "bold", size = 12), legend.position = "bottom")
+  }
+  plots <- unlist(lapply(c("GTM","HND","SLV"),
+    function(cc) list(cell(cc, left_layers, TRUE), cell(cc, right_layers, FALSE, right_outline))), recursive = FALSE)
+  wrap_plots(plots, ncol = 2, byrow = TRUE, guides = "collect") +
+    plot_annotation(title = title, theme = theme(plot.title = element_text(face = "bold", size = 14)))
+}
+```
+
+## Purpose {.unnumbered}
+
+This chapter summarizes CHD's desk review for the July 2026 ROLAC missions to El Salvador,
+Honduras, and Guatemala. It sets out the evidence behind our recommendations on where and how to
+act. The season review in @sec-season-review-2026 follows the same season to its end, with the
+full primera observed and the forecast at each monitoring moment.
+
+::: {.callout-note}
+## Bottom line
+This analysis characterizes the drought and its agricultural impact to inform in-country,
+cross-agency planning. It is not intended to set operational priorities on its own.
+
+Anticipatory Action for the 2026 primera was activated in March 2026 on the seasonal forecast. The
+severe, regional drought now developing indicates that the forecast identified the signal correctly
+and that the framework acted ahead of the impact now being observed.
+
+1. The drought is regional and largely undifferentiated. Rainfall is well below normal across
+   nearly all admin-1 units in the three countries.
+2. Because the hazard is largely undifferentiated, the drought signal alone in this analysis is not
+   a sound basis for ranking where to act. Prioritization is better anchored in operational capacity
+   and local vulnerability, assembled by pooling in-country, cross-agency expertise.
+3. Crops are already stressed and the season is unlikely to recover. The postrera harvest is also
+   likely to be affected, though that outlook is less certain.
+4. Seasonal timing constrains the options available. The primera is already underway, so the window
+   for additional agricultural-based anticipatory action there has closed and mitigation is what
+   remains, whereas the postrera retains lead time for anticipatory measures. Areas whose crops fall outside the primera and
+   postrera calendar are better considered through a separate and additional vulnerability lens than
+   the rest. These distinctions are offered to inform in-country decisions, not to prescribe them.
+:::
+
+## Current situation
+
+### Observed rainfall
+
+Observed May–June rainfall (ERA5) was well below normal in every admin-1 unit of all three
+countries, with the largest deficits in Honduras and eastern Guatemala. The dryness is broad rather
+than confined to isolated pockets.
+
+```{r}
+#| label: fig-obs-anom
+#| fig-cap: "Observed May–June 2026 rainfall anomaly (ERA5, standard deviations from normal). Red = drier than normal, blue = wetter."
+#| fig-width: 7.5
+#| fig-height: 11
+d <- mixed |> left_join(xwalk, by = "pcode") |> join_gaul()
+land3(d, list(geom_sf(aes(fill = z_obs), color = "grey80", linewidth = 0.08), precip_scale(d$z_obs)),
+      "Observed May–June rainfall anomaly")
+```
+
+### Agricultural stress
+
+The FAO Agricultural Stress Index (ASI), the share of a unit's crop area in severe stress, shows
+that impact is already occurring. Stress is concentrated in Honduras (Olancho 52%, El Paraíso 37%,
+Choluteca 25%) and eastern El Salvador (San Vicente 22%, La Unión 18%, Morazán 16%). Guatemala
+remains mostly low, with Zacapa (16%) the main exception.
+
+The same stress can also be expressed as a return period, measured against each unit's own
+1984–2025 record. On that basis the current stress is rare in the most affected units, on the order
+of one in fifteen years in Olancho and San Vicente. The magnitude and return-period maps are shown
+side by side below.
+
+```{r}
+#| label: fig-asi-pair
+#| fig-cap: "Agricultural Stress Index, late June 2026. Left: magnitude — % of crop area in severe stress (green = low, red = high). Right: rarity — return period of 2026's stress vs each unit's own 1984–2025 record, Weibull (green = ordinary, red = rare); black outline = units whose 2026 stress is in the worst (lower) tercile of their own record. Grey = no ASI / insufficient cropland."
+#| fig-width: 10
+#| fig-height: 12
+a <- asi |> transmute(gaul_code = adm1_code, asi = asi_mean_2026, asi_pctile, asi_rp = 1 / (1 - asi_pctile)) |> join_gaul()
+amax <- max(a$asi, na.rm = TRUE)
+rpmax <- min(max(a$asi_rp, na.rm = TRUE), 30)
+worst_tercile <- filter(a, asi_pctile >= 2/3)   # 2026 in the unit's own worst third
+pair3(a,
+      left_layers  = list(geom_sf(aes(fill = asi), color = "grey80", linewidth = 0.08),
+                          asi_scale(c(0, 3, 8, 20, amax), "ASI (% crop area stressed)")),
+      right_layers = list(geom_sf(aes(fill = pmin(asi_rp, 30)), color = "grey80", linewidth = 0.08),
+                          asi_scale(c(1, 1.5, 2.5, 8, rpmax), "ASI return period (yr)")),
+      title = "ASI — magnitude (left) and return period (right)",
+      right_outline = worst_tercile)
+```
+
+## Primera recovery unlikely
+
+### Complete-season outlook (observed + forecast)
+
+Combining the observed May–June rainfall with the July–August forecast gives the complete primera.
+On that basis the season remains a rare deficit across the region, and no unit shows a wet signal
+that would offset the current shortfall.
+
+```{r}
+#| label: fig-mixed-pair
+#| fig-cap: "Combined observed (May–June) and forecast (July–August) primera. Left: rainfall as percent-anomaly (σ from normal; red drier, blue wetter). Right: the corresponding empirical return period (pale to dark red = rarer)."
+#| fig-width: 10
+#| fig-height: 12
+d <- mixed |> left_join(xwalk, by = "pcode") |> mutate(rp_c = pmin(rp_emp, 30)) |> join_gaul()
+pair3(d,
+  left_layers  = list(geom_sf(aes(fill = z_mixed), color = "grey80", linewidth = 0.08),
+                      precip_scale(d$z_mixed, "Anomaly (σ)")),
+  right_layers = list(geom_sf(aes(fill = rp_c), color = "grey80", linewidth = 0.08),
+                      scale_fill_gradient(low = "#fff5f0", high = "#67000d", limits = c(1, 30),
+                                          na.value = "grey90", name = "Return period (yr)")))
+```
+
+### Early stress as a predictor
+
+End-June stress is a leading indicator, not only a current reading. Across the 1984–2025 record,
+end-June ASI is correlated with the eventual season (r = 0.75), and a unit in its own worst tercile
+at end-June goes on to a worst-tercile season about 72% of the time, against a 33% base rate. Where
+crops are stressed now, the primera is therefore likely to fail.
+
+```{r}
+#| label: fig-predict
+#| fig-cap: "End-June ASI vs the eventual Jul–Oct peak, each admin-1 × year 1984–2025. Strong positive relationship (r = 0.75)."
+#| fig-width: 8
+#| fig-height: 5
+hist <- asi_ef |> filter(year < 2026)
+ggplot(hist, aes(early, final)) +
+  geom_point(alpha = 0.35, size = 1.2, color = "grey40") +
+  geom_smooth(method = "lm", se = TRUE, color = "#d73027", linewidth = 0.8) +
+  labs(title = "End-June stress predicts the rest of the season (r = 0.75)",
+       x = "End-June ASI (early signal, % crop area stressed)", y = "Peak ASI Jul–Oct (season outcome)")
+```
+
+### Postrera also looks unfavourable {#sec-postrera-outlook}
+
+The September–November (postrera) forecast is also poor across the region, so the second harvest is
+unlikely to compensate for primera losses. Forecast skill for the postrera is weak, so this is best
+read as an outlook rather than a firm prediction.
+
+```{r}
+#| label: fig-postrera-pair
+#| fig-cap: "SEAS5 postrera (Sep–Nov) forecast. Left: rainfall as percent-anomaly (σ from normal; red drier, blue wetter). Right: the corresponding empirical return period (pale to dark red = rarer). Forecast skill is weak, so this is an outlook."
+#| fig-width: 10
+#| fig-height: 12
+dp <- joint |> left_join(xwalk, by = "pcode") |> mutate(rp_c = pmin(rp_post, 30)) |> join_gaul()
+pair3(dp,
+  left_layers  = list(geom_sf(aes(fill = z_post), color = "grey80", linewidth = 0.08),
+                      precip_scale(dp$z_post, "Anomaly (σ)")),
+  right_layers = list(geom_sf(aes(fill = rp_c), color = "grey80", linewidth = 0.08),
+                      scale_fill_gradient(low = "#fff5f0", high = "#67000d", limits = c(1, 30),
+                                          na.value = "grey90", name = "Return period (yr)")))
+```
+
+### All indicators by admin-1
+
+The table below compiles the indicators for each admin-1 unit, grouped by country. Rainfall is
+given as percent of the 1991–2024 normal alongside its empirical return period, and agricultural
+stress as ASI alongside its return period. Cell colours follow the maps: rainfall from red (drier)
+through white to blue (wetter), return periods from pale to dark red, and ASI from green to red.
+
+```{r}
+#| label: tbl-all
+#| tbl-cap: "2026 primera and postrera indicators by admin-1. % norm = percent of the 1991–2024 normal (below 100 = drier); RP = empirical return period in years; ASI = % of crop area in severe stress."
+library(gt)
+tab <- mixed |> transmute(pcode, name, iso3, comb_rp = rp_emp) |>
+  left_join(pnorm, by = "pcode") |>
+  left_join(obs   |> select(pcode, obs_rp = rp_dry), by = "pcode") |>
+  left_join(joint |> select(pcode, post_rp = rp_post), by = "pcode") |>
+  left_join(xwalk, by = "pcode") |>
+  left_join(asi |> transmute(gaul_code = adm1_code, asi_pct = asi_mean_2026,
+                             asi_rp = 1 / (1 - asi_pctile)), by = "gaul_code") |>
+  left_join(season |> transmute(gaul_code, off_cal = season_class == "Off-calendar"), by = "gaul_code") |>
+  mutate(country = iso_lab[iso3],
+         off_cal = tidyr::replace_na(off_cal, FALSE),
+         name = ifelse(off_cal, paste0(name, " †"), name)) |>
+  arrange(country, desc(asi_pct)) |>
+  select(country, name, obs_pnorm, obs_rp, comb_pnorm, comb_rp, asi_pct, asi_rp, post_pnorm, post_rp, off_cal)
+
+pdev   <- max(abs(c(tab$obs_pnorm, tab$comb_pnorm, tab$post_pnorm) - 100), na.rm = TRUE)
+rpmaxr <- max(c(tab$obs_rp, tab$comb_rp, tab$post_rp), na.rm = TRUE)
+pnorm_fn <- scales::col_numeric(c("#b2182b", "#f7f7f7", "#2166ac"), domain = c(100 - pdev, 100 + pdev), na.color = "grey90")
+rp_fn    <- scales::col_numeric(c("#fff5f0", "#d73027", "#67000d"), domain = c(1, rpmaxr), na.color = "grey90")
+asi_fn   <- scales::col_numeric(asi_pal, domain = c(0, max(tab$asi_pct, na.rm = TRUE)), na.color = "grey90")
+asirp_fn <- scales::col_numeric(asi_pal, domain = c(1, max(tab$asi_rp, na.rm = TRUE)), na.color = "grey90")
+
+gt(tab, groupname_col = "country", rowname_col = "name") |>
+  tab_spanner("Primera", columns = c(obs_pnorm, obs_rp, comb_pnorm, comb_rp, asi_pct, asi_rp)) |>
+  tab_spanner("Postrera", columns = c(post_pnorm, post_rp)) |>
+  cols_label(obs_pnorm = "Obs rain (% norm)", obs_rp = "Obs RP", comb_pnorm = "Outlook (% norm)",
+             comb_rp = "Outlook RP", asi_pct = "ASI %", asi_rp = "ASI RP",
+             post_pnorm = "Fcst (% norm)", post_rp = "Fcst RP") |>
+  fmt_percent(c(obs_pnorm, comb_pnorm, post_pnorm, asi_pct), decimals = 0, scale_values = FALSE) |>
+  fmt_number(c(obs_rp, comb_rp, asi_rp, post_rp), decimals = 0) |>
+  data_color(columns = c(obs_pnorm, comb_pnorm, post_pnorm), fn = pnorm_fn) |>
+  data_color(columns = c(obs_rp, comb_rp, post_rp), fn = rp_fn) |>
+  data_color(columns = asi_pct, fn = asi_fn) |>
+  data_color(columns = asi_rp, fn = asirp_fn) |>
+  cols_hide(off_cal) |>
+  tab_style(style = cell_text(color = "grey55", style = "italic"),
+            locations = list(cells_body(rows = off_cal), cells_stub(rows = off_cal))) |>
+  tab_source_note(gt::md(
+    "**†  Off-calendar** — the drought window falls outside the crop's rain-critical period; the seasonal-drought lens does not apply, so these rows are set aside (read with caution). Blank ASI = no cropland (Islas de la Bahía).")) |>
+  sub_missing(missing_text = "—") |>
+  tab_options(table.font.size = "11px", data_row.padding = "2px", row_group.font.weight = "bold")
+```
+
+## Response by season
+
+The distinctions below follow from the seasonal timing and are meant to inform in-country planning
+rather than to prescribe it.
+
+### Primera
+
+Because the primera is already underway, the window for additional agricultural-based anticipatory
+action has closed and mitigation is the response that remains available. The map below shows current stress (ASI) and
+outlines two groups: units already very stressed, where continued decline is likely, and units not
+yet stressed but likely to decline given the dry outlook. Grey units have no ASI or fall off the
+seasonal calendar.
+
+```{r}
+#| label: fig-primera-action
+#| fig-cap: "Primera situation and outlook. Fill = ASI (green to red). Red outline = already very stressed (ASI ≥ 15%, continued decline likely); blue outline = not yet stressed but likely to decline. Grey = off-calendar or non-crop units, set aside because the seasonal-drought lens does not apply there (they are not predicted to be spared)."
+#| fig-width: 7.5
+#| fig-height: 11
+pr <- asi |> transmute(gaul_code = adm1_code, asi = asi_mean_2026) |>
+  full_join(season |> select(gaul_code, asi_2026, psp_relevant, crop_exposed), by = "gaul_code") |>
+  mutate(inseason = psp_relevant %in% TRUE & crop_exposed %in% TRUE,
+         asi = ifelse(inseason, asi, NA_real_),   # grey out off-calendar / non-crop: set aside, not "safe"
+         flag = case_when(inseason & asi_2026 >= 15 ~ "Already very stressed — decline likely",
+                          inseason & asi_2026 <  15 ~ "Not yet stressed — likely to decline",
+                          TRUE ~ NA_character_)) |> join_gaul()
+flagged <- filter(pr, !is.na(flag)) |> rename(oflag = flag)
+out_pal <- c("Already very stressed — decline likely" = "#d7191c",
+             "Not yet stressed — likely to decline" = "#2166ac")
+amax <- max(pr$asi, na.rm = TRUE)
+land3(pr, list(
+  geom_sf(aes(fill = asi), color = "grey80", linewidth = 0.06),
+  asi_scale(c(0, 3, 8, 20, amax), "ASI (% crop area)")),
+  "Primera stress and expected decline",
+  outline_sf = flagged, outline_map = out_pal)
+```
+
+### Postrera
+
+Because the postrera has not yet started, lead time remains for anticipatory measures, independent
+of whether the AA framework was triggered earlier this season. Forecast skill is weak, so this
+supports acting ahead of an elevated but uncertain risk rather than a firm prediction of failure.
+The postrera outlook is described in @sec-postrera-outlook and mapped in @fig-postrera-pair.
+
+### Areas off the seasonal calendar
+
+A small number of units fall outside the drought's rain-critical calendar. In the western highlands
+and along the Caribbean fringe, the crop's precipitation-sensitive period (ASAP PSP) does not
+coincide with the primera and postrera windows. A seasonal-rainfall deficit is not the relevant
+measure of risk in these areas; they are better addressed through vulnerability and food-security
+assessment than through agricultural drought response. That layer has not yet been built here.
+
+```{r}
+#| label: fig-psp
+#| fig-cap: "Overlap of the drought windows with the crop's rain-critical period (ASAP PSP). Green = drought hits the rain-sensitive months (seasonal lens applies); pale = off-calendar (highlands / Caribbean)."
+#| fig-width: 7.5
+#| fig-height: 11
+p <- season |> transmute(gaul_code, psp) |> join_gaul()
+land3(p, list(geom_sf(aes(fill = psp), color = "grey80", linewidth = 0.08),
+              scale_fill_gradient(low = "grey88", high = "#1a9850", na.value = "grey85",
+                                  limits = c(0, 1), labels = percent, name = "Drought in rain-critical period")),
+      "Where the seasonal-drought lens applies")
+```
+
+## External validation: FAO/JRC ASAP
+
+The [Anomaly Hot Spots of Agricultural Production (ASAP)](https://agricultural-production-hotspots.ec.europa.eu/wexplorer/)
+system, run by FAO and the EC Joint Research Centre, provides an independent check on the assessment
+above. ASAP combines vegetation health,
+biomass, and a crop water-balance model over cropland, and issues monitoring and forecast warnings
+by agro-climatic zone. Its warning for the third dekad of June 2026, the same window as this
+analysis, is shown below. Because it comes from a different institution and a different method,
+agreement carries weight.
+
+![FAO/JRC ASAP agricultural warning, third dekad of June 2026. Red indicates a combined water-balance and biomass warning and darker red an end-of-season biomass warning; yellow and orange indicate a water-balance or biomass warning alone. Hatching marks a forecast warning for the current and/or upcoming season. White indicates insufficient crop area.](asap_cadc.png)
+
+ASAP corroborates the analysis on each of its main points.
+
+- **Regional severity.** The most severe class, a combined water-balance and biomass warning, covers
+  the dry corridor almost continuously across the three countries. This matches the region-wide
+  rainfall deficit and the concentration of agricultural stress reported here.
+- **Hotspot geography.** ASAP's strongest warnings fall in central and southern Honduras, the
+  eastern-Guatemala Motagua valley, and El Salvador, the same areas identified by ASI (Olancho, El
+  Paraíso, Choluteca, Zacapa, and eastern El Salvador).
+- **Current and upcoming season.** ASAP issues forecast warnings for both the current and the
+  upcoming season across much of the region. This independently supports the two conclusions drawn
+  here: that the primera is unlikely to recover, and that the postrera outlook is also unfavourable.
+  The latter is the point that rests on a lower-skill forecast in our own analysis, so the
+  independent agreement is useful.
+- **Cropland extent.** ASAP marks the Caribbean northeast, including Gracias a Dios, as insufficient
+  crop area, consistent with the units set aside here as off-calendar or non-agricultural.
+
+The two products use different spatial units and different warning categories, so the comparison is
+close rather than unit-for-unit. Within those limits, an independent operational system reaches the
+same regional assessment.
+
+## Definitions and caveats {.unnumbered}
+
+- **ASI**: the percentage of a unit's crop area in severe drought stress (FAO; absolute and
+  comparable across units). "Already very stressed" refers to ASI of 15% or more.
+- **Percent of normal**: seasonal rainfall as a share of the 1991–2024 mean; values below 100 are
+  drier than normal.
+- **Return period**: the empirical recurrence interval of the 2026 value against the unit's own
+  record (Weibull), in years.
+- **Baselines**: rainfall anomalies and percent of normal are computed against the 1991–2024
+  climatology — ERA5 for the observed and combined primera, and the SEAS5 July-issuance reforecast
+  (1991–2024 hindcast) for the postrera forecast. Rainfall return periods rank 2026 among the
+  1991–2024 baseline years plus 2026 itself (Weibull), the same record as the season review, so the
+  driest on record reads 1 in 36. ASI percentiles and return periods are taken against each unit's own 1984–2025
+  FAO ASI record.
+- **Confidence**: the primera rests on observed conditions and is high confidence; the postrera
+  rests on a low-skill SEAS5 forecast, which supports anticipatory action but not a firm prediction.
+- **Off-calendar**: the drought window falls outside the crop's rain-critical period (ASAP PSP).
+  These units are better served by a vulnerability and food-security assessment than a
+  seasonal-drought one.
+- **Data and reproducibility**: the maps and table are built from derived files hosted on the team
+  blob (`projects` container, `ds-aa-lac-dry-corridor/book/static/`), read at render time. The scripts
+  that produce them — the database, Earth Engine, and raster pulls and the downstream transforms — are
+  tracked in `data-raw/mission_support_2026/`.
+- The vulnerability and food-security layer for the off-calendar areas has not yet been built.
