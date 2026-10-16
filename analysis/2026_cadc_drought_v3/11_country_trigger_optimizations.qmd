@@ -631,6 +631,9 @@ build_impact_validation_gt(df_gtm, df_cerf_drought, df_emdat_drought, "GTM",
 
 ```{r}
 #| label: tbl-validation-gtmsn
+
+# no need to separate SN into the different monitoring AOIS for this overview plot
+
 build_impact_validation_gt(df_gtm_sn, df_cerf_drought, df_emdat_drought, "GTM",
                            eval_start = EVAL_START, eval_end = EVAL_END,
                            df_emdat_interp = df_emdat_drought_interp,
@@ -659,6 +662,8 @@ The rationale is straightforward: since SEAS5 forecasts are our only trigger var
 #| label: helper-uniform-refs
 
 # Helper: get uniform reference configs from the pre-filter pool.
+# note: alot of complicated code, but really just to get the yellow hallows on
+# the plot
 # This bypasses must-hit/should-hit filtering so we can see the full range
 # of uniform RPs (strict uniform configs often fail must-hit and disappear).
 get_uniform_refs_prefilter <- function(all_results, threshold_cols,
@@ -1082,6 +1087,7 @@ hnd_era5 <- evaluate_configs(hnd_candidate_combos, trigger_data_hnd, rp_buffer =
 threshold_cols_hnd <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                 names(hnd_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 hnd_combined <- hnd_candidates |>
   select(config_id, all_of(threshold_cols_hnd),
          impact_f1 = mean_f1,
@@ -1175,8 +1181,55 @@ The plot below shows each candidate configuration positioned by its ERA5 toleran
 #| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras candidate configurations. Points colored by annual return period. Circled points indicate the best average F1 at each RP level."
 #| eval: false
 
+# this static version is better for framework doc whereas interactive is better for online book.
+
 hnd_tradeoff$plot
 ```
+
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-hnd-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Honduras."
+
+# Recompute color palette
+hnd_fw_rp_levels <- levels(hnd_tradeoff$data$rp_group)
+hnd_fw_hl_levels <- setdiff(hnd_fw_rp_levels, "other")
+hnd_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                       "#ff7f00", "#a65628")[seq_along(hnd_fw_hl_levels)]
+hnd_fw_colors <- c(setNames(hnd_fw_hl_colors, hnd_fw_hl_levels), "other" = "grey80")
+
+hnd_fw_df <- hnd_tradeoff$data
+hnd_fw_bg <- hnd_fw_df |> filter(rp_group == "other")
+hnd_fw_hl <- hnd_fw_df |> filter(rp_group != "other")
+
+# Selected config: RP 2.9 A
+hnd_fw_best <- hnd_final |> filter(config_label == "RP 2.9 A")
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = hnd_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = hnd_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = hnd_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = hnd_fw_best,
+    aes(label = sprintf("RP %.1f\navg F1=%.2f", annual_rp, avg_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = hnd_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Honduras",
+       subtitle = "Circled = selected configuration (RP 2.9 A)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
 
 ```{r}
 #| label: fig-hnd-tradeoff-interactive
@@ -1282,6 +1335,8 @@ girafe(ggobj = p_hnd,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-hnd-config-summary
@@ -1604,6 +1659,7 @@ slv_era5 <- evaluate_configs(slv_candidate_combos, trigger_data_slv, rp_buffer =
 threshold_cols_slv <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                 names(slv_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 slv_combined <- slv_candidates |>
   select(config_id, all_of(threshold_cols_slv),
          impact_f1 = mean_f1,
@@ -1695,6 +1751,51 @@ slv_default_idx <- which.min(abs(slv_final$annual_rp - 2.9))
 
 slv_tradeoff$plot
 ```
+
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-slv-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for El Salvador."
+
+# Recompute color palette
+slv_fw_rp_levels <- levels(slv_tradeoff$data$rp_group)
+slv_fw_hl_levels <- setdiff(slv_fw_rp_levels, "other")
+slv_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                       "#ff7f00", "#a65628")[seq_along(slv_fw_hl_levels)]
+slv_fw_colors <- c(setNames(slv_fw_hl_colors, slv_fw_hl_levels), "other" = "grey80")
+
+slv_fw_df <- slv_tradeoff$data
+slv_fw_bg <- slv_fw_df |> filter(rp_group == "other")
+slv_fw_hl <- slv_fw_df |> filter(rp_group != "other")
+
+# Selected config: RP 2.9 A
+slv_fw_best <- slv_final |> filter(config_label == "RP 2.9 A")
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = slv_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = slv_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = slv_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = slv_fw_best,
+    aes(label = sprintf("RP %.1f\navg F1=%.2f", annual_rp, avg_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = slv_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — El Salvador",
+       subtitle = "Circled = selected configuration (RP 2.9 A)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
 
 ```{r}
 #| label: fig-slv-tradeoff-interactive
@@ -1794,6 +1895,8 @@ girafe(ggobj = p_slv,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-slv-config-summary
@@ -2051,6 +2154,7 @@ gtm_era5 <- evaluate_configs(gtm_candidate_combos, trigger_data_gtm, rp_buffer =
 threshold_cols_gtm <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                 names(gtm_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtm_combined <- gtm_candidates |>
   select(config_id, all_of(threshold_cols_gtm),
          impact_f1 = mean_f1,
@@ -2140,6 +2244,51 @@ gtm_activation_tables <- lapply(seq_len(nrow(gtm_final)), function(i) {
 
 gtm_default_idx <- which.min(abs(gtm_final$annual_rp - target_rp_gtm))
 ```
+
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-gtm-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala."
+
+# Recompute color palette
+gtm_fw_rp_levels <- levels(gtm_tradeoff$data$rp_group)
+gtm_fw_hl_levels <- setdiff(gtm_fw_rp_levels, "other")
+gtm_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                       "#ff7f00", "#a65628")[seq_along(gtm_fw_hl_levels)]
+gtm_fw_colors <- c(setNames(gtm_fw_hl_colors, gtm_fw_hl_levels), "other" = "grey80")
+
+gtm_fw_df <- gtm_tradeoff$data
+gtm_fw_bg <- gtm_fw_df |> filter(rp_group == "other")
+gtm_fw_hl <- gtm_fw_df |> filter(rp_group != "other")
+
+# Selected config: RP 2.9 A
+gtm_fw_best <- gtm_final |> filter(config_label == "RP 2.9 A")
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = gtm_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = gtm_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = gtm_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = gtm_fw_best,
+    aes(label = sprintf("RP %.1f\navg F1=%.2f", annual_rp, avg_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtm_fw_colors, name = "Annual RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — Guatemala",
+       subtitle = "Circled = selected configuration (RP 2.9 A)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
 
 ```{r}
 #| label: fig-gtm-tradeoff-interactive
@@ -2233,6 +2382,8 @@ girafe(ggobj = p_gtm,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 ```{r}
 #| label: tbl-gtm-config-summary
@@ -2442,6 +2593,12 @@ The StartNetwork Guatemala AOI covers Quiché (GT14) and Baja Verapaz (GT15). Ba
 #| label: gtmsn-impact-eval
 #| cache: true
 
+
+# note to reviewers: after running this chunk, you can skip down
+# to GTMSN Primera Only section (~ln 3433) which is where the final config for SN
+# is made.... but it does reqire the hybrid GT15 (p2 only) and merged admin
+# trigger_data objects created in this chunk
+
 combos_gtmsn <- generate_combos(length(unique(df_gtm_sn$year)),
                                  primera_lts = primera_lts_gtmsn,
                                  postrera_lts = postrera_lts_gtmsn,
@@ -2463,12 +2620,16 @@ trigger_data_lt2 <- build_trigger_lookup(df_gtm_sn_lt2, min_rp = 2.8, max_rp = M
 
 # Hybrid trigger_data: p2 from GT15-only, everything else from merged GT14+GT15
 trigger_data_gtmsn <- trigger_data_merged
+
+# here we replace trigger lookup for p2 w/ that from GT15 only
 trigger_data_gtmsn$trigger_lookup <- c(
   trigger_data_merged$trigger_lookup[!grepl("^p2_", names(trigger_data_merged$trigger_lookup))],
   trigger_data_lt2$trigger_lookup[grepl("^p2_", names(trigger_data_lt2$trigger_lookup))]
 )
-trigger_data_gtmsn$rp_options$p2 <- trigger_data_lt2$rp_options$p2
 
+# here we replace rp_options for p2 w/ that from GT15 only
+trigger_data_gtmsn$rp_options$p2 <- trigger_data_lt2$rp_options$p2
+  
 all_results_gtmsn <- evaluate_configs_impact(
   combos_gtmsn, trigger_data_gtmsn,
   impact_years = impact_yrs_gtmsn,
@@ -2500,11 +2661,18 @@ After priority filtering, **`r format(nrow(gtmsn_candidates), big.mark = ",")`**
 gtmsn_candidate_combos <- gtmsn_candidates |>
   select(any_of(c("p0", "p1", "p2", "s0", "s1", "s2", "s3")))
 
+# realize that we are for p2 we evaluating GT15-only trigger/forecast
+# against the merged ERA rainfall for the two admins -- this actually
+# makes sense and is okay considering if this triggers activities can 
+# occur in either (how well does forecat in A generaliaze to rainfall
+# defecits in A + B)
+
 gtmsn_era5 <- evaluate_configs(gtmsn_candidate_combos, trigger_data_gtmsn, rp_buffer = 1)
 
 threshold_cols_gtmsn <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2", "s3"),
                                   names(gtmsn_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtmsn_combined <- gtmsn_candidates |>
   select(config_id, all_of(threshold_cols_gtmsn),
          impact_f1 = mean_f1,
@@ -3067,6 +3235,7 @@ gtmsnv2_era5 <- evaluate_configs(gtmsnv2_candidate_combos, trigger_data_gtmsnv2,
 threshold_cols_gtmsnv2 <- intersect(c("p0", "p1", "p2", "s0", "s1", "s2"),
                                      names(gtmsnv2_candidates))
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtmsnv2_combined <- gtmsnv2_candidates |>
   select(config_id, all_of(threshold_cols_gtmsnv2),
          impact_f1 = mean_f1,
@@ -3758,6 +3927,7 @@ gtmsnp_candidate_combos <- gtmsnp_candidates |>
 
 gtmsnp_era5 <- evaluate_primera_era5(gtmsnp_candidate_combos, trigger_data_gtmsn, rp_buffer = 1)
 
+# Join by threshold cols (scoped to active LTs only — no NAs in join keys)
 gtmsnp_combined <- gtmsnp_candidates |>
   select(config_id, all_of(threshold_cols_gtmsnp),
          impact_f1 = mean_f1,
@@ -3837,6 +4007,53 @@ gtmsnp_activation_tables <- lapply(seq_len(nrow(gtmsnp_final)), function(i) {
 
 gtmsnp_default_idx <- 1
 ```
+
+::: {.panel-tabset}
+
+#### Framework
+
+```{r}
+#| label: fig-gtmsnp-tradeoff-framework
+#| fig-cap: "ERA5 tolerant F1 vs Impact F1 for Guatemala (StartNetwork - Primera only)."
+
+# Recompute color palette
+gtmsnp_fw_rp_levels <- levels(gtmsnp_tradeoff$data$rp_group)
+gtmsnp_fw_hl_levels <- setdiff(gtmsnp_fw_rp_levels, "other")
+gtmsnp_fw_hl_colors <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+                          "#ff7f00", "#a65628")[seq_along(gtmsnp_fw_hl_levels)]
+gtmsnp_fw_colors <- c(setNames(gtmsnp_fw_hl_colors, gtmsnp_fw_hl_levels), "other" = "grey80")
+
+gtmsnp_fw_df <- gtmsnp_tradeoff$data
+gtmsnp_fw_bg <- gtmsnp_fw_df |> filter(rp_group == "other")
+gtmsnp_fw_hl <- gtmsnp_fw_df |> filter(rp_group != "other")
+
+# Selected config: RP 4.4 Uniform (thresh 5.0)
+gtmsnp_fw_best <- gtmsnp_final |>
+  filter(option == "U", p0 == 5.0, p1 == 5.0, p2 == 5.0) |>
+  slice_head(n = 1)
+
+ggplot(mapping = aes(x = era5_tol_f1, y = impact_f1)) +
+  geom_point(data = gtmsnp_fw_bg, color = "grey80", size = 1.5, alpha = 0.4) +
+  geom_point(data = gtmsnp_fw_hl, aes(color = rp_group), size = 2.5, alpha = 0.8) +
+  geom_point(data = gtmsnp_fw_best, aes(color = rp_group),
+             size = 5, shape = 21, fill = "transparent", stroke = 1.2, show.legend = FALSE) +
+  geom_label_repel(
+    data = gtmsnp_fw_best,
+    aes(label = sprintf("RP %.1f\navg F1=%.2f", annual_rp, avg_f1), color = rp_group),
+    size = 2.8, fill = "white", label.size = 0.2,
+    show.legend = FALSE, max.overlaps = 30,
+    segment.color = "grey50", segment.size = 0.3,
+    min.segment.length = 0, force = 5, nudge_x = 0.01
+  ) +
+  scale_color_manual(values = gtmsnp_fw_colors, name = "Primera RP") +
+  labs(x = "ERA5 Tolerant F1", y = "Impact F1 (EM-DAT)",
+       title = "ERA5 vs Impact F1 Tradeoff — StartNetwork Primera Only",
+       subtitle = "Circled = selected configuration (RP 4.4 Uniform)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
+
+#### Original
 
 ```{r}
 #| label: fig-gtmsnp-tradeoff-interactive
@@ -3926,6 +4143,8 @@ girafe(ggobj = p_gtmsnp,
          opts_sizing(rescale = TRUE, width = 1)
        ))
 ```
+
+:::
 
 **Trigger Activation Detail (per leadtime)**
 
@@ -4182,76 +4401,568 @@ gtmsnp_final |>
 ```{r}
 #| label: recommended-configs
 
-# Extract recommended configs by selection criterion, closest to RP 2.9
-# HND: prefer "max ERA5 tol F1" or "both"; SLV: prefer "max avg F1" or "both"
-pick_rec <- function(df_final, selection_pref, target_rp = 2.9) {
-  candidates <- df_final |>
-    filter(selection %in% c(selection_pref, "both")) |>
-    slice_min(abs(annual_rp - target_rp), n = 1, with_ties = FALSE)
-  # Fallback: if no match, take closest RP regardless of selection
+# ── Select chosen configs ──────────────────────────────────────────────────
+hnd_rec <- as.list(hnd_final |> filter(config_label == "RP 2.9 A"))
+slv_rec <- as.list(slv_final |> filter(config_label == "RP 2.9 A"))
+gtm_rec <- as.list(gtm_final |> filter(config_label == "RP 2.9 A"))
 
-  if (nrow(candidates) == 0) {
-    candidates <- df_final |>
-      slice_min(abs(annual_rp - target_rp), n = 1, with_ties = FALSE)
-  }
-  # Convert to list for safe scalar extraction
-  as.list(candidates[1, ])
+# StartNetwork: RP 4.4 Uniform (all thresholds = 5.0), primera only
+gtmsn_rec <- as.list(
+  gtmsnp_final |>
+    filter(option == "U", p0 == 5.0, p1 == 5.0, p2 == 5.0) |>
+    slice_head(n = 1)
+)
+
+# ── RP → mm conversion ────────────────────────────────────────────────────
+# Drought-only: rank(x) gives rank 1 to the smallest (driest) value,
+# so lowest rainfall → highest RP. Equivalent to calc_rp_threshold(x, direction=-1)
+# in R/country_trigger_optimization.R — no direction param needed here.
+rp_to_mm <- function(df, window_name, lt, rp_val) {
+  if (is.null(rp_val) || is.na(rp_val)) return(NA_real_)
+  x <- df |> filter(window == window_name, leadtime == lt) |> pull(fcst_mm)
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n < 3) return(NA_real_)
+  ranks <- rank(x, ties.method = "average")
+  rp <- (n + 1) / ranks
+  approx(rp, x, xout = rp_val, rule = 2)$y
 }
 
-hnd_rec <- pick_rec(hnd_final, "max ERA5 tol F1")
-hnd_alt <- pick_rec(hnd_final, "max avg F1", target_rp = 2.7)
-slv_rec <- pick_rec(slv_final, "max avg F1")
-gtm_rec <- pick_rec(gtm_final, "max avg F1", target_rp = target_rp_gtm)
-gtmsn_rec <- pick_rec(gtmsn_final, "max avg F1", target_rp = target_rp_gtmsn)
+fmt_rp_mm <- function(rp_val, mm_val) {
+  if (is.na(rp_val) || is.na(mm_val)) return(NA_character_)
+  sprintf("RP %.1f (%d mm)", rp_val, round(mm_val))
+}
 
-# Helper: format thresholds as "LT0=X, LT1=Y, ..."
-fmt_thresholds <- function(rec, prefix, n_lts) {
-  cols <- paste0(prefix, 0:(n_lts - 1))
-  vals <- sapply(cols, function(c) sprintf("%.1f", rec[[c]]))
-  paste(sprintf("LT%d = %s", 0:(n_lts - 1), vals), collapse = ", ")
+# ── CHD color palette ────────────────────────────────────────────────────
+chd_green       <- "#55b284"
+chd_green_dark  <- "#3e8f6b"
+chd_green_light <- "#e8f5ee"
+chd_green_mid   <- "#c5e6d4"
+chd_coral       <- "#F0635C"
+
+# ── Build threshold table for one config ──────────────────────────────────
+build_threshold_gt <- function(rec, df, country,
+                               primera_lts, postrera_lts = 0,
+                               df_lt2 = NULL) {
+  rows <- list()
+
+  # Primera
+  p_vals <- lapply(0:(primera_lts - 1), function(lt) {
+    rp_val <- rec[[paste0("p", lt)]]
+    df_use <- if (lt == 2 && !is.null(df_lt2)) df_lt2 else df
+    mm_val <- rp_to_mm(df_use, "primera", lt, rp_val)
+    fmt_rp_mm(rp_val, mm_val)
+  })
+  p_row <- tibble(
+    season = "Primera (May\u2013Aug)",
+    lt0 = p_vals[[1]],
+    lt1 = if (length(p_vals) >= 2) p_vals[[2]] else NA_character_,
+    lt2 = if (length(p_vals) >= 3) p_vals[[3]] else NA_character_
+  )
+  rows <- c(rows, list(p_row))
+
+  # Postrera (skip if 0 leadtimes)
+  if (postrera_lts > 0) {
+    s_vals <- lapply(0:(postrera_lts - 1), function(lt) {
+      rp_val <- rec[[paste0("s", lt)]]
+      mm_val <- rp_to_mm(df, "postrera", lt, rp_val)
+      fmt_rp_mm(rp_val, mm_val)
+    })
+    s_row <- tibble(
+      season = "Postrera (Sep\u2013Nov)",
+      lt0 = s_vals[[1]],
+      lt1 = if (length(s_vals) >= 2) s_vals[[2]] else NA_character_,
+      lt2 = if (length(s_vals) >= 3) s_vals[[3]] else NA_character_
+    )
+    rows <- c(rows, list(s_row))
+  }
+
+  df_tbl <- bind_rows(rows)
+
+  # Footer RPs
+  p_rp <- sprintf("%.1f yr", rec$p_seasonal_rp)
+  has_postrera <- postrera_lts > 0 && !is.null(rec$s_seasonal_rp) && !is.na(rec$s_seasonal_rp)
+  s_rp <- if (has_postrera) sprintf("%.1f yr", rec$s_seasonal_rp) else NULL
+  annual_rp_val <- rec$annual_rp %||% rec$p_seasonal_rp
+
+  tbl <- df_tbl |>
+    gt() |>
+    sub_missing(missing_text = "") |>
+    cols_label(
+      season = "",
+      lt0 = "LT 0",
+      lt1 = "LT 1",
+      lt2 = "LT 2"
+    ) |>
+    cols_align(align = "center", columns = starts_with("lt")) |>
+    cols_align(align = "left", columns = season) |>
+    tab_header(
+      title = md(sprintf("**%s** \u2014 AA Drought Thresholds", country)),
+      subtitle = "Per Season & Leadtime"
+    ) |>
+    # Season label styling
+    tab_style(
+      style = list(
+        cell_text(weight = "bold", color = chd_green_dark, size = px(13)),
+        cell_fill(color = chd_green_light),
+        cell_borders(sides = "right", color = chd_green, weight = px(2))
+      ),
+      locations = cells_body(columns = season)
+    ) |>
+    # Threshold cell styling
+    tab_style(
+      style = cell_text(font = system_fonts("monospace-code"), size = px(13)),
+      locations = cells_body(columns = starts_with("lt"))
+    ) |>
+    # Column labels
+    tab_style(
+      style = list(
+        cell_text(color = "white", weight = "bold", size = px(13)),
+        cell_fill(color = chd_green),
+        cell_borders(sides = "bottom", color = chd_green_dark, weight = px(2))
+      ),
+      locations = cells_column_labels()
+    ) |>
+    # Title styling
+    tab_style(
+      style = cell_text(color = chd_green_dark),
+      locations = cells_title(groups = "title")
+    ) |>
+    tab_style(
+      style = cell_text(color = "#666666", style = "italic"),
+      locations = cells_title(groups = "subtitle")
+    ) |>
+    # Row borders
+    tab_style(
+      style = cell_borders(sides = "bottom", color = chd_green_mid, weight = px(1)),
+      locations = cells_body()
+    )
+
+  # Source notes — each on its own line
+  if (has_postrera) {
+    tbl <- tbl |>
+      tab_source_note(
+        source_note = md(sprintf(
+          "**Annual Combined RP:** %.1f yr&emsp;\u2022&emsp;**Primera Combined RP:** %s&emsp;\u2022&emsp;**Postrera Combined RP:** %s",
+          annual_rp_val, p_rp, s_rp
+        ))
+      )
+  } else {
+    tbl <- tbl |>
+      tab_source_note(
+        source_note = md(sprintf(
+          "**Annual Combined RP:** %.1f yr&emsp;\u2022&emsp;**Primera Combined RP:** %s",
+          annual_rp_val, p_rp
+        ))
+      )
+  }
+
+  # Explanatory footnote
+  tbl <- tbl |>
+    tab_source_note(
+      source_note = sprintf(
+        "Threshold calculations based on ECMWF SEAS5 hindcast data (%d\u2013%d) to approximate a 1-in-%.1f year combined annual return period drought level for seasonal rainfall. Thresholds are calculated per country, season, and leadtime to account for forecast-specific biases.",
+        BASELINE_START, BASELINE_END, annual_rp_val
+      )
+    )
+
+  tbl |>
+    tab_options(
+      table.font.size = px(13),
+      data_row.padding = px(10),
+      column_labels.padding = px(10),
+      heading.title.font.size = px(17),
+      heading.subtitle.font.size = px(12),
+      heading.align = "left",
+      heading.padding = px(10),
+      heading.border.bottom.color = chd_green,
+      heading.border.bottom.width = px(2),
+      table.border.top.color = chd_green_dark,
+      table.border.top.width = px(3),
+      table.border.bottom.color = chd_green_dark,
+      table.border.bottom.width = px(3),
+      source_notes.font.size = px(11),
+      source_notes.padding = px(8),
+      source_notes.border.bottom.color = chd_green_dark,
+      table.width = pct(100)
+    )
+}
+
+# ── Framework Doc style (Spanish, long format, blue) ─────────────────────
+
+# Spanish month lookup
+month_es <- c(
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+)
+
+# LT → issued month mapping
+primera_lt_issued <- c(`0` = 5L, `1` = 4L, `2` = 3L)
+postrera_lt_issued <- c(`0` = 9L, `1` = 8L, `2` = 7L, `3` = 6L)
+
+fw_blue       <- "#B4C6E7"
+fw_blue_dark  <- "#4472C4"
+fw_blue_light <- "#D6E4F0"
+fw_grey       <- "#F2F2F2"
+
+build_framework_gt <- function(rec, df, country_es,
+                               primera_lts, postrera_lts = 0,
+                               df_lt2 = NULL) {
+  rows <- list()
+
+  # Primera rows (LT 0 first = closest to season)
+  for (lt in 0:(primera_lts - 1)) {
+    rp_val <- rec[[paste0("p", lt)]]
+    df_use <- if (lt == 2 && !is.null(df_lt2)) df_lt2 else df
+    mm_val <- rp_to_mm(df_use, "primera", lt, rp_val)
+    issued_mo <- primera_lt_issued[as.character(lt)]
+    rows <- c(rows, list(tibble(
+      temporada = "Primera (mayo\u2013agosto)",
+      mes = sprintf("%s (%d)", month_es[issued_mo], lt),
+      periodo_retorno = sprintf("%.1f", rp_val),
+      precipitacion_mm = sprintf("%d", round(mm_val))
+    )))
+  }
+
+  # Postrera rows
+  if (postrera_lts > 0) {
+    for (lt in 0:(postrera_lts - 1)) {
+      rp_val <- rec[[paste0("s", lt)]]
+      mm_val <- rp_to_mm(df, "postrera", lt, rp_val)
+      issued_mo <- postrera_lt_issued[as.character(lt)]
+      rows <- c(rows, list(tibble(
+        temporada = "Postrera (septiembre\u2013noviembre)",
+        mes = sprintf("%s (%d)", month_es[issued_mo], lt),
+        periodo_retorno = sprintf("%.1f", rp_val),
+        precipitacion_mm = sprintf("%d", round(mm_val))
+      )))
+    }
+  }
+
+  df_tbl <- bind_rows(rows)
+
+  # Footer RPs
+  p_rp <- sprintf("%.1f a\u00f1os", rec$p_seasonal_rp)
+  has_postrera <- postrera_lts > 0 && !is.null(rec$s_seasonal_rp) && !is.na(rec$s_seasonal_rp)
+  s_rp <- if (has_postrera) sprintf("%.1f a\u00f1os", rec$s_seasonal_rp) else NULL
+  annual_rp_val <- rec$annual_rp %||% rec$p_seasonal_rp
+
+  tbl <- df_tbl |>
+    gt(groupname_col = "temporada") |>
+    cols_label(
+      mes = "Mes de publicaci\u00f3n (tiempo de anticipaci\u00f3n)",
+      periodo_retorno = "Periodo de retorno",
+      precipitacion_mm = "Precipitaci\u00f3n (mm)"
+    ) |>
+    cols_align(align = "left", columns = mes) |>
+    cols_align(align = "center", columns = c(periodo_retorno, precipitacion_mm)) |>
+    tab_header(
+      title = md(sprintf("**%s** \u2014 Umbrales de sequ\u00eda AA", country_es)),
+      subtitle = "Por temporada y tiempo de anticipaci\u00f3n"
+    ) |>
+    # Row group styling
+    tab_style(
+      style = list(
+        cell_text(weight = "bold", color = fw_blue_dark, size = px(13)),
+        cell_fill(color = fw_blue_light)
+      ),
+      locations = cells_row_groups()
+    ) |>
+    # Column labels
+    tab_style(
+      style = list(
+        cell_text(weight = "bold", size = px(12)),
+        cell_fill(color = fw_blue),
+        cell_borders(sides = "all", color = "white", weight = px(1))
+      ),
+      locations = cells_column_labels()
+    ) |>
+    # Alternating row shading
+    tab_style(
+      style = cell_fill(color = fw_grey),
+      locations = cells_body(rows = seq(1, nrow(df_tbl), by = 2))
+    ) |>
+    # Cell borders
+    tab_style(
+      style = cell_borders(sides = "all", color = "#D9D9D9", weight = px(1)),
+      locations = cells_body()
+    ) |>
+    # Title
+    tab_style(
+      style = cell_text(color = fw_blue_dark),
+      locations = cells_title(groups = "title")
+    ) |>
+    tab_style(
+      style = cell_text(color = "#666666", style = "italic"),
+      locations = cells_title(groups = "subtitle")
+    )
+
+  # Source notes
+  if (has_postrera) {
+    tbl <- tbl |>
+      tab_source_note(
+        source_note = md(sprintf(
+          "**PR combinado anual:** %.1f a\u00f1os&emsp;\u2022&emsp;**PR combinado primera:** %s&emsp;\u2022&emsp;**PR combinado postrera:** %s",
+          annual_rp_val, p_rp, s_rp
+        ))
+      )
+  } else {
+    tbl <- tbl |>
+      tab_source_note(
+        source_note = md(sprintf(
+          "**PR combinado anual:** %.1f a\u00f1os&emsp;\u2022&emsp;**PR combinado primera:** %s",
+          annual_rp_val, p_rp
+        ))
+      )
+  }
+
+  tbl <- tbl |>
+    tab_source_note(
+      source_note = sprintf(
+        "Umbrales calculados a partir de datos hist\u00f3ricos de ECMWF SEAS5 (%d\u2013%d) para aproximar un nivel de sequ\u00eda con periodo de retorno combinado anual de 1 en %.1f a\u00f1os para la precipitaci\u00f3n estacional. Los umbrales se calculan por pa\u00eds, temporada y tiempo de anticipaci\u00f3n para tener en cuenta los sesgos espec\u00edficos del pron\u00f3stico.",
+        BASELINE_START, BASELINE_END, annual_rp_val
+      )
+    )
+
+  tbl |>
+    tab_options(
+      table.font.size = px(13),
+      data_row.padding = px(8),
+      column_labels.padding = px(8),
+      heading.title.font.size = px(17),
+      heading.subtitle.font.size = px(12),
+      heading.align = "left",
+      heading.padding = px(10),
+      heading.border.bottom.color = fw_blue_dark,
+      heading.border.bottom.width = px(2),
+      table.border.top.color = fw_blue_dark,
+      table.border.top.width = px(2),
+      table.border.bottom.color = fw_blue_dark,
+      table.border.bottom.width = px(2),
+      source_notes.font.size = px(11),
+      source_notes.padding = px(8),
+      row_group.padding = px(6),
+      table.width = pct(100)
+    )
 }
 ```
 
-Based on the tradeoff analysis above, we recommend the following trigger configurations:
+::: {.panel-tabset}
 
-**Honduras: `r hnd_rec$config_label`** (`r hnd_rec$selection`)
+### CHD Style
 
-- Primera thresholds (RP): `r fmt_thresholds(hnd_rec, "p", primera_lts_hnd)`
-- Postrera thresholds (RP): `r fmt_thresholds(hnd_rec, "s", postrera_lts_hnd)`
-- Seasonal RPs: primera = `r sprintf("%.1f", hnd_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", hnd_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", hnd_rec$annual_rp)`
-- Impact F1 = `r sprintf("%.3f", hnd_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", hnd_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", hnd_rec$avg_f1)` | CV = `r sprintf("%.3f", hnd_rec$all_cv)`
+```{r}
+#| label: tbl-rec-hnd
+#| tbl-cap: !expr 'sprintf("Honduras \u2014 Configuration: %s", gsub("\n", " ", hnd_rec$config_label))'
 
-Honduras has `r length(impact_yrs_hnd)` EM-DAT impact years in `r EVAL_START`--`r EVAL_END` --- a relatively high event frequency. With this many impact years, the impact F1 scores are tightly clustered among candidate configurations at a given RP, so impact F1 alone does not discriminate well between options. Selecting the max ERA5 tolerant F1 option ensures the trigger is aligned with actual rainfall anomalies, choosing the configuration that best predicts genuinely dry years rather than succeeding on the impact metric by coincidence.
+build_threshold_gt(
+  hnd_rec, df_hnd,
+  country = "Honduras",
+  primera_lts = primera_lts_hnd,
+  postrera_lts = postrera_lts_hnd
+)
+```
 
-It is worth noting that **`r hnd_alt$config_label`** (`r hnd_alt$selection`) is a strong alternative. At a lower annual RP of `r sprintf("%.1f", hnd_alt$annual_rp)`, this configuration picks up 2012 --- a year missed by the RP 2.9 options --- with an avg F1 of `r sprintf("%.3f", hnd_alt$avg_f1)` and ERA5 tolerant F1 of `r sprintf("%.3f", hnd_alt$era5_tol_f1)`. However, this RP may fall below the target annual return period constraint, implying a higher trigger frequency than operationally desired.
+```{r}
+#| label: tbl-rec-slv
+#| tbl-cap: !expr 'sprintf("El Salvador \u2014 Configuration: %s", gsub("\n", " ", slv_rec$config_label))'
 
-- Primera thresholds (RP): `r fmt_thresholds(hnd_alt, "p", primera_lts_hnd)`
-- Postrera thresholds (RP): `r fmt_thresholds(hnd_alt, "s", postrera_lts_hnd)`
-- Seasonal RPs: primera = `r sprintf("%.1f", hnd_alt$p_seasonal_rp)`, postrera = `r sprintf("%.1f", hnd_alt$s_seasonal_rp)`, annual = `r sprintf("%.1f", hnd_alt$annual_rp)`
-- Impact F1 = `r sprintf("%.3f", hnd_alt$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", hnd_alt$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", hnd_alt$avg_f1)` | CV = `r sprintf("%.3f", hnd_alt$all_cv)`
+build_threshold_gt(
+  slv_rec, df_slv,
+  country = "El Salvador",
+  primera_lts = primera_lts_slv,
+  postrera_lts = postrera_lts_slv
+)
+```
 
-**El Salvador: `r slv_rec$config_label`** (`r slv_rec$selection`)
+```{r}
+#| label: tbl-rec-gtm
+#| tbl-cap: !expr 'sprintf("Guatemala \u2014 Configuration: %s", gsub("\n", " ", gtm_rec$config_label))'
 
-- Primera thresholds (RP): `r fmt_thresholds(slv_rec, "p", primera_lts_slv)`
-- Postrera thresholds (RP): `r fmt_thresholds(slv_rec, "s", postrera_lts_slv)`
-- Seasonal RPs: primera = `r sprintf("%.1f", slv_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", slv_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", slv_rec$annual_rp)`
-- Impact F1 = `r sprintf("%.3f", slv_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", slv_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", slv_rec$avg_f1)` | CV = `r sprintf("%.3f", slv_rec$all_cv)`
+build_threshold_gt(
+  gtm_rec, df_gtm,
+  country = "Guatemala",
+  primera_lts = primera_lts_gtm,
+  postrera_lts = postrera_lts_gtm
+)
+```
 
-El Salvador has fewer EM-DAT impact years, making impact F1 a more informative discriminator. The max avg F1 option provides the best balance between capturing impact events and predicting rainfall anomalies. Prioritizing ERA5 skill alone would sacrifice impact detection without sufficient gain in rainfall accuracy to justify the tradeoff.
+```{r}
+#| label: tbl-rec-gtmsn
+#| tbl-cap: !expr 'sprintf("Guatemala (StartNetwork) \u2014 Configuration: %s", gsub("\n", " ", gtmsn_rec$config_label))'
 
-**Guatemala: `r gtm_rec$config_label`** (`r gtm_rec$selection`)
+build_threshold_gt(
+  gtmsn_rec, df_gtm_sn,
+  country = "Guatemala (StartNetwork)",
+  primera_lts = primera_lts_gtmsn,
+  postrera_lts = 0,
+  df_lt2 = df_gtm_sn_lt2
+)
+```
 
-- Primera thresholds (RP): `r fmt_thresholds(gtm_rec, "p", primera_lts_gtm)`
-- Postrera thresholds (RP): `r fmt_thresholds(gtm_rec, "s", postrera_lts_gtm)`
-- Seasonal RPs: primera = `r sprintf("%.1f", gtm_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", gtm_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", gtm_rec$annual_rp)`
-- Impact F1 = `r sprintf("%.3f", gtm_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", gtm_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", gtm_rec$avg_f1)` | CV = `r sprintf("%.3f", gtm_rec$all_cv)`
+### Framework Doc
 
-**Guatemala (StartNetwork): `r gtmsn_rec$config_label`** (`r gtmsn_rec$selection`)
+```{r}
+#| label: tbl-fw-hnd
+#| tbl-cap: !expr 'sprintf("Honduras \u2014 Configuraci\u00f3n: %s", gsub("\n", " ", hnd_rec$config_label))'
 
-- Primera thresholds (RP): `r fmt_thresholds(gtmsn_rec, "p", primera_lts_gtmsn)`
-- Postrera thresholds (RP): `r fmt_thresholds(gtmsn_rec, "s", postrera_lts_gtmsn)`
-- Seasonal RPs: primera = `r sprintf("%.1f", gtmsn_rec$p_seasonal_rp)`, postrera = `r sprintf("%.1f", gtmsn_rec$s_seasonal_rp)`, annual = `r sprintf("%.1f", gtmsn_rec$annual_rp)`
-- Impact F1 = `r sprintf("%.3f", gtmsn_rec$impact_f1)` | ERA5 tolerant F1 = `r sprintf("%.3f", gtmsn_rec$era5_tol_f1)` | Avg F1 = `r sprintf("%.3f", gtmsn_rec$avg_f1)` | CV = `r sprintf("%.3f", gtmsn_rec$all_cv)`
+build_framework_gt(
+  hnd_rec, df_hnd,
+  country_es = "Honduras",
+  primera_lts = primera_lts_hnd,
+  postrera_lts = postrera_lts_hnd
+)
+```
+
+```{r}
+#| label: tbl-fw-slv
+#| tbl-cap: !expr 'sprintf("El Salvador \u2014 Configuraci\u00f3n: %s", gsub("\n", " ", slv_rec$config_label))'
+
+build_framework_gt(
+  slv_rec, df_slv,
+  country_es = "El Salvador",
+  primera_lts = primera_lts_slv,
+  postrera_lts = postrera_lts_slv
+)
+```
+
+```{r}
+#| label: tbl-fw-gtm
+#| tbl-cap: !expr 'sprintf("Guatemala \u2014 Configuraci\u00f3n: %s", gsub("\n", " ", gtm_rec$config_label))'
+
+build_framework_gt(
+  gtm_rec, df_gtm,
+  country_es = "Guatemala",
+  primera_lts = primera_lts_gtm,
+  postrera_lts = postrera_lts_gtm
+)
+```
+
+```{r}
+#| label: tbl-fw-gtmsn
+#| tbl-cap: !expr 'sprintf("Guatemala (StartNetwork) \u2014 Configuraci\u00f3n: %s", gsub("\n", " ", gtmsn_rec$config_label))'
+
+build_framework_gt(
+  gtmsn_rec, df_gtm_sn,
+  country_es = "Guatemala (StartNetwork)",
+  primera_lts = primera_lts_gtmsn,
+  postrera_lts = 0,
+  df_lt2 = df_gtm_sn_lt2
+)
+```
+
+:::
+
+### Threshold Parquet for Monitoring
+
+```{r}
+#| label: write-threshold-parquet
+#| eval: false
+
+# ── Build threshold table for 2026 monitoring system ─────────────────────
+# Schema mirrors 2025 convention so monitoring script requires minimal changes.
+# ch11 LT == raw SEAS5 LT (both primera and postrera reindex to 0-based).
+#
+# Issued month mapping:
+#   Primera: LT0=May(5), LT1=Apr(4), LT2=Mar(3)
+#   Postrera: LT0=Sep(9), LT1=Aug(8), LT2=Jul(7)
+
+primera_lt_to_issued <- c(`0` = 5L, `1` = 4L, `2` = 3L)
+postrera_lt_to_issued <- c(`0` = 9L, `1` = 8L, `2` = 7L, `3` = 6L)
+
+build_monitoring_thresholds <- function(rec, df, iso3_code, country_es,
+                                        primera_lts, postrera_lts = 0,
+                                        programme = "ocha", aoi_desc = "",
+                                        df_lt2 = NULL, aoi_desc_lt2 = NULL) {
+  rows <- list()
+
+  # Primera thresholds
+  for (lt in 0:(primera_lts - 1)) {
+    rp_val <- rec[[paste0("p", lt)]]
+    df_use <- if (lt == 2 && !is.null(df_lt2)) df_lt2 else df
+    aoi_use <- if (lt == 2 && !is.null(aoi_desc_lt2)) aoi_desc_lt2 else aoi_desc
+    mm_val <- rp_to_mm(df_use, "primera", lt, rp_val)
+    rows <- c(rows, list(tibble(
+      iso3 = iso3_code,
+      leadtime = as.integer(lt),
+      issued_month = primera_lt_to_issued[as.character(lt)],
+      RP_empirical = rp_val,
+      value_empirical = mm_val,
+      window = "primera",
+      forecast_source = "SEAS5",
+      AOI = aoi_use,
+      adm0_es = country_es,
+      programme = programme
+    )))
+  }
+
+  # Postrera thresholds
+  if (postrera_lts > 0) {
+    for (lt in 0:(postrera_lts - 1)) {
+      rp_val <- rec[[paste0("s", lt)]]
+      mm_val <- rp_to_mm(df, "postrera", lt, rp_val)
+      rows <- c(rows, list(tibble(
+        iso3 = iso3_code,
+        leadtime = as.integer(lt),
+        issued_month = postrera_lt_to_issued[as.character(lt)],
+        RP_empirical = rp_val,
+        value_empirical = mm_val,
+        window = "postrera",
+        forecast_source = "SEAS5",
+        AOI = aoi_desc,
+        adm0_es = country_es,
+        programme = programme
+      )))
+    }
+  }
+
+  bind_rows(rows)
+}
+
+df_thresholds_2026 <- bind_rows(
+  build_monitoring_thresholds(
+    hnd_rec, df_hnd, "HND", "Honduras",
+    primera_lts = primera_lts_hnd, postrera_lts = postrera_lts_hnd,
+    aoi_desc = "El Paraiso, Francisco Morazan"
+  ),
+  build_monitoring_thresholds(
+    slv_rec, df_slv, "SLV", "El Salvador",
+    primera_lts = primera_lts_slv, postrera_lts = postrera_lts_slv,
+    aoi_desc = "National (admin 0)"
+  ),
+  build_monitoring_thresholds(
+    gtm_rec, df_gtm, "GTM", "Guatemala",
+    primera_lts = primera_lts_gtm, postrera_lts = postrera_lts_gtm,
+    aoi_desc = "Chiquimula, Jalapa, El Progreso, Zacapa"
+  ),
+  build_monitoring_thresholds(
+    gtmsn_rec, df_gtm_sn, "GTM", "Guatemala",
+    primera_lts = primera_lts_gtmsn, postrera_lts = 0,
+    programme = "startnetwork",
+    aoi_desc = "Quiche, Baja Verapaz",
+    df_lt2 = df_gtm_sn_lt2,
+    aoi_desc_lt2 = "Baja Verapaz"
+  )
+) |>
+  mutate(
+    issued_month_label = factor(
+      month.abb[issued_month],
+      levels = month.abb
+    )
+  ) |>
+  select(iso3, leadtime, issued_month_label, RP_empirical, value_empirical,
+         window, forecast_source, AOI, adm0_es, programme)
+
+# Preview
+df_thresholds_2026
+
+# Write to blob (dev stage)
+cumulus::blob_write(
+  df = df_thresholds_2026,
+  container = "projects",
+  name = "ds-aa-lac-dry-corridor/monitoring/2026/df_thresholds_2026.parquet"
+)
+```
 
 
 ## Appendix: ROC Analysis {.appendix}

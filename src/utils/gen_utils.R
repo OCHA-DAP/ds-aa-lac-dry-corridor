@@ -264,9 +264,10 @@ threshold_var <-  function(df,var, by,rp_threshold,direction=1){
 }
 
 #' @export
-load_aoi_df <- function(version = c("2025_v2","2025_v1","startnetwork")){
+load_aoi_df <- function(version = c("2025_v2","2025_v1","startnetwork",
+                                     "2026","2026_startnetwork")){
   version <- arg_match(version)
-  
+
   if(version=="2025_v1"){
     ret <- tribble(
       ~pcode, ~iso3,               ~name,
@@ -278,9 +279,9 @@ load_aoi_df <- function(version = c("2025_v2","2025_v1","startnetwork")){
       "NI05", "NIC",     "Nueva Segovia",
       "NI40", "NIC",         "Matagalpa",
       "SV11", "SLV",       "San Vicente"
-    )  
+    )
   }
-  
+
   if(version=="2025_v2"){
     ret <- tribble(
       ~pcode, ~iso3,               ~name,
@@ -292,14 +293,33 @@ load_aoi_df <- function(version = c("2025_v2","2025_v1","startnetwork")){
       # "NI05", "NIC",     "Nueva Segovia",
       # "NI40", "NIC",         "Matagalpa",
       "SV11", "SLV",       "San Vicente"
-    )  
+    )
   }
   if(version == "startnetwork"){
     ret <- tribble(
       ~pcode, ~iso3,               ~name,
       "GT14", "GTM",        "Quiche",
       "GT15", "GTM",        "Baja Verapaz",
-    )  
+    )
+  }
+  if(version == "2026"){
+    ret <- tribble(
+      ~pcode, ~iso3,               ~name,
+      "GT20", "GTM",        "Chiquimula",
+      "GT21", "GTM",            "Jalapa",
+      "GT02", "GTM",      "El Progreso",
+      "GT19", "GTM",            "Zacapa",
+      "HN07", "HND",        "El Paraiso",
+      "HN08", "HND", "Francisco Morazan",
+    )
+    # Note: SLV uses adm_level=0 (country-level) and is handled separately
+  }
+  if(version == "2026_startnetwork"){
+    ret <- tribble(
+      ~pcode, ~iso3,               ~name,
+      "GT14", "GTM",           "Quiche",
+      "GT15", "GTM",     "Baja Verapaz",
+    )
   }
   ret
 }

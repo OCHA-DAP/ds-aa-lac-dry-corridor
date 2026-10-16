@@ -1,0 +1,154 @@
+---
+title: email
+output: blastula::blastula_email
+---
+
+<style type = "text/css">
+
+h1, h2, h3 {
+  font-family: Arvo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: normal
+}
+
+p {
+  font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif
+}
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fontfamily = "Sans Source Pro",
+  results="asis",
+  fig.align='center',
+  fig.cap = ""
+)
+box::use(gghdx)
+gghdx$gghdx()
+```
+
+
+```{r, class.output = "banner"}
+tfp_banner <- cumulus$blob_read(
+  container = "projects",
+  name = "ds-aa-lac-dry-corridor/framework_update_2025/email_logos/centre_banner.png" ,
+  return_path = T,
+  progress_show = F
+)
+
+add_image(
+  file = tfp_banner,
+  alt = "Centre for Humanitarian Data banner",
+  align = "left",
+  width = "25%"
+)
+```
+
+
+# `r email_txt_sn$en$title`
+
+## `r email_txt_sn$en$subtitle`
+
+### `r email_txt_sn$en$date_header`  `r email_txt_sn$en$status`
+
+## `r email_txt_sn$en$description_title`
+
+`r email_txt_sn$en$description_content`
+
+```{r tblThresholdsEn}
+gt_threshold_sn_en
+```
+
+
+**Forecast data source:** `r email_txt_sn$en$data_source`
+
+Data accessed: `r trimws(format(as.Date(current_moment), "%B %Y"))`.
+
+`r email_txt_sn$en$ref_github`
+
+----
+
+## Contact
+
+`r email_txt_sn$en$contact_info`
+
+
+<!-- ══════════════ SEPARATOR ══════════════ -->
+
+<table width="100%" style="margin-top:30px; margin-bottom:5px;">
+<tr><td style="border-bottom:3px solid #3e8f6b;">&nbsp;</td></tr>
+</table>
+
+<table width="100%" style="margin-bottom:15px;">
+<tr><td style="background-color:#f0faf5; border-left:4px solid #3e8f6b; padding:10px 20px;">
+<p style="font-size:16px; color:#3e8f6b; font-weight:bold; margin:0;">Versi&oacute;n en Espa&ntilde;ol</p>
+</td></tr>
+</table>
+
+
+<!-- ══════════════ SPANISH SECTION ══════════════ -->
+
+<table width="100%" style="margin-bottom:20px;">
+<tr><td style="background-color:#f7fbf9; border-left:4px solid #3e8f6b; padding:10px 20px;">
+
+<h1 style="font-family: Arvo, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:normal;">`r email_txt_sn$es$title`</h1>
+
+<h2 style="font-family: Arvo, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:normal;">`r email_txt_sn$es$subtitle`</h2>
+
+<h3 style="font-family: Arvo, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:normal;">`r email_txt_sn$es$date_header`  `r email_txt_sn$es$status`</h3>
+
+<h2 style="font-family: Arvo, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:normal;">`r email_txt_sn$es$description_title`</h2>
+
+<p style="font-family: 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;">`r email_txt_sn$es$description_content`</p>
+
+</td></tr>
+</table>
+
+```{r tblThresholdsEs}
+gt_threshold_sn_es
+```
+
+
+**Fuente de datos del pron&oacute;stico:** `r email_txt_sn$es$data_source`
+
+Datos consultados: `r trimws(format(as.Date(current_moment), "%B %Y"))`.
+
+`r email_txt_sn$es$ref_github`
+
+----
+
+## Contacto
+
+`r email_txt_sn$es$contact_info`
+
+
+<!-- ══════════════ SHARED FOOTER ══════════════ -->
+
+----
+
+```{r FooterLogo}
+
+tfp_logo <- cumulus$blob_read(
+  container = "projects",
+  name = "ds-aa-lac-dry-corridor/framework_update_2025/email_logos/ocha_logo_wide.png" ,
+  return_path = T, progress_show = FALSE
+)
+add_image(
+  file = tfp_logo,
+  align = "center",
+  width = "25%"
+)
+```
+
+<p>
+<center>
+
+<b> OCHA Centre For Humanitarian Data </b>
+
+Fluwelen Burgwal 58 | 2511 CJ The Hague | The Netherlands
+
+</center>
+</p>
